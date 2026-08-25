@@ -1,34 +1,36 @@
--- Migration: 0001_esquema_principal.up.sql
--- Proyecto:  USBI-Anon — BASE DE DATOS PRINCIPAL (usbi_anon_db)
+-- Migration: 0001_esquema_unificado.up.sql
+-- Proyecto:  USBI-Anon — BASE DE DATOS ÚNICA (usbi_anon_db)
 --
--- Esta base contiene el progreso, el contenido educativo, las insignias, las
--- rachas, los dispositivos y la bitácora de contenido. Todo indexado por UUID.
+-- Reemplaza como BASELINE a los dos esquemas de F1 (migrations/identity/ y
+-- migrations/main/). No es una migración incremental: aquellos scripts nunca se
+-- aplicaron contra una base persistente (F1–F4 siempre usaron bases/esquemas
+-- desechables), así que no hay un solo dato real que migrar. Ver
+-- plan/04_Rediseno_identidad_gustos.md §1.
 --
--- PROMESA CENTRAL DEL PROYECTO: ninguna columna de esta base contiene nombre,
--- correo, teléfono ni dato alguno de tutor. Ninguna columna admite texto libre
--- escrito por una persona usuaria. Si una migración futura necesita romper eso,
--- no es una migración: es un cambio de arquitectura y debe discutirse como tal.
+-- QUÉ CAMBIÓ Y POR QUÉ. El diseño anterior partía la persistencia en dos bases
+-- porque una de ellas contenía el ÚNICO dato personal directo del sistema: el
+-- correo electrónico. Al eliminarse el correo del producto (el registro pasa a
+-- ser un cuestionario de gustos no sensibles del que se derivan nickname y
+-- password), esa base deja de tener razón de existir: ya no hay nada que
+-- aislar. La separación física se sustituye por algo más fuerte —— la ausencia
+-- del dato.
 --
--- Nótese lo que NO se crea aquí: la extensión pgcrypto. Al no quedar un solo
--- campo cifrado, la dependencia desaparece. Que vuelva a hacer falta es la
--- señal de que se coló un dato sensible.
+-- PROMESA CENTRAL DEL PROYECTO, ahora para toda la base: ninguna columna
+-- contiene nombre, correo, teléfono ni dato alguno de tutor. El único texto
+-- libre escrito por una persona usuaria son las respuestas del cuestionario
+-- (account_quiz_answers.answer_text), deliberadamente acotadas a gustos no
+-- sensibles y validadas en Go antes de llegar aquí.
 --
--- REGLA ESTRUCTURAL: ninguna sentencia de este archivo puede nombrar una tabla
--- de la base de identidad. No hay claves foráneas, JOIN, dblink ni
--- postgres_fdw entre ambas bases.
+-- Nótese lo que NO se crea: la extensión pgcrypto. Al no quedar un solo campo
+-- cifrado en el sistema, la dependencia desaparece. Que vuelva a hacer falta es
+-- la señal de que se coló un dato sensible.
 --
--- Convención: golang-migrate (pares .up.sql / .down.sql, SQL plano). Los UUID
--- los provee la aplicación (Go, google/uuid v7).
---
--- Origen: consolida ../usbi/backend/migrations/0001 a 0012 en un baseline
--- único. Al consolidar desaparecen seis deudas heredadas: el CHECK NOT VALID
--- de 0002 validado hasta 0011, la reconstrucción de tablas de 0007 para
--- particionarlas, el parche de partición DEFAULT de 0008, los índices de clave
--- foránea olvidados hasta 0010, las cinco funciones PL/pgSQL que 0006 creó y
--- 0012 eliminó por muertas, y la convención de migración inconsistente.
+-- Convención: golang-migrate (pares .up.sql / .down.sql, SQL plano, sin
+-- anotaciones de goose). Los UUID los provee la aplicación (Go, google/uuid
+-- v7); gen_random_uuid() no se usa como valor por defecto en ninguna PK.
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 1. ANCLA DE IDENTIDAD ANÓNIMA
+-- 1. IDENTIDAD ANÓNIMA
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── alias_adjectives / alias_nouns ───────────────────────────────────────────
@@ -73,48 +75,93 @@ INSERT INTO alias_nouns (id, word) VALUES
     (21,'Cangrejo'), (22,'Mariposa'), (23,'Libélula'), (24,'Zorro');
 
 -- ── accounts ─────────────────────────────────────────────────────────────────
--- Ancla local de todas las claves foráneas de esta base.
+-- Fusión de las antiguas `identities` (base de identidad) y `accounts` (base
+-- principal). Ancla de todas las claves foráneas de la base, y a la vez la
+-- tabla de credenciales — algo que antes era impensable porque credencial
+-- significaba correo electrónico. Ahora la credencial es un nickname derivado
+-- de respuestas fragmentadas sobre gustos, y no identifica a nadie por sí solo.
 --
--- En ../usbi había 17 claves foráneas apuntando a `users(id)`. PostgreSQL no
--- admite claves foráneas entre bases distintas, así que esas 17 tenían que
--- morir o cambiar de destino. Esta tabla es la que permite lo segundo: réplica
--- SIN NINGUNA COLUMNA IDENTIFICABLE de la identidad correspondiente.
---
--- accounts.id es igual a identities.id de la otra base, PERO SIN CLAVE FORÁNEA:
--- son bases distintas. La consistencia la sostiene la aplicación con un upsert
--- idempotente en login/refresh, no la base.
---
--- La fuente de verdad de role / status / is_adult es SIEMPRE la base de
--- identidad. Lo de aquí es una réplica de conveniencia: el panel admin filtra
--- por rol y el motor de progreso rechaza cuentas suspendidas sin tener que
--- consultar la otra base en cada request. La revocación inmediata no depende de
--- esta réplica: sigue funcionando por token_version contra la base de identidad.
+-- Diferencias frente a la antigua `identities`:
+--   · SE ELIMINA email / email_lookup_hash → no hay correo en el sistema.
+--   · SE ELIMINA full_name y phone         → ya eliminados en F1.
+--   · SE AÑADE  nickname                   → credencial de login, en claro,
+--     buscada con `WHERE nickname = $1`. No lleva blind index HMAC porque no es
+--     PII cifrada: es un identificador público generado por el sistema.
+--   · status pierde 'pending_tutor_consent' → sin correo no hay doble opt-in de
+--     tutor; un menor autoreportado juega de inmediato
+--     (plan/04_Rediseno_identidad_gustos.md, decisión 3).
 CREATE TABLE accounts (
-    id                 UUID        PRIMARY KEY,
-    role               VARCHAR     NOT NULL
+    id                         UUID        PRIMARY KEY,
+    -- Credencial de login. Formato cerrado: minúsculas y dígitos, 6–20
+    -- caracteres. El CHECK no es cosmético: impide que un cambio futuro de
+    -- código escriba aquí un nombre propio, un correo o cualquier texto con
+    -- espacios, acentos o arroba.
+    nickname                   VARCHAR(32) NOT NULL UNIQUE
+        CHECK (nickname ~ '^[a-z0-9]{6,20}$'),
+    password_hash              VARCHAR     NOT NULL, -- Argon2id, irreversible
+    token_version              INTEGER     NOT NULL DEFAULT 1,
+    is_adult                   BOOLEAN     NOT NULL, -- autorreporte puro
+    role                       VARCHAR     NOT NULL
         CHECK (role IN ('player', 'admin', 'operator', 'director')),
-    status             VARCHAR     NOT NULL
-        CHECK (status IN ('active', 'suspended', 'pending_tutor_consent', 'deleted')),
-    is_adult           BOOLEAN     NOT NULL,
+    status                     VARCHAR     NOT NULL
+        CHECK (status IN ('active', 'suspended', 'deleted')),
+    -- Contador de intentos de transición a mayoría de edad (Ley 251, máx. 3).
+    age_up_attempts            SMALLINT    NOT NULL DEFAULT 0,
     -- Alias visible, generado por el sistema. Ver alias_adjectives/alias_nouns.
-    alias_adjective_id SMALLINT    NOT NULL REFERENCES alias_adjectives(id) ON DELETE RESTRICT,
-    alias_noun_id      SMALLINT    NOT NULL REFERENCES alias_nouns(id)      ON DELETE RESTRICT,
-    alias_number       SMALLINT    NOT NULL CHECK (alias_number BETWEEN 0 AND 999),
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at         TIMESTAMPTZ
+    -- Se sortea UNA SOLA VEZ, en el INSERT de registro: al no haber dos bases
+    -- que reconciliar, desaparece el upsert de login/refresh de F4.
+    alias_adjective_id         SMALLINT    NOT NULL REFERENCES alias_adjectives(id) ON DELETE RESTRICT,
+    alias_noun_id              SMALLINT    NOT NULL REFERENCES alias_nouns(id)      ON DELETE RESTRICT,
+    alias_number               SMALLINT    NOT NULL CHECK (alias_number BETWEEN 0 AND 999),
+    privacy_notice_version     VARCHAR     NOT NULL,
+    privacy_notice_accepted_at TIMESTAMPTZ NOT NULL,
+    -- Sello HMAC de no repudio del aviso de privacidad. Antes se calculaba
+    -- sobre el correo; ahora sobre (id + version + accepted_at).
+    privacy_acceptance_hash    BYTEA       NOT NULL,
+    -- Versión de la clave HMAC con la que se selló la fila. Se conserva pese a
+    -- que ya no hay cifrado: sin ella, rotar HMAC_SECRET invalidaría todos los
+    -- sellos existentes y con ellos la evidencia de no repudio.
+    crypto_key_version         SMALLINT    NOT NULL,
+    created_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_login_at              TIMESTAMPTZ,
+    deleted_at                 TIMESTAMPTZ,
+    deletion_reason            VARCHAR
 );
 
 COMMENT ON TABLE accounts IS
-    'Réplica no autoritativa y sin PII de la base de identidad. Ancla de todas '
-    'las claves foráneas de esta base. Añadir aquí una columna que pueda '
-    'contener texto escrito por una persona es incompatible con el diseño.';
+    'Cuenta de jugador o administrador. No contiene ningún dato personal '
+    'directo: el nickname es un identificador generado por el sistema a partir '
+    'de fragmentos de respuestas sobre gustos, no un nombre. Añadir aquí una '
+    'columna que pueda contener un nombre, un correo o un teléfono es '
+    'incompatible con el diseño del proyecto.';
 COMMENT ON COLUMN accounts.id IS
-    'UUID anónimo. Coincide con identities.id de la base de identidad, sin FK '
-    '(bases distintas). No lleva ningún dato personal asociado en esta base.';
+    'UUID v7 generado por la aplicación. Es el subject del JWT y la llave de '
+    'todo el progreso. La cancelación de cuenta conserva la fila con el '
+    'nickname sobrescrito por relleno aleatorio, para no romper el no repudio '
+    'de las bitácoras.';
+COMMENT ON COLUMN accounts.nickname IS
+    'Credencial de login. Al cancelar una cuenta debe sobrescribirse con '
+    'relleno aleatorio [a-z0-9] de 20 caracteres — cumple el CHECK, libera el '
+    'valor original para reuso y no deja rastro de las respuestas que lo '
+    'originaron.';
 
 CREATE INDEX accounts_role_status_idx ON accounts (role, status);
+CREATE INDEX accounts_status_idx      ON accounts (status);
 
+-- Índices parciales para las dos rutinas de retención automática que
+-- sobreviven en internal/maintenance (la tercera, la purga de registros
+-- atascados en 'pending_tutor_consent', desaparece con el flujo de tutor).
+CREATE INDEX accounts_inactive_players_idx
+    ON accounts (COALESCE(last_login_at, created_at))
+    WHERE role = 'player' AND status = 'active' AND deleted_at IS NULL;
+
+CREATE INDEX accounts_pending_cancel_idx
+    ON accounts (updated_at)
+    WHERE role = 'player'
+      AND status = 'suspended'
+      AND deletion_reason = 'inactive_suspension_pending_cancel'
+      AND deleted_at IS NULL;
 
 -- Vista de conveniencia: compone el alias legible sin que ninguna tabla
 -- almacene la cadena. El alias NO es un identificador: no es único y jamás debe
@@ -126,8 +173,125 @@ FROM accounts a
 JOIN alias_adjectives adj ON adj.id = a.alias_adjective_id
 JOIN alias_nouns      n   ON n.id   = a.alias_noun_id;
 
+-- ── refresh_tokens ───────────────────────────────────────────────────────────
+-- Tokens opacos de sesión (7 días) con revocación del lado servidor.
+--
+-- Es la ÚNICA tabla cuya columna de usuario se renombra a `account_id`: nació
+-- en el esquema de identidad, que desaparece, y su capa Go se reescribe en F7
+-- de todas formas. Las tablas de progreso y contenido conservan `user_id`
+-- literal para no invalidar la capa de repositorio copiada verbatim (ver §6).
+CREATE TABLE refresh_tokens (
+    id         UUID        PRIMARY KEY,
+    account_id UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    token_hash BYTEA       NOT NULL UNIQUE,
+    issued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ
+);
+
+CREATE INDEX refresh_tokens_account_active_idx
+    ON refresh_tokens (account_id)
+    WHERE revoked_at IS NULL;
+
+-- Soporta la purga periódica de tokens vencidos o revocados hace más de 7 días.
+CREATE INDEX refresh_tokens_expires_at_idx ON refresh_tokens (expires_at);
+
 -- ═══════════════════════════════════════════════════════════════════════════
--- 2. OPERACIÓN Y ARQUITECTURA OFFLINE
+-- 2. CUESTIONARIO DE REGISTRO
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── registration_questions ───────────────────────────────────────────────────
+-- Banco de preguntas administrable. El registro muestra un subconjunto
+-- aleatorio de las activas (máximo registration_settings.max_questions_shown);
+-- el resto queda en reserva y rota entre registros.
+--
+-- LA REGLA "MÍNIMO 4 PREGUNTAS ACTIVAS" NO SE IMPLEMENTA AQUÍ. Podría hacerse
+-- con un trigger, pero este proyecto mantiene la lógica de negocio en Go de
+-- forma consistente (ver la nota de las funciones PL/pgSQL muertas en §5). Se
+-- valida en internal/quiz dentro de la misma transacción que el DELETE/UPDATE,
+-- que además necesita devolver un 409 con mensaje entendible.
+CREATE TABLE registration_questions (
+    id            UUID         PRIMARY KEY,
+    question_text VARCHAR(280) NOT NULL CHECK (btrim(question_text) <> ''),
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    display_order SMALLINT     NOT NULL DEFAULT 0,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Soporta el muestreo aleatorio del registro, que solo mira las activas.
+CREATE INDEX registration_questions_active_idx
+    ON registration_questions (display_order)
+    WHERE is_active;
+
+COMMENT ON TABLE registration_questions IS
+    'Preguntas sobre gustos NO SENSIBLES. Añadir aquí una pregunta que pida un '
+    'nombre, una escuela, una dirección, una fecha de nacimiento o cualquier '
+    'dato identificable rompe la promesa central del proyecto: las respuestas '
+    'se guardan en claro en account_quiz_answers.';
+
+-- Banco inicial. Son las cinco preguntas con las que se cerró el diseño; el
+-- sistema necesita al menos cuatro activas para poder registrar a nadie, así
+-- que sembrarlas aquí es parte del baseline, no un dato de prueba.
+INSERT INTO registration_questions (id, question_text, is_active, display_order) VALUES
+    ('018fd2b4-3f0d-7c00-8000-000000000201', '¿Cuál es tu color favorito?',              TRUE, 1),
+    ('018fd2b4-3f0d-7c00-8000-000000000202', '¿Cuál es tu animal favorito?',             TRUE, 2),
+    ('018fd2b4-3f0d-7c00-8000-000000000203', '¿Cuál es tu materia escolar favorita?',    TRUE, 3),
+    ('018fd2b4-3f0d-7c00-8000-000000000204', '¿Cuál es tu número favorito?',             TRUE, 4),
+    ('018fd2b4-3f0d-7c00-8000-000000000205', '¿Cuántas mascotas tienes?',                TRUE, 5);
+
+-- ── registration_settings ────────────────────────────────────────────────────
+-- Fila única (id = 1, forzado por CHECK). Un ajuste de configuración editable
+-- desde el panel admin no justifica una tabla clave-valor genérica.
+CREATE TABLE registration_settings (
+    id                  SMALLINT    PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    max_questions_shown SMALLINT    NOT NULL
+        CHECK (max_questions_shown BETWEEN 4 AND 10),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO registration_settings (id, max_questions_shown) VALUES (1, 5);
+
+-- ── account_quiz_answers ─────────────────────────────────────────────────────
+-- Respuestas de texto libre del cuestionario, en claro y por diseño.
+--
+-- POR QUÉ SE GUARDAN. Sin correo electrónico no hay forma de recuperar una
+-- cuenta olvidada por el canal habitual. La recuperación acordada es que un
+-- administrador compare a ojo las respuestas que la persona reingresa contra
+-- las guardadas y resetee el password manualmente (decisión 4 del rediseño).
+-- Eso exige persistirlas.
+--
+-- POR QUÉ NO VAN CIFRADAS. Son gustos no sensibles (color, animal, materia) y
+-- el admin necesita leerlas para compararlas. Cifrarlas con una clave que el
+-- propio backend posee no añadiría protección real frente al escenario que
+-- importa aquí, y reintroduciría pgcrypto en un esquema que se limpió a
+-- propósito. La protección es de acceso: el endpoint que las expone exige rol
+-- admin y queda auditado en audit_log.
+CREATE TABLE account_quiz_answers (
+    id                     UUID         PRIMARY KEY,
+    account_id             UUID         NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    -- SET NULL: borrar una pregunta del banco no puede borrar la respuesta que
+    -- alguien dio, porque es la única vía de recuperación de esa cuenta.
+    question_id            UUID         REFERENCES registration_questions(id) ON DELETE SET NULL,
+    -- Congela el texto que la persona vio realmente. Si la pregunta se edita
+    -- después ("¿tu color favorito?" → "¿tu color menos favorito?"), la
+    -- comparación del admin seguiría siendo válida.
+    question_text_snapshot VARCHAR(280) NOT NULL,
+    answer_text            VARCHAR(200) NOT NULL CHECK (btrim(answer_text) <> ''),
+    created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX account_quiz_answers_account_idx  ON account_quiz_answers (account_id);
+CREATE INDEX account_quiz_answers_question_idx ON account_quiz_answers (question_id);
+
+COMMENT ON COLUMN account_quiz_answers.answer_text IS
+    'Texto libre escrito por la persona usuaria — el único de toda la base. '
+    'Validado en Go (y en el frontend) contra control chars, JSON y HTML antes '
+    'de llegar aquí. Nunca se usa para construir SQL ni se devuelve a nadie '
+    'salvo a un admin autenticado.';
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 3. OPERACIÓN Y ARQUITECTURA OFFLINE
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── devices ──────────────────────────────────────────────────────────────────
@@ -137,7 +301,7 @@ JOIN alias_nouns      n   ON n.id   = a.alias_noun_id;
 -- distinguir dispositivos en la pantalla de sesiones y no admite PII.
 CREATE TABLE devices (
     id              UUID        PRIMARY KEY,
-    user_id      UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id         UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     device_kind     VARCHAR     NOT NULL
         CHECK (device_kind IN ('movil', 'tablet', 'laptop', 'escritorio', 'otro')),
     platform        VARCHAR     NOT NULL CHECK (platform IN ('web', 'tauri')),
@@ -157,7 +321,7 @@ CREATE INDEX devices_user_id_idx ON devices (user_id);
 -- ── sync_events ──────────────────────────────────────────────────────────────
 CREATE TABLE sync_events (
     id                 UUID        PRIMARY KEY,
-    user_id         UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id            UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     device_id          UUID        NOT NULL,
     -- Sin PII: solo eventos técnicos de progreso. Lo garantiza el tipado
     -- estricto de domain.SyncPayload en Go, que rechaza campos desconocidos.
@@ -176,10 +340,10 @@ CREATE TABLE sync_events (
 );
 
 CREATE INDEX sync_events_user_status_idx ON sync_events (user_id, status);
-CREATE INDEX sync_events_device_id_idx      ON sync_events (device_id);
+CREATE INDEX sync_events_device_id_idx   ON sync_events (device_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 3. CONTENIDO EDUCATIVO (borrado lógico)
+-- 4. CONTENIDO EDUCATIVO (borrado lógico)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE sections (
@@ -217,16 +381,16 @@ CREATE TABLE levels (
     deleted_by          UUID        REFERENCES accounts(id) ON DELETE SET NULL
 );
 
-CREATE INDEX levels_section_id_idx    ON levels (section_id);
-CREATE INDEX levels_created_by_idx    ON levels (created_by_admin_id);
-CREATE INDEX levels_deleted_by_idx    ON levels (deleted_by);
+CREATE INDEX levels_section_id_idx ON levels (section_id);
+CREATE INDEX levels_created_by_idx ON levels (created_by_admin_id);
+CREATE INDEX levels_deleted_by_idx ON levels (deleted_by);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. PROGRESO Y RENDICIÓN DE CUENTAS
+-- 5. PROGRESO Y RENDICIÓN DE CUENTAS
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE player_progress (
-    user_id         UUID    NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id            UUID    NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     level_id           UUID    NOT NULL REFERENCES levels(id)   ON DELETE RESTRICT,
     best_score         INTEGER NOT NULL DEFAULT 0,
     xp_total_for_level INTEGER NOT NULL DEFAULT 0,
@@ -251,7 +415,7 @@ CREATE INDEX player_progress_level_id_idx ON player_progress (level_id);
 -- transaccional en Go, para evitar carreras entre el camino online y el sync.
 CREATE TABLE level_attempts (
     id             UUID        NOT NULL,
-    user_id     UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id        UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     level_id       UUID        NOT NULL REFERENCES levels(id)   ON DELETE RESTRICT,
     attempt_date   DATE        NOT NULL,
     attempt_number INTEGER     NOT NULL, -- 1 = 100 % XP, 2-3 = 50 %, >3 = 0 %
@@ -276,7 +440,7 @@ CREATE INDEX level_attempts_level_id_idx ON level_attempts (level_id);
 
 -- ── daily_streak ─────────────────────────────────────────────────────────────
 CREATE TABLE daily_streak (
-    user_id    UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id       UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     activity_date DATE NOT NULL,
     PRIMARY KEY (user_id, activity_date)
 ) PARTITION BY RANGE (activity_date);
@@ -305,24 +469,62 @@ INSERT INTO badges (id, name, xp_threshold, icon_key) VALUES
     ('018fd2b4-3f0d-7c00-8000-000000000104', 'Experto USBI',    240, 'expert');
 
 CREATE TABLE user_badges (
-    user_id UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    badge_id   UUID        NOT NULL REFERENCES badges(id)   ON DELETE RESTRICT,
-    earned_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    user_id   UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    badge_id  UUID        NOT NULL REFERENCES badges(id)   ON DELETE RESTRICT,
+    earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, badge_id)
 );
 
 CREATE INDEX user_badges_badge_id_idx ON user_badges (badge_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 5. AUDITORÍA DE CONTENIDO Y SEGURIDAD
+-- 6. DERECHOS ARCO, AUDITORÍA Y SEGURIDAD
 -- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── arco_requests ────────────────────────────────────────────────────────────
+-- SIMPLIFICADA FRENTE A F1/F4. Con dos bases, resolver una cancelación era una
+-- saga reanudable de tres pasos (pending → purging_main →
+-- identity_pseudonymized → resolved) porque no había forma de hacer 2PC entre
+-- instancias. Con una sola base el problema desaparece: la cancelación es una
+-- transacción única (internal/privacy.CancelAccount), y con ella se van los
+-- dos estados intermedios, el reclamo bajo FOR UPDATE y el job de
+-- reconciliación de internal/maintenance.
+--
+-- La cancelación además pasa a ser autoservicio inmediato (DELETE /auth/me,
+-- decisión 7): esta tabla la registra ya resuelta, para trazabilidad legal.
+-- Los trámites que siguen necesitando intervención de un admin son
+-- acceso / rectificacion / oposicion.
+CREATE TABLE arco_requests (
+    id               UUID        PRIMARY KEY,
+    -- SET NULL: la solicitud sobrevive a la cancelación del titular, para
+    -- conservar trazabilidad legal.
+    user_id          UUID        REFERENCES accounts(id) ON DELETE SET NULL,
+    requester_type   VARCHAR     NOT NULL,
+    request_type     VARCHAR     NOT NULL
+        CHECK (request_type IN ('acceso', 'rectificacion', 'cancelacion', 'oposicion')),
+    received_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at      TIMESTAMPTZ,
+    status           VARCHAR     NOT NULL
+        CHECK (status IN ('pending', 'resolved', 'rejected')),
+    handled_by       UUID        REFERENCES accounts(id) ON DELETE SET NULL,
+    response_summary TEXT,
+    evidence_hash    BYTEA       NOT NULL -- sello criptográfico (no repudio)
+);
+
+CREATE INDEX arco_requests_user_id_idx    ON arco_requests (user_id);
+CREATE INDEX arco_requests_handled_by_idx ON arco_requests (handled_by);
+
+-- Cola de trabajo del panel ARCO.
+CREATE INDEX arco_requests_open_idx
+    ON arco_requests (received_at)
+    WHERE status = 'pending';
 
 -- ── experience_history ───────────────────────────────────────────────────────
 -- APPEND-ONLY. user_id pasa a NULL en la seudonimización ARCO: la fila del
 -- libro mayor sobrevive (no repudio) pero deja de estar vinculada.
 CREATE TABLE experience_history (
     id                  UUID        PRIMARY KEY,
-    user_id          UUID        REFERENCES accounts(id) ON DELETE SET NULL,
+    user_id             UUID        REFERENCES accounts(id) ON DELETE SET NULL,
     level_id            UUID        NOT NULL REFERENCES levels(id) ON DELETE RESTRICT,
     event_type          VARCHAR     NOT NULL,
     xp_gained           INTEGER     NOT NULL,
@@ -336,21 +538,27 @@ CREATE TABLE experience_history (
     )
 );
 
-CREATE INDEX experience_history_user_id_idx ON experience_history (user_id);
+CREATE INDEX experience_history_user_id_idx    ON experience_history (user_id);
 CREATE INDEX experience_history_level_id_idx   ON experience_history (level_id);
 CREATE INDEX experience_history_sync_event_idx ON experience_history (sync_event_id);
 
--- ── admin_audit_log ──────────────────────────────────────────────────────────
--- APPEND-ONLY. En ../usbi esta tabla registraba TODA acción administrativa.
--- Aquí solo registra acciones de CONTENIDO (secciones, niveles, incidentes):
--- las de identidad (auth, ARCO, tutor, suspensión) van a identity_audit_log en
--- la base de identidad, porque su before_state / after_state contendría PII.
+-- ── audit_log ────────────────────────────────────────────────────────────────
+-- Fusión de identity_audit_log + admin_audit_log. Se partieron en dos en F1 por
+-- una razón concreta: el before_state de "se editó el correo de la cuenta X"
+-- ES el correo, y dejarlo en la base principal habría filtrado PII a la base
+-- que promete no tenerla. Sin correo en el sistema esa razón desaparece, y
+-- mantener dos bitácoras idénticas solo complicaría la consulta.
 --
--- before_state / after_state NO DEBEN contener datos identificables. En esta
--- base eso se sostiene solo: no hay ninguna tabla de la que copiarlos.
-CREATE TABLE admin_audit_log (
+-- APPEND-ONLY: sin UPDATE ni DELETE, salvo el SET NULL del actor durante la
+-- seudonimización ARCO. Lo garantiza el trigger de más abajo.
+--
+-- before_state / after_state NO DEBEN contener datos identificables. La única
+-- tabla de la que podrían copiarse respuestas de texto libre es
+-- account_quiz_answers: al auditar su consulta, registrar el account_id y el
+-- conteo, nunca el contenido.
+CREATE TABLE audit_log (
     id               UUID        PRIMARY KEY,
-    actor_user_id UUID        REFERENCES accounts(id) ON DELETE SET NULL,
+    actor_account_id UUID        REFERENCES accounts(id) ON DELETE SET NULL,
     action           VARCHAR     NOT NULL,
     entity_type      VARCHAR     NOT NULL,
     entity_id        UUID,
@@ -361,8 +569,8 @@ CREATE TABLE admin_audit_log (
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX admin_audit_log_actor_idx      ON admin_audit_log (actor_user_id);
-CREATE INDEX admin_audit_log_created_at_idx ON admin_audit_log (created_at);
+CREATE INDEX audit_log_actor_idx      ON audit_log (actor_account_id);
+CREATE INDEX audit_log_created_at_idx ON audit_log (created_at);
 
 -- ── security_incidents ───────────────────────────────────────────────────────
 CREATE TABLE security_incidents (
@@ -381,11 +589,10 @@ CREATE TABLE security_incidents (
     evidence_hash           BYTEA       NOT NULL
 );
 
--- Estas tres columnas son el ÚNICO texto libre que queda en esta base, y lo
--- redacta un operador en pleno incidente — el momento exacto en que alguien
--- escribe "se filtró la cuenta de Juan Pérez". No se puede impedir con un
--- CHECK: queda como control documental, reforzado con validación en
--- internal/incidents. Referirse siempre a los titulares por su UUID.
+-- Estas tres columnas las redacta un operador en pleno incidente — el momento
+-- exacto en que alguien escribe "se filtró la cuenta de Juan Pérez". No se
+-- puede impedir con un CHECK: queda como control documental, reforzado con
+-- validación en internal/incidents. Referirse siempre a los titulares por UUID.
 COMMENT ON COLUMN security_incidents.affected_scope IS
     'PROHIBIDO nombrar titulares. Referirse a las personas afectadas por UUID '
     'o por conteo agregado.';
@@ -426,9 +633,9 @@ BEGIN
            AND NEW.created_at          IS NOT DISTINCT FROM OLD.created_at THEN
             RETURN NEW;
         END IF;
-    ELSIF TG_TABLE_NAME = 'admin_audit_log' THEN
-        IF OLD.actor_user_id IS NOT NULL
-           AND NEW.actor_user_id IS NULL
+    ELSIF TG_TABLE_NAME = 'audit_log' THEN
+        IF OLD.actor_account_id IS NOT NULL
+           AND NEW.actor_account_id IS NULL
            AND NEW.id           IS NOT DISTINCT FROM OLD.id
            AND NEW.action       IS NOT DISTINCT FROM OLD.action
            AND NEW.entity_type  IS NOT DISTINCT FROM OLD.entity_type
@@ -451,21 +658,25 @@ CREATE TRIGGER experience_history_append_only_trg
 BEFORE UPDATE OR DELETE ON experience_history
 FOR EACH ROW EXECUTE FUNCTION enforce_append_only_ledgers();
 
-CREATE TRIGGER admin_audit_log_append_only_trg
-BEFORE UPDATE OR DELETE ON admin_audit_log
+CREATE TRIGGER audit_log_append_only_trg
+BEFORE UPDATE OR DELETE ON audit_log
 FOR EACH ROW EXECUTE FUNCTION enforce_append_only_ledgers();
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. DOCUMENTACIÓN DE COLUMNAS
+-- 7. DOCUMENTACIÓN DE COLUMNAS
 -- ═══════════════════════════════════════════════════════════════════════════
--- El nombre de columna `user_id` se conserva en toda esta base, igual que en
--- ../usbi, para no invalidar la copia verbatim de la capa de repositorio en Go.
--- Lo que cambió no es el nombre sino el contenido: aquí un user_id es un UUID
--- anónimo, sin ningún dato personal asociado en esta base.
+-- El nombre de columna `user_id` se conserva en las tablas de progreso,
+-- contenido y auditoría heredadas de ../usbi, para no invalidar la copia
+-- verbatim de la capa de repositorio en Go. Lo que cambió no es el nombre sino
+-- el contenido: aquí un user_id es un UUID sin ningún dato personal asociado.
+-- Solo refresh_tokens (que nació en el esquema de identidad, hoy inexistente) y
+-- audit_log (tabla nueva por fusión) usan account_id / actor_account_id.
 COMMENT ON COLUMN devices.user_id IS
-    'UUID anónimo (accounts.id). Esta base no puede resolverlo a una persona.';
+    'UUID de accounts.id. Esta base no guarda ningún dato que permita resolverlo '
+    'a una persona por sí sola.';
 COMMENT ON COLUMN player_progress.user_id IS
-    'UUID anónimo (accounts.id). Esta base no puede resolverlo a una persona.';
+    'UUID de accounts.id. Esta base no guarda ningún dato que permita resolverlo '
+    'a una persona por sí sola.';
 COMMENT ON COLUMN experience_history.user_id IS
-    'UUID anónimo (accounts.id). NULL tras la seudonimización ARCO: la fila del '
-    'libro mayor sobrevive para el no repudio, sin vínculo con la cuenta.';
+    'UUID de accounts.id. NULL tras la seudonimización ARCO: la fila del libro '
+    'mayor sobrevive para el no repudio, sin vínculo con la cuenta.';

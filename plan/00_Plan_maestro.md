@@ -14,7 +14,31 @@
 > detectando la caída de cada base por separado). Ver
 > [`02_Backend.md` §8](02_Backend.md) para el detalle de los 7 criterios de
 > aceptación, incluidas dos excepciones documentadas al diff-cero del
-> criterio 4. Falta F5 (frontend).
+> criterio 4.
+>
+> **⚠️ Los scripts SQL que describe este documento ya NO existen en el repo.**
+> `backend/migrations/{identity,main}/` y `backend/sql/00_roles_{identidad,
+> principal}.sql` se retiraron al cerrar **F5** del nuevo plan, sustituidos por
+> `backend/migrations/0001_esquema_unificado.{up,down}.sql` y
+> `backend/sql/00_roles_unificado.sql` (una sola base, sin correo electrónico,
+> sin flujo de tutor). Lo que este documento dice sobre el esquema vale como
+> historia de por qué se llegó ahí, no como descripción del repo actual.
+>
+> **⚠️ Cambio de rumbo tras F4 (misma fecha, sesión posterior):** el usuario
+> decidió abandonar el modelo de dos bases + email + tutor por correo que
+> describen este documento y `01_Base_de_datos.md`/`02_Backend.md` para todo
+> lo relativo a **identidad**. El nuevo diseño (una sola base, registro por
+> cuestionario de gustos → nickname/password generados, sin PII directa en
+> absoluto) está cerrado y documentado en
+> **[`04_Rediseno_identidad_gustos.md`](04_Rediseno_identidad_gustos.md)**,
+> que define las fases **F5–F11** (reemplazan la F5/F6 originales de la tabla
+> de abajo) y su orden de dependencia para poder paralelizarlas entre varios
+> agentes/sesiones. Este documento y `01_Base_de_datos.md`/`02_Backend.md`
+> siguen siendo la referencia válida para todo lo que **no** cambia (progreso,
+> contenido, niveles, sync, dispositivos, saga ARCO en su forma general) —
+> pero para identidad/auth, **`04_Rediseno_identidad_gustos.md` manda sobre
+> este documento**, no al revés.
+>
 > **Fuente de verdad de este plan:** el código real de `../usbi` (migraciones aplicadas
 > y verificadas contra el contenedor `usbi-database`), **no** el `plan/` de `../usbi`.
 
@@ -89,12 +113,17 @@ que hoy.
 | # | Fase | Entregable | Bloquea a |
 |---|---|---|---|
 | **F0** | Decisiones abiertas | Respuestas a §4 de este documento | F1 |
-| **F1** | **Scripts SQL** ✅ **hecha** | `backend/migrations/{identity,main}/0001_*.{up,down}.sql` + `backend/sql/00_roles_*.sql` | F2 |
+| **F1** | **Scripts SQL** ✅ hecha, ⚠️ **retirada en F5** | `backend/migrations/{identity,main}/0001_*.{up,down}.sql` + `backend/sql/00_roles_*.sql` — **eliminados del repo**, ver `04_Rediseno_identidad_gustos.md` §1 | F2 |
 | **F2** | **Esqueleto Go** ✅ **hecha** | Módulo nuevo, `config` con dos DSN, `internal/identityrepo` | F3 |
 | **F3** | **Copia verbatim** ✅ **hecha** | `levels`, `sync`, `devices`, `incidents`, `crypto`, `httpjson`, `httpproblem`, `httputil`, `audit`, `mailer`, `dbmaint`, `domain` + `internal/repository` [P] | F4 |
 | **F4** | **Reescritura** ✅ **hecha** | `auth`, `maintenance`, `transport`, `main.go`, `cmd/create_admin`, `internal/testdb` | F5 |
-| F5 | Frontend | 6 archivos (ver [`03_Frontend.md`](03_Frontend.md)) | F6 |
-| F6 | Legal | Reescritura completa de Convenio/EIPDP/Documento de seguridad/Condiciones/Diccionario | — |
+| ~~F5~~ | ~~Frontend~~ | Superseded — ver F5–F11 en [`04_Rediseno_identidad_gustos.md`](04_Rediseno_identidad_gustos.md) | — |
+| ~~F6~~ | ~~Legal~~ | Renumerada a **F11** en el nuevo plan | — |
+
+**Tabla de fases vigente para identidad/auth (reemplaza la fila F5/F6 de
+arriba):** ver [`04_Rediseno_identidad_gustos.md` §6](04_Rediseno_identidad_gustos.md)
+para F5 (esquema SQL unificado) a F11 (legal), con su grafo de dependencias
+para trabajo en paralelo.
 
 **F1 fue deliberadamente solo escritura de SQL.** Los scripts se validaron
 aplicándolos a dos bases desechables (`sqlcheck_ident`, `sqlcheck_main`)
