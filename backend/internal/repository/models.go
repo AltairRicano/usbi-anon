@@ -13,17 +13,19 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
-type AdminAuditLog struct {
-	ID          uuid.UUID             `json:"id"`
-	ActorUserID uuid.NullUUID         `json:"actor_user_id"`
-	Action      string                `json:"action"`
-	EntityType  string                `json:"entity_type"`
-	EntityID    uuid.NullUUID         `json:"entity_id"`
-	BeforeState pqtype.NullRawMessage `json:"before_state"`
-	AfterState  pqtype.NullRawMessage `json:"after_state"`
-	IpAddress   string                `json:"ip_address"`
-	UserAgent   string                `json:"user_agent"`
-	CreatedAt   time.Time             `json:"created_at"`
+// AuditLog es la bitácora unificada (fusión de admin_audit_log +
+// identity_audit_log, ver plan/04_Rediseno_identidad_gustos.md §1).
+type AuditLog struct {
+	ID             uuid.UUID             `json:"id"`
+	ActorAccountID uuid.NullUUID         `json:"actor_account_id"`
+	Action         string                `json:"action"`
+	EntityType     string                `json:"entity_type"`
+	EntityID       uuid.NullUUID         `json:"entity_id"`
+	BeforeState    pqtype.NullRawMessage `json:"before_state"`
+	AfterState     pqtype.NullRawMessage `json:"after_state"`
+	IpAddress      string                `json:"ip_address"`
+	UserAgent      string                `json:"user_agent"`
+	CreatedAt      time.Time             `json:"created_at"`
 }
 
 type Badge struct {

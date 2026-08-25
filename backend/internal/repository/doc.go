@@ -1,7 +1,15 @@
-// Package repository es la capa de acceso a datos de la BASE PRINCIPAL
-// (usbi_anon_db): progreso, contenido, dispositivos, incidentes y
-// admin_audit_log. Es la contraparte de internal/identityrepo, que cubre la
-// BASE DE IDENTIDAD — ver plan/02_Backend.md §3.
+// Package repository es la capa de acceso a datos de la ÚNICA base del
+// sistema (usbi_anon_db): identidad (accounts, refresh_tokens), progreso,
+// contenido, dispositivos, incidentes y audit_log.
+//
+// internal/identityrepo existió entre F2 y F5 para la base de identidad
+// separada que el rediseño descartó (ver
+// plan/04_Rediseno_identidad_gustos.md); F7 absorbió aquí lo reutilizable de
+// ese paquete (CreateAccount/FindAccountByNickname en account_queries.go,
+// refresh tokens en auth_queries.go, DeactivateAccount/
+// PurgeAccountQuizAnswers en privacy_queries.go) y lo demás no volvió: el
+// flujo de tutor por correo se eliminó completo, y las consultas de ARCO las
+// añade F9 junto con internal/auth, que es quien las usa.
 //
 // # Origen: partición de ../usbi/backend/internal/repository (F3)
 //
@@ -15,9 +23,11 @@
 // progreso/contenido). Aquí solo sobreviven los 11 fragmentos [P]
 // (CreateLevel, CreateSection, GetLevelAttemptsByDate,
 // InsertExperienceHistory, InsertLevelAttempt, InsertSyncEvent,
-// ListPublishedLevels, LogAdminAudit, UpdateSyncEventStatus,
-// UpsertDailyStreak, UpsertPlayerProgress) y los 12 tipos de fila de
-// progreso/contenido/auditoría de la base principal (AdminAuditLog, Badge,
+// ListPublishedLevels, LogAuditEntry (entonces LogAdminAudit),
+// UpdateSyncEventStatus, UpsertDailyStreak, UpsertPlayerProgress) y los 12
+// tipos de fila de progreso/contenido/auditoría de la base principal
+// (AuditLog — entonces AdminAuditLog, renombrada por F7 al fusionarse con
+// identity_audit_log —, Badge,
 // DailyStreak, Device, ExperienceHistory, Level, LevelAttempt,
 // PlayerProgress, Section, SecurityIncident, SyncEvent, UserBadge) —
 // byte-idénticos a como sqlc los generó en ../usbi, sin regenerar el
@@ -36,8 +46,11 @@
 //
 // auth_queries.go, tutor_consent_queries.go, maintenance_queries.go y
 // privacy_queries.go (salvo NullUserInPseudonymizableLedgers y
-// PurgeUserProgressData, que sí operan sobre la base principal y siguen
-// aquí) migraron íntegros a identityrepo en F2 — ningún archivo de este
-// paquete debe volver a mencionar `identities`, `refresh_tokens`,
-// `tutor_consent*` ni `arco_requests` (criterio 2 de plan/02_Backend.md §8).
+// PurgeUserProgressData) migraron íntegros a identityrepo en F2. ESTA
+// RESTRICCIÓN YA NO APLICA: con una sola base (F5) e identityrepo eliminado
+// (F6), F7 trajo de vuelta refresh_tokens a este paquete (auth_queries.go) y
+// accounts ya vivía aquí desde F1 (account_queries.go). `tutor_consent*` no
+// vuelve — el flujo de tutor se eliminó por completo, no se fusionó.
+// `arco_requests` tampoco vuelve todavía: la trae F9 junto con
+// internal/auth, que es su único consumidor.
 package repository

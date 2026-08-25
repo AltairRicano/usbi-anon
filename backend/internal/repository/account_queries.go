@@ -1,11 +1,20 @@
 // account_queries.go es NUEVO en USBI-Anon — no existe en ../usbi, donde no
 // hacía falta una tabla ancla porque las FK apuntaban directo a `users`. Ver
-// plan/00_Plan_maestro.md §2 y plan/02_Backend.md §3.3/§4.
+// plan/00_Plan_maestro.md §2.
+//
+// F7 (rediseño de identidad, plan/04_Rediseno_identidad_gustos.md §2)
+// absorbió aquí CreateAccount/FindAccountByNickname, que antes vivían
+// repartidas entre identityrepo (CreateIdentity/GetIdentityByEmailHash) y
+// UpsertAccount de este mismo archivo. Con una sola base ya no existe la
+// réplica no autoritativa que UpsertAccount mantenía sincronizada en cada
+// login/refresh — accounts es ahora la única fila, se crea una vez en el
+// registro y se lee directo por nickname en el login.
 package repository
 
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"database/sql"
 	"math/big"
 	"time"
 
@@ -20,10 +29,10 @@ import (
 const aliasVocabularySize = 24
 
 // RandomAlias sortea un id de adjetivo, un id de sustantivo y un número para
-// el alias visible de una cuenta nueva. Se llama en CADA Login/Refresh, no
-// solo en el alta: UpsertAccount descarta estos valores vía ON CONFLICT DO
-// UPDATE cuando la cuenta ya existe, así que generarlos de más es más barato
-// que consultar primero si la fila existe.
+// el alias visible de una cuenta nueva. Se llama UNA SOLA VEZ, en el INSERT
+// de registro (CreateAccount) — con una sola base ya no hay una réplica que
+// reconciliar en cada login/refresh, así que generar el alias de más ya no
+// tiene sentido (plan/04_Rediseno_identidad_gustos.md §1).
 func RandomAlias() (adjectiveID, nounID, number int16, err error) {
 	adj, err := cryptorand.Int(cryptorand.Reader, big.NewInt(aliasVocabularySize))
 	if err != nil {
@@ -40,50 +49,113 @@ func RandomAlias() (adjectiveID, nounID, number int16, err error) {
 	return int16(adj.Int64()) + 1, int16(noun.Int64()) + 1, int16(num.Int64()), nil
 }
 
+// Account es la fila completa de `accounts` — id, credencial de login y
+// metadatos de cuenta. Es un tipo interno de acceso a datos, no el DTO
+// público (ese es domain.User): incluye PasswordHash y el resto de columnas
+// sensibles porque solo lo consumen internal/auth e internal/privacy, nunca
+// se serializa directo a un response HTTP.
 type Account struct {
-	ID               uuid.UUID
-	Role             string
-	Status           string
-	IsAdult          bool
-	AliasAdjectiveID int16
-	AliasNounID      int16
-	AliasNumber      int16
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID                      uuid.UUID
+	Nickname                string
+	PasswordHash            string
+	TokenVersion            int32
+	IsAdult                 bool
+	Role                    string
+	Status                  string
+	AgeUpAttempts           int16
+	AliasAdjectiveID        int16
+	AliasNounID             int16
+	AliasNumber             int16
+	PrivacyNoticeVersion    string
+	PrivacyNoticeAcceptedAt time.Time
+	PrivacyAcceptanceHash   []byte
+	CryptoKeyVersion        int16
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	LastLoginAt             sql.NullTime
+	DeletedAt               sql.NullTime
+	DeletionReason          sql.NullString
 }
 
-type UpsertAccountParams struct {
-	ID               uuid.UUID
-	Role             string
-	Status           string
-	IsAdult          bool
-	AliasAdjectiveID int16
-	AliasNounID      int16
-	AliasNumber      int16
+const accountColumns = `
+    id, nickname, password_hash, token_version, is_adult, role, status,
+    age_up_attempts, alias_adjective_id, alias_noun_id, alias_number,
+    privacy_notice_version, privacy_notice_accepted_at, privacy_acceptance_hash,
+    crypto_key_version, created_at, updated_at, last_login_at, deleted_at,
+    deletion_reason`
+
+func scanAccount(row scanner) (Account, error) {
+	var a Account
+	err := row.Scan(
+		&a.ID, &a.Nickname, &a.PasswordHash, &a.TokenVersion, &a.IsAdult, &a.Role, &a.Status,
+		&a.AgeUpAttempts, &a.AliasAdjectiveID, &a.AliasNounID, &a.AliasNumber,
+		&a.PrivacyNoticeVersion, &a.PrivacyNoticeAcceptedAt, &a.PrivacyAcceptanceHash,
+		&a.CryptoKeyVersion, &a.CreatedAt, &a.UpdatedAt, &a.LastLoginAt, &a.DeletedAt,
+		&a.DeletionReason,
+	)
+	return a, err
 }
 
-// UpsertAccount da de alta o refresca la réplica no autoritativa de
-// `identities` en la base principal. Se llama SOLO desde Login/Refresh (ver
-// plan/02_Backend.md §3.5, decisión de rendimiento: una sola consulta extra
-// por login/refresh, ninguna en el resto de requests autenticados).
-//
-// El ON CONFLICT DO UPDATE deliberadamente NO toca las tres columnas de
-// alias: el alias se sortea una sola vez, en el alta, y debe permanecer
-// estable para la persona usuaria (plan/02_Backend.md §3.3).
-func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) error {
-	_, err := q.db.ExecContext(ctx, `
+type CreateAccountParams struct {
+	ID                      uuid.UUID
+	Nickname                string
+	PasswordHash            string
+	IsAdult                 bool
+	Role                    string
+	AliasAdjectiveID        int16
+	AliasNounID             int16
+	AliasNumber             int16
+	PrivacyNoticeVersion    string
+	PrivacyNoticeAcceptedAt time.Time
+	PrivacyAcceptanceHash   []byte
+	CryptoKeyVersion        int16
+}
+
+// CreateAccount da de alta la cuenta. Es la ÚNICA inserción de la fila en
+// toda la vida de la cuenta: status nace 'active' siempre (ya no hay
+// 'pending_tutor_consent' — un menor autoreportado juega de inmediato) y
+// token_version nace en 1 vía DEFAULT del esquema.
+func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
+	row := q.db.QueryRowContext(ctx, `
 INSERT INTO accounts (
-    id, role, status, is_adult, alias_adjective_id, alias_noun_id, alias_number
+    id, nickname, password_hash, is_adult, role, status,
+    alias_adjective_id, alias_noun_id, alias_number,
+    privacy_notice_version, privacy_notice_accepted_at, privacy_acceptance_hash,
+    crypto_key_version
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, $10, $11, $12
 )
-ON CONFLICT (id) DO UPDATE SET
-    role       = EXCLUDED.role,
-    status     = EXCLUDED.status,
-    is_adult   = EXCLUDED.is_adult,
-    updated_at = NOW()
-`, arg.ID, arg.Role, arg.Status, arg.IsAdult, arg.AliasAdjectiveID, arg.AliasNounID, arg.AliasNumber)
-	return err
+RETURNING `+accountColumns,
+		arg.ID, arg.Nickname, arg.PasswordHash, arg.IsAdult, arg.Role,
+		arg.AliasAdjectiveID, arg.AliasNounID, arg.AliasNumber,
+		arg.PrivacyNoticeVersion, arg.PrivacyNoticeAcceptedAt, arg.PrivacyAcceptanceHash,
+		arg.CryptoKeyVersion,
+	)
+	return scanAccount(row)
+}
+
+// FindAccountByNickname es la consulta del login: busca la credencial
+// directo por nickname (sin blind index — el nickname no es PII cifrada, ver
+// plan/04_Rediseno_identidad_gustos.md §1) y excluye cuentas ya canceladas.
+func (q *Queries) FindAccountByNickname(ctx context.Context, nickname string) (Account, error) {
+	row := q.db.QueryRowContext(ctx, `
+SELECT `+accountColumns+`
+FROM accounts
+WHERE nickname = $1 AND deleted_at IS NULL
+`, nickname)
+	return scanAccount(row)
+}
+
+// GetAccountByID lee la cuenta por id — la usa el middleware de auth en cada
+// request autenticado para revalidar token_version/status/role contra la
+// base, no solo contra lo que dice el JWT.
+func (q *Queries) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error) {
+	row := q.db.QueryRowContext(ctx, `
+SELECT `+accountColumns+`
+FROM accounts
+WHERE id = $1 AND deleted_at IS NULL
+`, id)
+	return scanAccount(row)
 }
 
 // GetAccountAlias lee la vista account_aliases, que compone "Jaguar Azul 42"

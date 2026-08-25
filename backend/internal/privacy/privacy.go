@@ -1,160 +1,112 @@
-// Package privacy contiene la saga de cancelación definitiva compartida por
-// AMBOS caminos que la disparan: una ARCO cancelación aprobada por un
-// administrador (internal/auth.Service.ResolveArcoRequest) y la retención
-// legal automática (internal/maintenance.Service.cancelUser). En ../usbi
-// existía la misma regla (audit finding A4: los dos caminos no deben poder
-// divergir) implementada como una única *sql.Tx.
+// Package privacy contiene la cancelación definitiva de una cuenta.
 //
-// Con dos bases separadas esa transacción única deja de ser posible
-// (PostgreSQL no ofrece 2PC usable sobre un contenedor de ~256 MB — ver
-// plan/02_Backend.md §5). El reemplazo es una saga de dos fases, cada una en
-// su propia transacción de UNA sola base:
+// Hasta F5 (dos bases separadas) esto era una saga reanudable de dos fases
+// —PurgeMain [P] y PseudonymizeIdentity [I], cada una en su propia
+// transacción de una sola base, porque PostgreSQL no ofrece 2PC usable entre
+// dos instancias separadas— con checkpoints en arco_requests.status y un job
+// de reconciliación en internal/maintenance para trámites que quedaban a
+// medio camino si el proceso moría entre fases.
 //
-//	PurgeMain            [P] progreso, bitácoras, dispositivos
-//	PseudonymizeIdentity [I] identidad, tutores, sesión
+// Con una sola base (F5, plan/04_Rediseno_identidad_gustos.md) ese problema
+// desaparece: CancelAccount es una única *sql.Tx. Se lleva con ella toda la
+// maquinaria de checkpoint/reconciliación — ya no hay "a medio camino"
+// posible, un rollback de Postgres deshace la cancelación completa o no
+// deshace nada.
 //
-// La BASE PRINCIPAL VA PRIMERO a propósito (regla 1 de plan/02_Backend.md
-// §5): si el proceso muere entre las dos fases, queda una cuenta VIVA con el
-// progreso ya purgado — recuperable y reintentable — en vez de una cuenta ya
-// bloqueada (identidad seudonimizada) que no podría volver a autenticarse
-// para completar su propia cancelación.
-//
-// Ambas fases son idempotentes por construcción (regla 2): reintentar
-// cualquiera de las dos no hace daño. Eso es lo que permite que el llamador
-// persista un checkpoint entre fases (arco_requests.status en el caso de
-// ARCO; un reintento natural en el siguiente RunOnce en el caso de la
-// retención automática, que no tiene una fila de solicitud que actualizar) y
-// reanude desde ahí sin re-ejecutar la fase ya confirmada — aunque hacerlo
-// tampoco sería incorrecto.
+// Además, con el rediseño, la cancelación es autoservicio inmediato
+// (DELETE /auth/me, decisión 7 del rediseño) — ya no depende de que un admin
+// apruebe una solicitud ARCO de tipo cancelación primero.
 package privacy
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"database/sql"
 	"fmt"
 
-	"github.com/altair/usbi-anon-backend/internal/crypto"
-	"github.com/altair/usbi-anon-backend/internal/identityrepo"
 	"github.com/altair/usbi-anon-backend/internal/repository"
 	"github.com/google/uuid"
 )
 
-// CancelParams carga los identificadores y secretos que necesita la fase de
-// identidad. Ya no lleva FullName/Phone: esas columnas no existen en
-// `identities`.
-type CancelParams struct {
-	UserID           uuid.UUID
-	Reason           string
-	EncryptionKey    string
-	BlindIndexSecret []byte
+// CancelAccountParams identifica la cuenta a cancelar y el motivo a
+// registrar. No lleva ningún secreto de cifrado: sin email no hay nada que
+// ofuscar con una clave (§1 del rediseño).
+type CancelAccountParams struct {
+	AccountID uuid.UUID
+	Reason    string
 }
 
-// PurgeMain ejecuta la fase [P] de la saga: purga el progreso no-ledger
-// (player_progress, level_attempts, daily_streak, user_badges), pone a NULL
-// al usuario en las bitácoras append-only (experience_history,
-// admin_audit_log) preservando la evidencia de No-Repudio, y marca los
-// dispositivos del usuario para wipe local. Reutiliza exactamente las
-// mismas tres consultas [P] que ya existían (dos desde F3, más
-// MarkUserDevicesForWipe, ya presente en device_queries.go desde ../usbi —
-// no se dio de alta una función redundante).
+// CancelAccount ejecuta, en una sola transacción, todo lo que antes eran las
+// fases [P] e [I] de la saga:
+//   - purga el progreso no-ledger (player_progress, level_attempts,
+//     daily_streak, user_badges) y las respuestas del cuestionario;
+//   - pone a NULL al usuario en las bitácoras append-only
+//     (experience_history, audit_log), preservando la evidencia de
+//     No-Repudio;
+//   - marca los dispositivos del usuario para wipe local y revoca todos sus
+//     refresh tokens;
+//   - sobrescribe accounts.nickname con relleno aleatorio, marca
+//     status='deleted' y fuerza token_version+1 (dentro de DeactivateAccount).
 //
-// Idempotente: las tres consultas son DELETE/UPDATE ... WHERE user_id = $1
-// sin precondición de estado, así que repetir la fase tras un reintento no
-// falla ni corrompe nada.
-func PurgeMain(ctx context.Context, main *repository.Queries, userID uuid.UUID) error {
-	tx, err := main.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+// La fila de accounts NUNCA se borra — se conserva seudonimizada, para que
+// las bitácoras que la referencian sigan teniendo integridad referencial.
+func CancelAccount(ctx context.Context, repo *repository.Queries, p CancelAccountParams) error {
+	randomNickname, err := randomNicknameFill()
 	if err != nil {
-		return fmt.Errorf("beginning main-db tx: %w", err)
+		return fmt.Errorf("generating random nickname fill: %w", err)
+	}
+
+	tx, err := repo.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return fmt.Errorf("beginning cancellation tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	qtx := main.WithTx(tx)
+	qtx := repo.WithTx(tx)
 
-	if err := qtx.NullUserInPseudonymizableLedgers(ctx, userID); err != nil {
+	if err := qtx.NullUserInPseudonymizableLedgers(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("pseudonymizing ledgers: %w", err)
 	}
-	if err := qtx.PurgeUserProgressData(ctx, userID); err != nil {
+	if err := qtx.PurgeUserProgressData(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("purging progress data: %w", err)
 	}
-	if err := qtx.MarkUserDevicesForWipe(ctx, userID); err != nil {
+	if err := qtx.PurgeAccountQuizAnswers(ctx, p.AccountID); err != nil {
+		return fmt.Errorf("purging quiz answers: %w", err)
+	}
+	if err := qtx.MarkUserDevicesForWipe(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("marking devices for wipe: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing main-db purge: %w", err)
-	}
-	return nil
-}
-
-// PseudonymizeIdentity ejecuta la fase [I] de la saga: seudonimiza al
-// usuario y sus consentimientos de tutor, y revoca todos sus refresh tokens
-// (token_version + 1 incluido, dentro de PseudonymizeUser). Conserva
-// `identities.id` — la seudonimización nunca borra la fila ni el UUID, así
-// que la fase [P] siempre puede reintentarse con la misma llave si hiciera
-// falta (regla 4 de plan/02_Backend.md §5).
-//
-// Idempotente vía el guard `AND deleted_at IS NULL` de PseudonymizeUser:
-// reintentar tras ya haber pseudonimizado es un no-op, no un error.
-func PseudonymizeIdentity(ctx context.Context, ident *identityrepo.Queries, p CancelParams) error {
-	pseudonymEmail := "deleted-" + p.UserID.String() + "@pseudonymized.usbi.invalid"
-	emailHash := crypto.BlindIndexHMAC(pseudonymEmail, p.BlindIndexSecret)
-
-	tx, err := ident.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return fmt.Errorf("beginning identity-db tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	qtx := ident.WithTx(tx)
-
-	if err := qtx.PseudonymizeTutorConsents(ctx, identityrepo.PseudonymizeTutorConsentsParams{
-		UserID:        p.UserID,
-		EncryptionKey: p.EncryptionKey,
-	}); err != nil {
-		return fmt.Errorf("pseudonymizing tutor consents: %w", err)
-	}
-	if err := qtx.PseudonymizeUser(ctx, identityrepo.PseudonymizeUserParams{
-		UserID:          p.UserID,
-		PseudonymEmail:  pseudonymEmail,
-		EmailLookupHash: emailHash,
-		EncryptionKey:   p.EncryptionKey,
-		DeletionReason:  p.Reason,
-	}); err != nil {
-		return fmt.Errorf("pseudonymizing identity: %w", err)
-	}
-	if err := qtx.RevokeRefreshTokensForUser(ctx, p.UserID); err != nil {
+	if err := qtx.RevokeRefreshTokensForAccount(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("revoking refresh tokens: %w", err)
 	}
+	if err := qtx.DeactivateAccount(ctx, repository.DeactivateAccountParams{
+		ID:             p.AccountID,
+		RandomNickname: randomNickname,
+		DeletionReason: p.Reason,
+	}); err != nil {
+		return fmt.Errorf("deactivating account: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("committing identity-db pseudonymization: %w", err)
+		return fmt.Errorf("committing cancellation: %w", err)
 	}
 	return nil
 }
 
-// ResumeArcoCancellation termina una solicitud ARCO de cancelación aprobada
-// que quedó a medio camino, a partir de su checkpoint (status). La llaman
-// DOS sitios: internal/auth.Service.ResolveArcoRequest, justo después de
-// reclamar el trámite bajo lock (puede encontrarlo ya en purging_main o
-// identity_pseudonymized si un intento previo murió a mitad de camino), y el
-// job de reconciliación de internal/maintenance, que rebarre trámites
-// atascados encontrados por identityrepo.ListStuckArcoRequests.
-//
-// HandledBy/ResponseSummary NO se tocan aquí: ya se persistieron en el
-// momento del reclamo (identityrepo.ClaimArcoRequestForCancellation), a
-// propósito, para que esta función pueda completarse sin depender de datos
-// que solo existían en la petición HTTP original — el job de reconciliación
-// no tiene ni actor ni resumen a mano, solo el checkpoint ya guardado.
-func ResumeArcoCancellation(ctx context.Context, ident *identityrepo.Queries, main *repository.Queries, requestID uuid.UUID, checkpoint string, p CancelParams) error {
-	if checkpoint == "purging_main" {
-		if err := PurgeMain(ctx, main, p.UserID); err != nil {
-			return fmt.Errorf("purging main data: %w", err)
-		}
-		if err := PseudonymizeIdentity(ctx, ident, p); err != nil {
-			return fmt.Errorf("pseudonymizing identity: %w", err)
-		}
-		if err := ident.UpdateArcoRequestStatus(ctx, requestID, "identity_pseudonymized"); err != nil {
-			return fmt.Errorf("checkpointing identity_pseudonymized: %w", err)
-		}
+const nicknameFillAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+const nicknameFillLength = 20
+
+// randomNicknameFill genera el relleno que sobrescribe accounts.nickname al
+// cancelar (§1.1 punto 2 del rediseño). Usa crypto/rand, no math/rand: a
+// diferencia del nickname candidato que ve la persona usuaria en el
+// registro, este valor nunca se muestra ni se recuerda — solo tiene que
+// cumplir el CHECK y no colisionar, y no hay razón para no usar el generador
+// criptográfico por defecto del proyecto.
+func randomNicknameFill() (string, error) {
+	b := make([]byte, nicknameFillLength)
+	if _, err := cryptorand.Read(b); err != nil {
+		return "", err
 	}
-	if err := ident.MarkArcoRequestResolved(ctx, requestID); err != nil {
-		return fmt.Errorf("marking arco request resolved: %w", err)
+	for i, v := range b {
+		b[i] = nicknameFillAlphabet[int(v)%len(nicknameFillAlphabet)]
 	}
-	return nil
+	return string(b), nil
 }

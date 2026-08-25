@@ -248,30 +248,36 @@ func (q *Queries) ListPublishedLevels(ctx context.Context, arg ListPublishedLeve
 	return items, nil
 }
 
-const logAdminAudit = `-- name: LogAdminAudit :exec
-INSERT INTO admin_audit_log (
-    id, actor_user_id, action, entity_type, entity_id, before_state, after_state, ip_address, user_agent
+// LogAuditEntry reemplaza a LogAdminAudit, que insertaba en admin_audit_log.
+// Con el rediseño de identidad, admin_audit_log e identity_audit_log se
+// fusionan en una sola audit_log (accounts.id, columna actor_account_id) —
+// ver plan/04_Rediseno_identidad_gustos.md §1: ya no hay correo que filtrar
+// entre las dos bitácoras, así que mantenerlas separadas solo complicaba la
+// consulta.
+const logAuditEntry = `-- name: LogAuditEntry :exec
+INSERT INTO audit_log (
+    id, actor_account_id, action, entity_type, entity_id, before_state, after_state, ip_address, user_agent
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 `
 
-type LogAdminAuditParams struct {
-	ID          uuid.UUID             `json:"id"`
-	ActorUserID uuid.NullUUID         `json:"actor_user_id"`
-	Action      string                `json:"action"`
-	EntityType  string                `json:"entity_type"`
-	EntityID    uuid.NullUUID         `json:"entity_id"`
-	BeforeState pqtype.NullRawMessage `json:"before_state"`
-	AfterState  pqtype.NullRawMessage `json:"after_state"`
-	IpAddress   string                `json:"ip_address"`
-	UserAgent   string                `json:"user_agent"`
+type LogAuditEntryParams struct {
+	ID             uuid.UUID             `json:"id"`
+	ActorAccountID uuid.NullUUID         `json:"actor_account_id"`
+	Action         string                `json:"action"`
+	EntityType     string                `json:"entity_type"`
+	EntityID       uuid.NullUUID         `json:"entity_id"`
+	BeforeState    pqtype.NullRawMessage `json:"before_state"`
+	AfterState     pqtype.NullRawMessage `json:"after_state"`
+	IpAddress      string                `json:"ip_address"`
+	UserAgent      string                `json:"user_agent"`
 }
 
-func (q *Queries) LogAdminAudit(ctx context.Context, arg LogAdminAuditParams) error {
-	_, err := q.db.ExecContext(ctx, logAdminAudit,
+func (q *Queries) LogAuditEntry(ctx context.Context, arg LogAuditEntryParams) error {
+	_, err := q.db.ExecContext(ctx, logAuditEntry,
 		arg.ID,
-		arg.ActorUserID,
+		arg.ActorAccountID,
 		arg.Action,
 		arg.EntityType,
 		arg.EntityID,

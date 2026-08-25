@@ -76,7 +76,7 @@ ORDER BY created_at DESC
 }
 
 type UpdateSectionParams struct {
-	ID    uuid.UUID
+	ID          uuid.UUID
 	Title       string
 	Description string
 	Color       string
@@ -396,13 +396,23 @@ type UserProgressTotals struct {
 	TotalAttempts   int32
 }
 
+// GetUserProgressTotals suma niveles VIVOS (player_progress) con niveles ya
+// PURGADOS por rotación de temporada (account_retired_progress) — ver
+// plan/04_Rediseno_identidad_gustos.md §1.2. El XP no necesita esa suma: sale
+// entero de experience_history, cuyas filas sobreviven con level_id NULL
+// cuando su nivel se purga (SET NULL), así que SUM(xp_gained) ya cuenta el XP
+// de niveles purgados sin ningún cambio. Antes de esta corrección
+// completed_levels/total_attempts solo miraban player_progress y le "robaban"
+// al jugador el progreso de cualquier nivel ya retirado.
 func (q *Queries) GetUserProgressTotals(ctx context.Context, userID uuid.UUID) (UserProgressTotals, error) {
 	var totals UserProgressTotals
 	err := q.db.QueryRowContext(ctx, `
 SELECT
     COALESCE((SELECT SUM(xp_gained)::int FROM experience_history WHERE user_id = $1), 0) AS total_xp,
-    COALESCE((SELECT COUNT(*)::int FROM player_progress WHERE user_id = $1 AND first_completed_at IS NOT NULL), 0) AS completed_levels,
-    COALESCE((SELECT SUM(attempts_count)::int FROM player_progress WHERE user_id = $1), 0) AS total_attempts
+    COALESCE((SELECT COUNT(*)::int FROM player_progress WHERE user_id = $1 AND first_completed_at IS NOT NULL), 0)
+        + COALESCE((SELECT levels_completed FROM account_retired_progress WHERE account_id = $1), 0) AS completed_levels,
+    COALESCE((SELECT SUM(attempts_count)::int FROM player_progress WHERE user_id = $1), 0)
+        + COALESCE((SELECT attempts_total FROM account_retired_progress WHERE account_id = $1), 0) AS total_attempts
 `, userID).Scan(&totals.TotalXP, &totals.CompletedLevels, &totals.TotalAttempts)
 	return totals, err
 }
@@ -446,6 +456,14 @@ type UserProgressLevelRow struct {
 	LastCompletedAt  sql.NullTime
 }
 
+// ListUserProgressLevels intencionalmente sigue con INNER JOIN, no LEFT JOIN:
+// player_progress.level_id es ON DELETE CASCADE (ver plan/04 §1.2), así que
+// una fila de player_progress SIEMPRE tiene un nivel vivo detrás — cuando el
+// nivel se purga, la fila de player_progress se va con él, no sobrevive con
+// level_id NULL. La tolerancia a level_id NULL que pide §1.2 aplica a
+// experience_history (SET NULL), no a esta consulta; ninguna consulta de
+// historial existe todavía en este paquete — la añadirá la fase que primero
+// necesite listar experience_history (F9 o F10), con su propio LEFT JOIN.
 func (q *Queries) ListUserProgressLevels(ctx context.Context, userID uuid.UUID) ([]UserProgressLevelRow, error) {
 	rows, err := q.db.QueryContext(ctx, `
 SELECT l.id, l.title, l.template_type, l.difficulty,

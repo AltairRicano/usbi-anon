@@ -1,5 +1,9 @@
-// Package audit centralises writes to admin_audit_log so every sensitive
+// Package audit centralises writes to audit_log so every sensitive
 // operation records No-Repudio evidence through a single, consistent path.
+// audit_log es la fusión de admin_audit_log + identity_audit_log (F7, ver
+// plan/04_Rediseno_identidad_gustos.md §1) — antes de la fusión, las acciones
+// de identidad no podían pasar por este paquete porque escribían en la otra
+// base; ahora sí.
 //
 // Before this package the only caller was internal/levels; the most sensitive
 // actions of all — approving/rejecting an ARCO request, aging a minor up, and
@@ -29,9 +33,9 @@ type Entry struct {
 	UserAgent  string
 }
 
-// Log appends an entry to admin_audit_log using the given (possibly
-// transactional) repository. The append-only trigger on the table guarantees
-// the row can never be updated or deleted afterwards.
+// Log appends an entry to audit_log using the given (possibly transactional)
+// repository. The append-only trigger on the table guarantees the row can
+// never be updated or deleted afterwards.
 func Log(ctx context.Context, repo *repository.Queries, e Entry) error {
 	before, err := marshalState(e.Before)
 	if err != nil {
@@ -49,16 +53,16 @@ func Log(ctx context.Context, repo *repository.Queries, e Entry) error {
 	if userAgent == "" {
 		userAgent = "backend-service"
 	}
-	return repo.LogAdminAudit(ctx, repository.LogAdminAuditParams{
-		ID:          uuid.New(),
-		ActorUserID: uuid.NullUUID{UUID: e.ActorID, Valid: e.ActorID != uuid.Nil},
-		Action:      e.Action,
-		EntityType:  e.EntityType,
-		EntityID:    uuid.NullUUID{UUID: e.EntityID, Valid: e.EntityID != uuid.Nil},
-		BeforeState: before,
-		AfterState:  after,
-		IpAddress:   ip,
-		UserAgent:   userAgent,
+	return repo.LogAuditEntry(ctx, repository.LogAuditEntryParams{
+		ID:             uuid.New(),
+		ActorAccountID: uuid.NullUUID{UUID: e.ActorID, Valid: e.ActorID != uuid.Nil},
+		Action:         e.Action,
+		EntityType:     e.EntityType,
+		EntityID:       uuid.NullUUID{UUID: e.EntityID, Valid: e.EntityID != uuid.Nil},
+		BeforeState:    before,
+		AfterState:     after,
+		IpAddress:      ip,
+		UserAgent:      userAgent,
 	})
 }
 
