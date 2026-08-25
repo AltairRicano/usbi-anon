@@ -58,4 +58,10 @@ REVOKE DELETE ON audit_log, experience_history FROM usbi_app;
 -- Fila única de configuración: se actualiza, nunca se borra ni se duplica.
 REVOKE INSERT, DELETE ON registration_settings FROM usbi_app;
 
+-- Contadores de niveles ya retirados: solo crecen. Sin DELETE, un bug en la
+-- purga de un nivel no puede borrarle a un jugador el progreso acumulado de
+-- temporadas anteriores. Las filas se van solas al cancelar la cuenta, por el
+-- CASCADE desde accounts, que no necesita este permiso.
+REVOKE DELETE ON account_retired_progress FROM usbi_app;
+
 GRANT SELECT ON account_aliases TO usbi_app;

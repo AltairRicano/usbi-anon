@@ -343,8 +343,27 @@ CREATE INDEX sync_events_user_status_idx ON sync_events (user_id, status);
 CREATE INDEX sync_events_device_id_idx   ON sync_events (device_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 4. CONTENIDO EDUCATIVO (borrado lógico)
+-- 4. CONTENIDO EDUCATIVO (retiro en dos pasos)
 -- ═══════════════════════════════════════════════════════════════════════════
+--
+-- RETIRAR CONTENIDO ES UN PROCESO DE DOS PASOS, deliberadamente separados:
+--
+--   1. ARCHIVAR (reversible, no libera espacio). Es el borrado lógico que ya
+--      existía: `deleted_at` en levels, `deleted_at`/`archived_at` en sections.
+--      El nivel deja de jugarse y de listarse, pero todo sigue en disco y se
+--      puede revertir.
+--   2. PURGAR (irreversible, libera espacio). Un DELETE físico, acción de admin
+--      separada y con confirmación explícita. Solo debe permitirse sobre filas
+--      que ya estén archivadas (`deleted_at IS NOT NULL`) — validarlo en Go.
+--      Dispara los CASCADE de §5 y libera el almacenamiento de verdad.
+--
+-- El paso 1 por sí solo NO libera un byte. Un sistema que solo hiciera borrado
+-- lógico —como el heredado de ../usbi— crece para siempre, y con 20 GB fijos
+-- eso es una cuenta regresiva, no una arquitectura.
+--
+-- levels.section_id sigue siendo RESTRICT a propósito: purgar una sección exige
+-- purgar antes sus niveles, uno por uno y con sus contadores acumulados. Un
+-- CASCADE aquí convertiría un clic en la sección en un borrado masivo silencioso.
 
 CREATE TABLE sections (
     id                  UUID        PRIMARY KEY,
@@ -388,10 +407,37 @@ CREATE INDEX levels_deleted_by_idx ON levels (deleted_by);
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 5. PROGRESO Y RENDICIÓN DE CUENTAS
 -- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ROTACIÓN DE NIVELES POR TEMPORADAS — regla de negocio que gobierna esta
+-- sección entera. El almacenamiento del servidor es finito (~20 GB) y no se va
+-- a ampliar pagando más: el contenido educativo se rota entre temporadas,
+-- retirando niveles viejos para meter otros nuevos.
+--
+-- La regla, en una frase: **retirar un nivel libera su almacenamiento pero
+-- NUNCA le quita a un jugador la experiencia que ganó jugándolo.**
+--
+-- De ahí salen las tres direcciones de borrado de esta sección, que no son
+-- caprichosas y no deben "uniformarse" en una futura limpieza:
+--
+--   · level_attempts   → CASCADE   (se va: es el grueso del volumen)
+--   · player_progress  → CASCADE   (se va: sin nivel no hay progreso "de" él,
+--                                   pero antes se acumula en la tabla de
+--                                   totales retirados, ver más abajo)
+--   · experience_history → SET NULL (SE QUEDA: es la fuente de verdad del XP
+--                                   total del jugador; solo pierde el vínculo)
+--
+-- Antes de borrar un nivel, la purga DEBE acumular los contadores en
+-- account_retired_progress dentro de la misma transacción, o el jugador vería
+-- caer sus "niveles completados" e "intentos totales". La consulta exacta está
+-- documentada en el comentario de esa tabla.
 
 CREATE TABLE player_progress (
     user_id            UUID    NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    level_id           UUID    NOT NULL REFERENCES levels(id)   ON DELETE RESTRICT,
+    -- CASCADE, no RESTRICT: retirar un nivel debe poder borrar el progreso
+    -- ligado a él. El XP no se pierde porque no vive aquí, vive en
+    -- experience_history; los contadores se preservan en
+    -- account_retired_progress.
+    level_id           UUID    NOT NULL REFERENCES levels(id)   ON DELETE CASCADE,
     best_score         INTEGER NOT NULL DEFAULT 0,
     xp_total_for_level INTEGER NOT NULL DEFAULT 0,
     attempts_count     INTEGER NOT NULL DEFAULT 0,
@@ -401,6 +447,45 @@ CREATE TABLE player_progress (
 );
 
 CREATE INDEX player_progress_level_id_idx ON player_progress (level_id);
+
+-- ── account_retired_progress ─────────────────────────────────────────────────
+-- Contadores acumulados de los niveles YA RETIRADOS de una cuenta.
+--
+-- POR QUÉ EXISTE. "Niveles completados" e "intentos totales" se calculan
+-- contando filas de player_progress, y esas filas se van con el nivel al
+-- purgarlo. Sin esta tabla, rotar la temporada le bajaría a un jugador el
+-- contador de 37 niveles completados a 12 — exactamente el "perder progreso"
+-- que la rotación no debe causar. El XP total no necesita nada de esto: lo
+-- sostiene experience_history, cuyas filas sobreviven.
+--
+-- Es acumulativa: cada purga SUMA a lo que ya hubiera. La purga de un nivel
+-- debe ejecutar esto ANTES del DELETE, en la misma transacción:
+--
+--   INSERT INTO account_retired_progress AS arp
+--       (account_id, levels_completed, attempts_total)
+--   SELECT user_id,
+--          COUNT(*) FILTER (WHERE first_completed_at IS NOT NULL),
+--          COALESCE(SUM(attempts_count), 0)
+--   FROM player_progress
+--   WHERE level_id = $1
+--   GROUP BY user_id
+--   ON CONFLICT (account_id) DO UPDATE SET
+--       levels_completed = arp.levels_completed + EXCLUDED.levels_completed,
+--       attempts_total   = arp.attempts_total   + EXCLUDED.attempts_total,
+--       updated_at       = NOW();
+--
+-- Y GetUserProgressTotals pasa a sumar las dos fuentes (vivos + retirados).
+CREATE TABLE account_retired_progress (
+    account_id       UUID        PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    levels_completed INTEGER     NOT NULL DEFAULT 0 CHECK (levels_completed >= 0),
+    attempts_total   INTEGER     NOT NULL DEFAULT 0 CHECK (attempts_total >= 0),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE account_retired_progress IS
+    'Contadores de niveles ya purgados. Solo crece; nunca se decrementa. No '
+    'guarda XP: el XP de un nivel retirado sigue en experience_history con '
+    'level_id en NULL, y sumarlo aquí lo contaría dos veces.';
 
 -- ── level_attempts ───────────────────────────────────────────────────────────
 -- Particionada por rango desde el inicio. En ../usbi se creó sin particionar en
@@ -416,7 +501,12 @@ CREATE INDEX player_progress_level_id_idx ON player_progress (level_id);
 CREATE TABLE level_attempts (
     id             UUID        NOT NULL,
     user_id        UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    level_id       UUID        NOT NULL REFERENCES levels(id)   ON DELETE RESTRICT,
+    -- CASCADE, no RESTRICT: esta es la tabla que más crece de todo el sistema
+    -- (una fila por intento, de cada jugador, de cada nivel) y por tanto la que
+    -- de verdad libera espacio al rotar la temporada. El intento en sí no es
+    -- progreso conservable: su aportación al jugador ya está liquidada en
+    -- experience_history (el XP) y en account_retired_progress (el conteo).
+    level_id       UUID        NOT NULL REFERENCES levels(id)   ON DELETE CASCADE,
     attempt_date   DATE        NOT NULL,
     attempt_number INTEGER     NOT NULL, -- 1 = 100 % XP, 2-3 = 50 %, >3 = 0 %
     xp_awarded     INTEGER     NOT NULL,
@@ -520,12 +610,27 @@ CREATE INDEX arco_requests_open_idx
     WHERE status = 'pending';
 
 -- ── experience_history ───────────────────────────────────────────────────────
--- APPEND-ONLY. user_id pasa a NULL en la seudonimización ARCO: la fila del
--- libro mayor sobrevive (no repudio) pero deja de estar vinculada.
+-- APPEND-ONLY, y FUENTE DE VERDAD DEL XP TOTAL DEL JUGADOR: el total se calcula
+-- con SUM(xp_gained) sobre esta tabla, no con un contador guardado en accounts.
+--
+-- Por eso sus dos referencias se anulan en vez de arrastrar la fila:
+--   · user_id  → NULL en la seudonimización ARCO (la fila del libro mayor
+--                sobrevive para el no repudio, sin vínculo con la cuenta).
+--   · level_id → NULL al retirar un nivel en la rotación de temporadas. La fila
+--                sobrevive con su xp_gained intacto: el jugador conserva la
+--                experiencia que ganó aunque el nivel ya no exista en el
+--                servidor. Es la pieza central de la regla de rotación (§5).
+--
+-- Se conserva el detalle fila por fila —en vez de colapsarlo en un total— para
+-- no romper el append-only ni la evidencia por evento (source /
+-- verification_method) que sostiene la defensa antitrampas del sistema offline.
 CREATE TABLE experience_history (
     id                  UUID        PRIMARY KEY,
     user_id             UUID        REFERENCES accounts(id) ON DELETE SET NULL,
-    level_id            UUID        NOT NULL REFERENCES levels(id) ON DELETE RESTRICT,
+    -- NULLABLE a propósito: NULL significa "el nivel que originó este XP fue
+    -- retirado del servidor". Las consultas que muestren historial deben usar
+    -- LEFT JOIN contra levels y tolerar el nivel ausente.
+    level_id            UUID        REFERENCES levels(id) ON DELETE SET NULL,
     event_type          VARCHAR     NOT NULL,
     xp_gained           INTEGER     NOT NULL,
     source              VARCHAR     NOT NULL,
@@ -618,13 +723,34 @@ BEGIN
         RAISE EXCEPTION '% es append-only', TG_TABLE_NAME USING ERRCODE = '55000';
     END IF;
 
-    -- Única mutación permitida: anular la referencia a la cuenta durante la
-    -- seudonimización ARCO, dejando el resto de la fila byte a byte idéntica.
+    -- Mutaciones permitidas: anular UNA de las dos referencias de la fila,
+    -- dejando todo lo demás —y en particular xp_gained— byte a byte idéntico.
+    --
+    --   · user_id  → NULL: seudonimización ARCO.
+    --   · level_id → NULL: retiro de un nivel en la rotación de temporadas.
+    --
+    -- Nótese que nunca se permite tocar xp_gained: ni la cancelación de una
+    -- cuenta ni el retiro de un nivel pueden alterar la experiencia registrada.
+    -- Esa imposibilidad, sostenida por la base y no por el código, es lo que
+    -- hace que "rotar niveles no quita XP" sea una garantía y no una promesa.
     IF TG_TABLE_NAME = 'experience_history' THEN
         IF OLD.user_id IS NOT NULL
            AND NEW.user_id IS NULL
            AND NEW.id                  IS NOT DISTINCT FROM OLD.id
            AND NEW.level_id            IS NOT DISTINCT FROM OLD.level_id
+           AND NEW.event_type          IS NOT DISTINCT FROM OLD.event_type
+           AND NEW.xp_gained           IS NOT DISTINCT FROM OLD.xp_gained
+           AND NEW.source              IS NOT DISTINCT FROM OLD.source
+           AND NEW.verification_method IS NOT DISTINCT FROM OLD.verification_method
+           AND NEW.sync_event_id       IS NOT DISTINCT FROM OLD.sync_event_id
+           AND NEW.created_at          IS NOT DISTINCT FROM OLD.created_at THEN
+            RETURN NEW;
+        END IF;
+
+        IF OLD.level_id IS NOT NULL
+           AND NEW.level_id IS NULL
+           AND NEW.id                  IS NOT DISTINCT FROM OLD.id
+           AND NEW.user_id             IS NOT DISTINCT FROM OLD.user_id
            AND NEW.event_type          IS NOT DISTINCT FROM OLD.event_type
            AND NEW.xp_gained           IS NOT DISTINCT FROM OLD.xp_gained
            AND NEW.source              IS NOT DISTINCT FROM OLD.source

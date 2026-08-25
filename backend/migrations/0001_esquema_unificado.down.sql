@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS user_badges;
 DROP TABLE IF EXISTS badges;
 DROP TABLE IF EXISTS daily_streak;
 DROP TABLE IF EXISTS level_attempts;
+DROP TABLE IF EXISTS account_retired_progress;
 DROP TABLE IF EXISTS player_progress;
 DROP TABLE IF EXISTS levels;
 DROP TABLE IF EXISTS sections;

@@ -178,6 +178,79 @@ y F9 no tengan que deducirlos del archivo.
    activas para poder registrar a nadie, así que una base recién migrada sin
    seed no permitiría ni el primer registro.
 
+### 1.2 Rotación de niveles por temporadas (corrección posterior a F5)
+
+Regla de negocio que el usuario tenía por implícita y no estaba en ningún
+documento ni en el código. Se incorporó al esquema el mismo día que se cerró
+F5, antes de escribir nada de F7/F9 contra él.
+
+**La regla:** el almacenamiento del servidor es finito (~20 GB) y no se
+ampliará pagando más. El contenido se **rota entre temporadas**: se retiran
+niveles y secciones viejos para meter otros. Retirar un nivel debe liberar su
+almacenamiento **sin quitarle a ningún jugador la experiencia que ganó
+jugándolo**.
+
+**Por qué el esquema no lo cumplía.** Tres cosas, todas heredadas de `../usbi`:
+
+1. El "borrado" de niveles era **solo lógico** (`SET deleted_at = NOW()`, ver
+   `repository/content_queries.go:273` y `:289`). No liberaba un byte: la base
+   solo podía crecer.
+2. Las tres FK a `levels(id)` eran `ON DELETE RESTRICT`, así que un borrado
+   físico era **imposible** en cuanto un solo jugador tocara el nivel.
+3. `experience_history.level_id` era `NOT NULL`, y el XP total del jugador sale
+   de `SUM(experience_history.xp_gained)`
+   (`repository/content_queries.go:403`). Forzar el borrado con CASCADE habría
+   borrado justamente las filas que sostienen el XP.
+
+**Decisiones cerradas con el usuario** (tres preguntas, las tres con la opción
+recomendada): conservar XP **y** contadores; conservar el historial fila por
+fila (no colapsarlo); y retiro en **dos pasos** (archivar reversible → purgar
+irreversible).
+
+**Cambios aplicados al esquema:**
+
+| Referencia a `levels(id)` | Antes | Ahora | Por qué |
+|---|---|---|---|
+| `level_attempts.level_id` | RESTRICT | **CASCADE** | Es la tabla que más crece; aquí está el ahorro real de disco |
+| `player_progress.level_id` | RESTRICT | **CASCADE** | Sin nivel no hay progreso "de" él; los contadores se preservan aparte |
+| `experience_history.level_id` | `NOT NULL` RESTRICT | **NULLABLE, SET NULL** | La fila sobrevive con su `xp_gained` intacto: el XP no se pierde |
+
+Más una tabla nueva, **`account_retired_progress`** (`account_id`,
+`levels_completed`, `attempts_total`), acumulativa, que preserva los contadores
+de "niveles completados" e "intentos totales" de los niveles ya purgados. No
+guarda XP: eso lo sostiene `experience_history` y duplicarlo lo contaría dos
+veces. `levels.section_id` **sigue siendo RESTRICT** a propósito: purgar una
+sección exige purgar antes sus niveles, para que un clic en la sección no
+dispare un borrado masivo silencioso.
+
+El trigger `enforce_append_only_ledgers()` ganó una segunda rama permitida
+(`level_id → NULL`) junto a la de seudonimización ARCO. Ninguna de las dos
+puede tocar `xp_gained`: "rotar niveles no quita XP" queda garantizado por la
+base, no por el código.
+
+**Qué le toca a cada fase pendiente:**
+
+- **F7** (`internal/repository`): `GetUserProgressTotals` debe sumar las dos
+  fuentes — `player_progress` vivos **más** `account_retired_progress`. Hoy
+  solo cuenta la primera. `ListUserProgressLevels` y cualquier consulta de
+  historial deben pasar a `LEFT JOIN` contra `levels` y tolerar `level_id`
+  nulo.
+- **F9** (`internal/levels` + transport): implementar la purga física como
+  acción de admin separada del archivado, en una sola transacción y en este
+  orden — acumular en `account_retired_progress` → `DELETE FROM levels`. La
+  consulta exacta del UPSERT está en el comentario de esa tabla en el `.up.sql`.
+  Validar en Go que solo se purga lo ya archivado (`deleted_at IS NOT NULL`).
+- **F10** (frontend): la confirmación de purga debe decir cuántos intentos se
+  van a borrar y que el XP se conserva. El listado de progreso debe tolerar
+  niveles ausentes.
+
+**Nota de magnitud, para no sobreestimar el ahorro.** Con ~500 jugadores y ~40
+niveles, estas tablas rondan decenas de MB, no GB. Si los 20 GB se llenan, el
+consumidor dominante serán los **assets de los minijuegos** (imágenes, audio),
+no la base: `levels.content` guarda solo estructura. Lo que esta corrección
+desbloquea de forma crítica no es tanto el disco como la **capacidad misma de
+rotar**, que antes era imposible.
+
 ## 2. Paquetes Go
 
 **Se elimina**: `internal/identityrepo/` completo, `internal/mailer/`
