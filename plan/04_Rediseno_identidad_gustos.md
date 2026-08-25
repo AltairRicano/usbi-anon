@@ -1,7 +1,7 @@
 # Rediseño de identidad: de email+dos bases a nickname/password por cuestionario de gustos
 
-> **Estado: diseño cerrado y aprobado por el usuario (2026-08-25). F5, F6 y F7
-> cerradas; F8–F11 sin empezar.** El esquema unificado ya existe como
+> **Estado: diseño cerrado y aprobado por el usuario (2026-08-25). F5, F6, F7 y
+> F8 cerradas; F9–F11 sin empezar.** El esquema unificado ya existe como
 > `backend/migrations/0001_esquema_unificado.{up,down}.sql` +
 > `backend/sql/00_roles_unificado.sql`, verificado contra Postgres real en una
 > base desechable (ver §6 y la bitácora de `estado_proyecto.md`). Este documento
@@ -402,7 +402,7 @@ z.string().trim().min(1).max(200)
 | F5 ✅ **hecha** | Esquema SQL unificado | `0001_esquema_unificado.{up,down}.sql`, `00_roles_unificado.sql`, retiro de los scripts antiguos | — (primera, bloquea todo lo demás) |
 | F6 ✅ **hecha** | Poda de paquetes/config | Elimina identityrepo/mailer/create_admin, poda config, reescribe `domain` | — (independiente de F5: solo borra/limpia código viejo) |
 | F7 ✅ **hecha** | Repositorio + privacidad | `internal/repository` unificado, `internal/privacy.CancelAccount`, `internal/testdb` con un esquema | F5, F6 |
-| F8 | `internal/quiz` | Banco de preguntas + generación nickname/password, con pruebas unitarias de determinismo/colisión | F5 (solo necesita el esquema, no F6/F7) |
+| F8 ✅ **hecha** | `internal/quiz` | Banco de preguntas + generación nickname/password, con pruebas unitarias de determinismo/colisión | F5 (solo necesita el esquema, no F6/F7) |
 | F9 | `internal/auth`, transport, main.go, bootstrap admin | Registro en 3 pasos, login, age-up, ARCO simplificado, gestión de admins | F7, F8 |
 | F10 | Frontend | Wizard de registro, login, panel de banco de preguntas con modal, panel de admins | Ninguna para maquetar (el contrato de API de §3 ya está fijo); F9 para probar contra backend real |
 | F11 | Legal | Reescritura completa (ya prevista como F6 original, renumerada) | — (totalmente independiente) |
