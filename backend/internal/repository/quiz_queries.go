@@ -5,10 +5,9 @@
 // tal como pide el comentario de registration_questions en
 // 0001_esquema_unificado.up.sql: la regla vive en Go, no en un CHECK/trigger.
 //
-// account_quiz_answers no tiene consultas aquí todavía: las respuestas se
-// insertan en el registro (POST /auth/register/confirm) y se leen desde el
-// panel de admin (GET /admin/accounts/{id}/quiz-answers) — ambos F9, que es
-// quien las necesita primero.
+// account_quiz_answers gana sus consultas en F9, que es quien primero las
+// necesita: se insertan en el registro (POST /auth/register/confirm) y se
+// leen desde el panel de admin (GET /admin/accounts/{id}/quiz-answers).
 package repository
 
 import (
@@ -150,6 +149,20 @@ func (q *Queries) DeleteRegistrationQuestion(ctx context.Context, id uuid.UUID) 
 	return err
 }
 
+// GetRegistrationQuestionByID es una lectura simple, sin lock — a diferencia
+// de GetRegistrationQuestionForUpdate (guard de mínimo 4 en UPDATE/DELETE),
+// esta la usa el registro (POST /auth/register/answers) solo para validar
+// que question_id existe y está activa, y para congelar
+// question_text_snapshot.
+func (q *Queries) GetRegistrationQuestionByID(ctx context.Context, id uuid.UUID) (RegistrationQuestion, error) {
+	row := q.db.QueryRowContext(ctx, `
+SELECT `+registrationQuestionColumns+`
+FROM registration_questions
+WHERE id = $1
+`, id)
+	return scanRegistrationQuestion(row)
+}
+
 type RegistrationSettings struct {
 	MaxQuestionsShown int16
 	UpdatedAt         time.Time
@@ -172,4 +185,63 @@ WHERE id = 1
 RETURNING max_questions_shown, updated_at
 `, maxQuestionsShown).Scan(&s.MaxQuestionsShown, &s.UpdatedAt)
 	return s, err
+}
+
+// AccountQuizAnswer es una respuesta ya congelada — question_text_snapshot
+// sobrevive aunque la pregunta original se edite o se borre (question_id
+// pasa a NULL vía SET NULL, ver 0001_esquema_unificado.up.sql).
+type AccountQuizAnswer struct {
+	ID                   uuid.UUID
+	AccountID            uuid.UUID
+	QuestionID           uuid.NullUUID
+	QuestionTextSnapshot string
+	AnswerText           string
+	CreatedAt            time.Time
+}
+
+type InsertAccountQuizAnswerParams struct {
+	ID                   uuid.UUID
+	AccountID            uuid.UUID
+	QuestionID           uuid.UUID
+	QuestionTextSnapshot string
+	AnswerText           string
+}
+
+// InsertAccountQuizAnswer se llama una vez por respuesta dentro de la misma
+// transacción que CreateAccount (POST /auth/register/confirm) — nunca
+// suelta: una cuenta sin al menos sus respuestas persistidas no podría
+// recuperarse nunca (§1 decisión 4).
+func (q *Queries) InsertAccountQuizAnswer(ctx context.Context, arg InsertAccountQuizAnswerParams) error {
+	_, err := q.db.ExecContext(ctx, `
+INSERT INTO account_quiz_answers (id, account_id, question_id, question_text_snapshot, answer_text)
+VALUES ($1, $2, $3, $4, $5)
+`, arg.ID, arg.AccountID, arg.QuestionID, arg.QuestionTextSnapshot, arg.AnswerText)
+	return err
+}
+
+// ListAccountQuizAnswers alimenta GET /admin/accounts/{id}/quiz-answers — el
+// único endpoint que expone estas respuestas, protegido por rol admin y
+// auditado por el llamador (comentario de account_quiz_answers en el
+// esquema).
+func (q *Queries) ListAccountQuizAnswers(ctx context.Context, accountID uuid.UUID) ([]AccountQuizAnswer, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT id, account_id, question_id, question_text_snapshot, answer_text, created_at
+FROM account_quiz_answers
+WHERE account_id = $1
+ORDER BY created_at ASC
+`, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []AccountQuizAnswer
+	for rows.Next() {
+		var a AccountQuizAnswer
+		if err := rows.Scan(&a.ID, &a.AccountID, &a.QuestionID, &a.QuestionTextSnapshot, &a.AnswerText, &a.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, a)
+	}
+	return items, rows.Err()
 }

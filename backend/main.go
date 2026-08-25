@@ -1,9 +1,8 @@
-// Reescrito desde ../usbi/backend/main.go: USBI-Anon abre DOS conexiones
-// PostgreSQL (identidad y principal) en vez de una — ver
-// plan/00_Plan_maestro.md §2 y plan/02_Backend.md §3. Cada servicio recibe
-// solo las Queries de la(s) base(s) que realmente necesita: auth y
-// maintenance reciben ambas (ident + main); sync/levels/devices/incidents/
-// dbmaint siguen recibiendo únicamente main, sin cambio frente a ../usbi.
+// Reescrito en F9 (plan/04_Rediseno_identidad_gustos.md §2) para el esquema
+// unificado: UN solo pool PostgreSQL, no dos — el diseño de dos bases
+// (identidad + principal) se descartó por completo en F5. auth ya no recibe
+// identityrepo ni mailer (no hay flujo de tutor por correo); recibe
+// internal/quiz.Service para el registro en 3 pasos.
 package main
 
 import (
@@ -26,11 +25,10 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/crypto"
 	"github.com/altair/usbi-anon-backend/internal/dbmaint"
 	"github.com/altair/usbi-anon-backend/internal/devices"
-	"github.com/altair/usbi-anon-backend/internal/identityrepo"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
 	"github.com/altair/usbi-anon-backend/internal/levels"
-	"github.com/altair/usbi-anon-backend/internal/mailer"
 	"github.com/altair/usbi-anon-backend/internal/maintenance"
+	"github.com/altair/usbi-anon-backend/internal/quiz"
 	"github.com/altair/usbi-anon-backend/internal/repository"
 	syncSvc "github.com/altair/usbi-anon-backend/internal/sync"
 	"github.com/altair/usbi-anon-backend/internal/transport"
@@ -54,24 +52,17 @@ func main() {
 	defer stop()
 
 	// ── Required environment variables ────────────────────────────────────────
-	mainDBURL := config.DatabaseURL()
-	identDBURL := config.IdentityDatabaseURL()
+	dbURL := config.DatabaseURL()
 	jwtSecret := config.RequireSecret("JWT_SECRET")
-	encryptionKey := config.RequireSecret("PGP_ENCRYPTION_KEY")
-	blindIndexSecret := config.RequireSecret("BLIND_INDEX_SECRET")
+	// HMACSecret firma el token de registro (registration_token.go), el sello
+	// de aceptación del aviso de privacidad, los tokens de refresh y la
+	// evidencia ARCO — el único secreto de firmado que sobrevive sin cifrado
+	// ni blind index (F6, plan/04 §2).
 	hmacSecret := config.RequireSecret("HMAC_SECRET")
 
 	// Optional with defaults
 	port := config.GetEnv("SERVER_PORT", "8088")
 	allowedOrigin := config.GetEnv("CORS_ALLOWED_ORIGIN", "")
-
-	// ── Tutor double opt-in (A1): mailer + verification link ──────────────────
-	appMailer := buildMailer()
-	tutorVerifyURL := ""
-	if base := config.GetEnv("PUBLIC_API_BASE_URL", ""); base != "" {
-		tutorVerifyURL = strings.TrimRight(base, "/") + "/api/v1/auth/tutor-consent/verify"
-	}
-	tutorTokenTTL := config.GetDurationEnv("TUTOR_CONSENT_TOKEN_TTL", 24*time.Hour)
 
 	accessExpiryStr := config.GetEnv("JWT_ACCESS_EXPIRY_MINUTES", "15")
 	accessExpiryMinutes, err := strconv.Atoi(accessExpiryStr)
@@ -79,47 +70,35 @@ func main() {
 		log.Fatalf("[FATAL] Invalid JWT_ACCESS_EXPIRY_MINUTES: %v", err)
 	}
 
-	// ── Database connections — DOS pools independientes ───────────────────────
-	mainDB := openPool(mainDBURL, "principal", "DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
+	// ── Database connection — UN solo pool ────────────────────────────────────
+	db := openPool(dbURL, "principal", "DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
 		"DB_CONN_MAX_LIFETIME", "DB_CONN_MAX_IDLE_TIME", 10, 2)
-	defer mainDB.Close()
-
-	identDB := openPool(identDBURL, "identidad", "IDENT_DB_MAX_OPEN_CONNS", "IDENT_DB_MAX_IDLE_CONNS",
-		"IDENT_DB_CONN_MAX_LIFETIME", "IDENT_DB_CONN_MAX_IDLE_TIME", 5, 1)
-	defer identDB.Close()
+	defer db.Close()
 
 	// ── Repository & Services ─────────────────────────────────────────────────
-	mainQueries := repository.New(mainDB)
-	identQueries := identityrepo.New(identDB)
+	queries := repository.New(db)
 
 	tokenCfg := crypto.TokenConfig{
 		Secret:       []byte(jwtSecret),
 		AccessExpiry: time.Duration(accessExpiryMinutes) * time.Minute,
 	}
 
-	authSvc := auth.NewService(identQueries, mainQueries, auth.Config{
-		EncryptionKey:               encryptionKey,
-		BlindIndexSecret:            []byte(blindIndexSecret),
+	quizSvc := quiz.NewService(queries)
+	authSvc := auth.NewService(queries, quizSvc, auth.Config{
 		HMACSecret:                  []byte(hmacSecret),
 		TokenConfig:                 tokenCfg,
 		MaxConcurrentPasswordHashes: int(config.GetInt32Env("MAX_CONCURRENT_PASSWORD_HASHES", 2)),
-		Mailer:                      appMailer,
-		TutorConsentVerifyURL:       tutorVerifyURL,
-		TutorConsentTokenTTL:        tutorTokenTTL,
+		StaffPrivacyNoticeVersion:   config.GetEnv("STAFF_PRIVACY_NOTICE_VERSION", ""),
 	})
 
-	syncService := syncSvc.NewService(mainQueries, []byte(hmacSecret))
-	levelsSvc := levels.NewService(mainQueries)
-	devicesSvc := devices.NewService(mainQueries)
-	incidentsSvc := incidents.NewService(mainQueries, []byte(hmacSecret))
+	syncService := syncSvc.NewService(queries, []byte(hmacSecret))
+	levelsSvc := levels.NewService(queries)
+	devicesSvc := devices.NewService(queries)
+	incidentsSvc := incidents.NewService(queries, []byte(hmacSecret))
 	if config.GetBoolEnv("LEGAL_MAINTENANCE_ENABLED", false) {
-		maintenanceSvc := maintenance.NewService(identQueries, mainQueries, maintenance.Config{
-			EncryptionKey:        encryptionKey,
-			BlindIndexSecret:     []byte(blindIndexSecret),
-			PendingTutorTTL:      config.GetDurationEnv("PENDING_TUTOR_TTL", 48*time.Hour),
+		maintenanceSvc := maintenance.NewService(queries, maintenance.Config{
 			InactiveSuspendAfter: config.GetDurationEnv("INACTIVE_SUSPEND_AFTER", 365*24*time.Hour),
 			SuspendedCancelAfter: config.GetDurationEnv("SUSPENDED_CANCEL_AFTER", 30*24*time.Hour),
-			ArcoStuckAfter:       config.GetDurationEnv("ARCO_STUCK_AFTER", 15*time.Minute),
 			BatchSize:            config.GetInt32Env("LEGAL_MAINTENANCE_BATCH_SIZE", 100),
 		})
 		maintenance.StartScheduler(
@@ -132,12 +111,10 @@ func main() {
 	}
 
 	// Structural DB concern, independent of legal/privacy retention above —
-	// keeps level_attempts/daily_streak (base principal) supplied with future
-	// yearly partitions so inserts never hit the DEFAULT partition in
-	// practice. No aplica a la base de identidad: ninguna de sus tablas está
-	// particionada.
+	// keeps level_attempts/daily_streak supplied with future yearly
+	// partitions so inserts never hit the DEFAULT partition in practice.
 	if config.GetBoolEnv("DB_PARTITION_MAINTENANCE_ENABLED", true) {
-		dbmaintSvc := dbmaint.NewService(mainDB)
+		dbmaintSvc := dbmaint.NewService(db)
 		dbmaint.StartScheduler(
 			rootCtx,
 			dbmaintSvc,
@@ -151,13 +128,14 @@ func main() {
 	r := chi.NewRouter()
 	stopRateLimiters := transport.SetupRoutes(r, transport.RouterDependencies{
 		AuthHandler:      auth.NewHandler(authSvc),
+		QuizHandler:      quiz.NewHandler(quizSvc),
 		SyncHandler:      syncSvc.NewHandler(syncService),
 		LevelsHandler:    levels.NewHandler(levelsSvc),
 		DevicesHandler:   devices.NewHandler(devicesSvc),
 		IncidentsHandler: incidents.NewHandler(incidentsSvc),
-		ReadyCheck:       readyCheck(mainDB, identDB),
+		ReadyCheck:       readyCheck(db),
 		TokenCfg:         tokenCfg,
-		IdentQueries:     identQueries,
+		Repo:             queries,
 		AllowedOrigin:    allowedOrigin,
 		MaxBodyBytes:     int64(config.GetInt32Env("API_MAX_BODY_BYTES", 6*1024*1024)),
 		// Only trust proxy-forwarded IP headers once a reverse proxy in front
@@ -228,11 +206,7 @@ func main() {
 }
 
 // openPool abre y valida (Ping) un pool de conexiones PostgreSQL, aplicando
-// límites configurables por variables de entorno con nombres distintos para
-// cada base (label solo identifica los mensajes de log). defaultMaxOpen para
-// la base de identidad es deliberadamente más bajo que el de la principal:
-// recibe muchas menos consultas por request (solo auth toca esta base en el
-// camino síncrono de cada login/refresh) — ver plan/02_Backend.md §3.5.
+// límites configurables por variables de entorno.
 func openPool(dsn, label, maxOpenVar, maxIdleVar, lifetimeVar, idleTimeVar string, defaultMaxOpen, defaultMaxIdle int32) *sql.DB {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -254,18 +228,13 @@ func openPool(dsn, label, maxOpenVar, maxIdleVar, lifetimeVar, idleTimeVar strin
 	return db
 }
 
-// readyCheck pings AMBAS bases: /health/ready solo debe reportar "ready"
-// cuando el servicio puede de verdad autenticar (identidad) y servir
-// progreso (principal), no solo una de las dos — y el error indica cuál de
-// las dos falló (criterio 5 de plan/02_Backend.md §8), sin filtrar el error
-// crudo del driver (podría incluir fragmentos del DSN).
-func readyCheck(mainDB, identDB *sql.DB) func(context.Context) error {
+// readyCheck hace ping a la única base del sistema. Con el rediseño de
+// identidad (F5) ya no hace falta distinguir "cuál de las dos bases falló":
+// solo hay una.
+func readyCheck(db *sql.DB) func(context.Context) error {
 	return func(ctx context.Context) error {
-		if err := mainDB.PingContext(ctx); err != nil {
-			return errors.New("base principal inalcanzable")
-		}
-		if err := identDB.PingContext(ctx); err != nil {
-			return errors.New("base de identidad inalcanzable")
+		if err := db.PingContext(ctx); err != nil {
+			return errors.New("base de datos inalcanzable")
 		}
 		return nil
 	}
@@ -288,25 +257,4 @@ func newLogger() *slog.Logger {
 		return slog.New(slog.NewTextHandler(os.Stdout, opts))
 	}
 	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
-}
-
-// buildMailer constructs the transactional mailer from the environment. When
-// SMTP_HOST is unset it falls back to a dev LogMailer (which only logs the
-// verification link) and warns loudly — that fallback must never be used in
-// production, where tutor consent links must actually be delivered by email.
-func buildMailer() mailer.Mailer {
-	host := config.GetEnv("SMTP_HOST", "")
-	if host == "" {
-		log.Println("[WARN] SMTP_HOST not set — using dev LogMailer; tutor verification " +
-			"links will only appear in the logs. Configure SMTP before production.")
-		return mailer.NewLogMailer(log.Default())
-	}
-	return mailer.NewSMTPMailer(mailer.Config{
-		Host:        host,
-		Port:        config.GetEnv("SMTP_PORT", "587"),
-		Username:    config.GetEnv("SMTP_USER", ""),
-		Password:    config.GetEnv("SMTP_PASSWORD", ""),
-		From:        config.GetEnv("SMTP_FROM", ""),
-		ImplicitTLS: config.GetBoolEnv("SMTP_IMPLICIT_TLS", false),
-	})
 }

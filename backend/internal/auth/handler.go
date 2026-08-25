@@ -2,9 +2,7 @@ package auth
 
 import (
 	"errors"
-	"html"
 	"log/slog"
-	"net"
 	"net/http"
 	"strconv"
 
@@ -26,35 +24,83 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// Register handles POST /api/v1/auth/register.
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+// ── Registro en 3 pasos ──────────────────────────────────────────────────
+
+// RegisterQuestions handles POST /api/v1/auth/register/questions.
+func (h *Handler) RegisterQuestions(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.svc.RegisterQuestions(r.Context())
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
+			"Internal Server Error", "Could not load registration questions")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+// RegisterAnswers handles POST /api/v1/auth/register/answers.
+func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
+	var req RegisterAnswersRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
 		httpproblem.WriteDecodeProblem(w, r, err)
 		return
 	}
 
-	resp, err := h.svc.Register(r.Context(), req)
+	resp, err := h.svc.RegisterAnswers(r.Context(), req)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrValidation):
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
 				"Validation Error", err.Error())
-		case errors.Is(err, ErrEmailConflict):
-			httpproblem.WriteProblem(w, r, http.StatusConflict, "conflict",
-				"Email Already Registered", "An active account with this email already exists")
 		case errors.Is(err, ErrAuthBusy):
 			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "auth-busy",
 				"Too Many Requests", "Authentication service is busy; retry shortly")
 		default:
+			slog.Error("register answers failed", "error", err)
 			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
 				"Internal Server Error", "An unexpected error occurred")
 		}
 		return
 	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
 
+// RegisterConfirm handles POST /api/v1/auth/register/confirm.
+func (h *Handler) RegisterConfirm(w http.ResponseWriter, r *http.Request) {
+	var req RegisterConfirmRequest
+	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
+		httpproblem.WriteDecodeProblem(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.RegisterConfirm(r.Context(), req)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrValidation):
+			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
+				"Validation Error", err.Error())
+		case errors.Is(err, ErrRegistrationTokenExpired):
+			httpproblem.WriteProblem(w, r, http.StatusGone, "registration-token-expired",
+				"Registration Token Expired", "Start the registration flow again")
+		case errors.Is(err, ErrRegistrationTokenInvalid):
+			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "registration-token-invalid",
+				"Registration Token Invalid", "The registration token is malformed or was tampered with")
+		case errors.Is(err, ErrNicknameConflict):
+			httpproblem.WriteProblem(w, r, http.StatusConflict, "conflict",
+				"Nickname Already Taken", "Choose a different nickname candidate and try again")
+		case errors.Is(err, ErrAuthBusy):
+			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "auth-busy",
+				"Too Many Requests", "Authentication service is busy; retry shortly")
+		default:
+			slog.Error("register confirm failed", "error", err)
+			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
+				"Internal Server Error", "An unexpected error occurred")
+		}
+		return
+	}
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
+
+// ── Login / sesión ────────────────────────────────────────────────────────
 
 // Login handles POST /api/v1/auth/login.
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -71,15 +117,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
 				"Validation Error", err.Error())
 		case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrInvalidPassword):
-			// Use identical message for both to prevent user enumeration.
+			// Use identical message for both to prevent nickname enumeration.
 			httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
-				"Authentication Failed", "Invalid email or password")
+				"Authentication Failed", "Invalid nickname or password")
 		case errors.Is(err, ErrAccountSuspended):
 			httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden",
 				"Account Restricted", "This account has been suspended or deleted")
-		case errors.Is(err, ErrPendingTutor):
-			httpproblem.WriteProblem(w, r, http.StatusForbidden, "pending-tutor-consent",
-				"Tutor Consent Required", "Tutor consent is required before login")
 		case errors.Is(err, ErrAuthBusy):
 			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "auth-busy",
 				"Too Many Requests", "Authentication service is busy; retry shortly")
@@ -90,10 +133,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
+// Refresh handles POST /api/v1/auth/refresh.
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -110,99 +153,18 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrAccountSuspended):
 			httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden",
 				"Account Restricted", "This account has been suspended or deleted")
-		case errors.Is(err, ErrPendingTutor):
-			httpproblem.WriteProblem(w, r, http.StatusForbidden, "pending-tutor-consent",
-				"Tutor Consent Required", "Tutor consent is required before login")
 		default:
 			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
 				"Internal Server Error", "An unexpected error occurred")
 		}
 		return
 	}
-
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
-}
-
-func (h *Handler) TutorConsent(w http.ResponseWriter, r *http.Request) {
-	var req TutorConsentRequest
-	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
-		httpproblem.WriteDecodeProblem(w, r, err)
-		return
-	}
-
-	ip := net.ParseIP("0.0.0.0")
-	if parsed := net.ParseIP(httputil.ClientIP(r)); parsed != nil {
-		ip = parsed
-	}
-
-	if err := h.svc.SubmitTutorConsent(r.Context(), req, ip, r.UserAgent()); err != nil {
-		switch {
-		case errors.Is(err, ErrValidation):
-			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
-				"Validation Error", err.Error())
-		case errors.Is(err, ErrMailSend):
-			slog.Error("tutor consent email send failed", "error", err)
-			httpproblem.WriteProblem(w, r, http.StatusBadGateway, "email-delivery-failed",
-				"Email Delivery Failed",
-				"No se pudo enviar el correo de verificación al tutor. Intente nuevamente más tarde.")
-		default:
-			slog.Error("tutor consent submit failed", "error", err)
-			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
-				"Internal Server Error", "Could not register tutor consent")
-		}
-		return
-	}
-
-	// 202: the tutor must still click the emailed link before the account is
-	// activated. The message is intentionally uniform so it does not reveal
-	// whether the referenced account exists or was pending.
-	httpproblem.WriteJSON(w, http.StatusAccepted, map[string]string{
-		"status":  "pending_verification",
-		"message": "Si la cuenta requiere consentimiento, se envió un correo de verificación al tutor.",
-	})
-}
-
-// VerifyTutorConsent handles GET /api/v1/auth/tutor-consent/verify?token=...
-// It is browser-facing (the tutor clicks a link in their email), so it renders a
-// small self-contained HTML page rather than JSON. On success the minor's account
-// is activated and the click is recorded as legal consent evidence.
-func (h *Handler) VerifyTutorConsent(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-
-	ip := net.ParseIP("0.0.0.0")
-	if parsed := net.ParseIP(httputil.ClientIP(r)); parsed != nil {
-		ip = parsed
-	}
-
-	err := h.svc.VerifyTutorConsent(r.Context(), token, ip, r.UserAgent())
-	switch {
-	case err == nil:
-		writeTutorConsentPage(w, http.StatusOK, true,
-			"Consentimiento confirmado",
-			"La cuenta del menor ha sido activada. Ya puede iniciar sesión en la plataforma USBI.")
-	case errors.Is(err, ErrTutorTokenExpired):
-		writeTutorConsentPage(w, http.StatusGone, false,
-			"El enlace ha caducado",
-			"Este enlace de verificación superó su vigencia. Solicite al menor que genere una nueva solicitud de consentimiento.")
-	case errors.Is(err, ErrTutorTokenUsed):
-		writeTutorConsentPage(w, http.StatusConflict, false,
-			"El enlace ya fue utilizado",
-			"Este consentimiento ya había sido confirmado anteriormente. La cuenta se encuentra activa.")
-	case errors.Is(err, ErrTutorTokenInvalid):
-		writeTutorConsentPage(w, http.StatusBadRequest, false,
-			"Enlace no válido",
-			"El enlace de verificación no es válido. Verifique que lo copió completo desde el correo.")
-	default:
-		slog.Error("tutor consent verify failed", "error", err)
-		writeTutorConsentPage(w, http.StatusInternalServerError, false,
-			"Ocurrió un error",
-			"No fue posible procesar la verificación en este momento. Intente nuevamente más tarde.")
-	}
 }
 
 // Logout handles POST /api/v1/auth/logout.
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	claims, ok := claimsFromContext(r)
 	if !ok {
 		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 			"Unauthorized", "Missing JWT claims in context")
@@ -214,13 +176,26 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 			"Internal Server Error", "Could not process logout")
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Me handles GET /api/v1/auth/me.
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, map[string]any{
+		"user_id": claims.UserID,
+		"role":    claims.Role,
+	})
 }
 
 // AgeUp handles POST /api/v1/auth/age-up.
 func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	claims, ok := claimsFromContext(r)
 	if !ok {
 		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 			"Unauthorized", "Missing JWT claims in context")
@@ -228,7 +203,7 @@ func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.AgeUp(r.Context(), claims.UserID, httputil.ClientIP(r), r.UserAgent()); err != nil {
-		if err.Error() == "maximum age-up attempts exceeded" {
+		if errors.Is(err, ErrTooManyAgeUpAttempts) {
 			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "too-many-requests",
 				"Too Many Requests", err.Error())
 			return
@@ -237,13 +212,30 @@ func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 			"Internal Server Error", "Could not process age-up request")
 		return
 	}
-
 	httpproblem.WriteJSON(w, http.StatusOK, map[string]string{"status": "success", "message": "User adult status updated"})
 }
 
+// CancelSelf handles DELETE /api/v1/auth/me.
+func (h *Handler) CancelSelf(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+	if err := h.svc.CancelSelf(r.Context(), claims.UserID); err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
+			"Internal Server Error", "Could not cancel account")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── ARCO ──────────────────────────────────────────────────────────────────
+
 // Arco handles POST /api/v1/arco.
 func (h *Handler) Arco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	claims, ok := claimsFromContext(r)
 	if !ok {
 		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 			"Unauthorized", "Missing JWT claims in context")
@@ -259,15 +251,14 @@ func (h *Handler) Arco(w http.ResponseWriter, r *http.Request) {
 	requestID, err := h.svc.SubmitArcoRequest(r.Context(), claims.UserID, req)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
-			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "validation-error",
-				"Validation Error", "Invalid ARCO request")
+			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
+				"Validation Error", err.Error())
 		} else {
 			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
 				"Internal Server Error", "Could not submit ARCO request")
 		}
 		return
 	}
-
 	httpproblem.WriteJSON(w, http.StatusCreated, ArcoResponseDTO{
 		RequestID: requestID,
 		Status:    "pending",
@@ -276,7 +267,7 @@ func (h *Handler) Arco(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListPendingArco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	claims, ok := claimsFromContext(r)
 	if !ok {
 		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 			"Unauthorized", "Missing JWT claims in context")
@@ -306,7 +297,7 @@ func (h *Handler) ListPendingArco(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ResolveArco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	claims, ok := claimsFromContext(r)
 	if !ok {
 		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 			"Unauthorized", "Missing JWT claims in context")
@@ -329,6 +320,8 @@ func (h *Handler) ResolveArco(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrForbidden):
 			httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins or directors can resolve ARCO requests")
+		case errors.Is(err, ErrNotFound):
+			httpproblem.WriteProblem(w, r, http.StatusNotFound, "not-found", "Not Found", "ARCO request not found")
 		case errors.Is(err, ErrValidation):
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error", "Validation Error", err.Error())
 		default:
@@ -336,40 +329,123 @@ func (h *Handler) ResolveArco(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	httpproblem.WriteJSON(w, http.StatusOK, map[string]string{"status": "resolved"})
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Administración de cuentas ────────────────────────────────────────────
 
-// writeTutorConsentPage renders a minimal, self-contained, accessible HTML page
-// for the tutor's browser after clicking the verification link. heading/message
-// are server-controlled constants but are HTML-escaped defensively.
-func writeTutorConsentPage(w http.ResponseWriter, status int, ok bool, heading, message string) {
-	accent := "#18529D" // institutional blue (UV)
+// CreateAdminAccount handles POST /api/v1/admin/accounts.
+func (h *Handler) CreateAdminAccount(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
 	if !ok {
-		accent = "#b00020" // error red — deliberately non-institutional to read as an error
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	h := html.EscapeString(heading)
-	m := html.EscapeString(message)
-	page := `<!doctype html><html lang="es"><head>` +
-		`<meta charset="utf-8">` +
-		`<meta name="viewport" content="width=device-width, initial-scale=1">` +
-		`<title>` + h + ` — USBI</title><style>` +
-		`*{box-sizing:border-box}` +
-		`body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;` +
-		`background:#f1f5f9;color:#0f172a;display:flex;min-height:100vh;align-items:center;` +
-		`justify-content:center;padding:1rem}` +
-		`main{background:#fff;max-width:32rem;width:100%;border-radius:12px;padding:2rem;` +
-		`box-shadow:0 10px 30px rgba(0,0,0,.08);border-top:6px solid ` + accent + `}` +
-		`h1{color:` + accent + `;font-size:1.4rem;margin:0 0 .75rem;line-height:1.3}` +
-		`p{font-size:1rem;line-height:1.55;margin:0}` +
-		`.brand{margin-top:1.5rem;font-size:.85rem;color:#475569}` +
-		`</style></head><body><main>` +
-		`<h1>` + h + `</h1><p>` + m + `</p>` +
-		`<p class="brand">Plataforma USBI · Universidad Veracruzana</p>` +
-		`</main></body></html>`
-	_, _ = w.Write([]byte(page))
+	var req AdminCreateAccountRequest
+	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
+		httpproblem.WriteDecodeProblem(w, r, err)
+		return
+	}
+	resp, err := h.svc.CreateAdminAccount(r.Context(), *claims, req)
+	if err != nil {
+		writeAdminServiceError(w, r, err, "Could not create account")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusCreated, resp)
+}
+
+// DeleteAdminAccount handles DELETE /api/v1/admin/accounts/{account_id}.
+func (h *Handler) DeleteAdminAccount(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+	targetID, ok := parseURLUUID(w, r, "account_id")
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteAccount(r.Context(), *claims, targetID); err != nil {
+		writeAdminServiceError(w, r, err, "Could not delete account")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetAccountQuizAnswers handles GET /api/v1/admin/accounts/{account_id}/quiz-answers.
+func (h *Handler) GetAccountQuizAnswers(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+	targetID, ok := parseURLUUID(w, r, "account_id")
+	if !ok {
+		return
+	}
+	resp, err := h.svc.GetAccountQuizAnswers(r.Context(), *claims, targetID)
+	if err != nil {
+		writeAdminServiceError(w, r, err, "Could not load quiz answers")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ResetAccountPassword handles POST /api/v1/admin/accounts/{account_id}/reset-password.
+func (h *Handler) ResetAccountPassword(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+	targetID, ok := parseURLUUID(w, r, "account_id")
+	if !ok {
+		return
+	}
+	resp, err := h.svc.ResetAccountPassword(r.Context(), *claims, targetID)
+	if err != nil {
+		writeAdminServiceError(w, r, err, "Could not reset password")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────
+
+func claimsFromContext(r *http.Request) (*domain.JWTClaims, bool) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	return claims, ok
+}
+
+func parseURLUUID(w http.ResponseWriter, r *http.Request, key string) (uuid.UUID, bool) {
+	parsed, err := uuid.Parse(chi.URLParam(r, key))
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request", "Bad Request", key+" must be a valid UUID")
+		return uuid.Nil, false
+	}
+	return parsed, true
+}
+
+func writeAdminServiceError(w http.ResponseWriter, r *http.Request, err error, fallback string) {
+	switch {
+	case errors.Is(err, ErrForbidden):
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can perform this action")
+	case errors.Is(err, ErrCannotDeleteAdmin):
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "An admin account cannot delete another admin account")
+	case errors.Is(err, ErrNotFound):
+		httpproblem.WriteProblem(w, r, http.StatusNotFound, "not-found", "Not Found", "Account not found")
+	case errors.Is(err, ErrNicknameConflict):
+		httpproblem.WriteProblem(w, r, http.StatusConflict, "conflict", "Nickname Already Taken", "Choose a different nickname")
+	case errors.Is(err, ErrValidation):
+		httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error", "Validation Error", err.Error())
+	case errors.Is(err, ErrAuthBusy):
+		httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "auth-busy", "Too Many Requests", "Authentication service is busy; retry shortly")
+	default:
+		slog.Error("admin account operation failed", "error", err)
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", fallback)
+	}
 }

@@ -168,3 +168,61 @@ SELECT display_alias FROM account_aliases WHERE id = $1
 `, userID).Scan(&alias)
 	return alias, err
 }
+
+// TouchAccountLastLogin registra el instante de un login/refresh exitoso.
+// Nunca existió en el diseño de dos bases (identityrepo no la tenía) — sin
+// ella, accounts_inactive_players_idx (COALESCE(last_login_at, created_at))
+// mide inactividad desde la fecha de alta para siempre, sin importar cuánto
+// juegue la persona. F9 la añade porque es la primera fase que de verdad
+// implementa Login/Refresh contra esta tabla.
+func (q *Queries) TouchAccountLastLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE accounts SET last_login_at = NOW() WHERE id = $1
+`, id)
+	return err
+}
+
+// IncrementAccountTokenVersion invalida todos los JWT vivos de la cuenta —
+// logout y reseteo de password la usan igual.
+func (q *Queries) IncrementAccountTokenVersion(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE accounts SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1
+`, id)
+	return err
+}
+
+// IncrementAgeUpAttempts es el contador de intentos de transición a mayoría
+// de edad (Ley 251, máx. 3) — internal/auth.AgeUp lo revisa antes de aplicar
+// el cambio.
+func (q *Queries) IncrementAgeUpAttempts(ctx context.Context, id uuid.UUID) (int16, error) {
+	var attempts int16
+	err := q.db.QueryRowContext(ctx, `
+UPDATE accounts SET age_up_attempts = age_up_attempts + 1, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING age_up_attempts
+`, id).Scan(&attempts)
+	return attempts, err
+}
+
+// MarkAccountAdult aplica la transición a mayoría de edad. Sin flujo de
+// tutor que activar (a diferencia del diseño de dos bases): solo cambia
+// is_adult, el status ya era 'active' desde el registro.
+func (q *Queries) MarkAccountAdult(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE accounts SET is_adult = true, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`, id)
+	return err
+}
+
+// SetAccountPassword reemplaza el hash y fuerza token_version+1 en la misma
+// UPDATE — un reseteo de password (autoservicio o por un admin) debe
+// invalidar cualquier sesión que sobreviva con el password anterior.
+func (q *Queries) SetAccountPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE accounts
+SET password_hash = $2, token_version = token_version + 1, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`, id, passwordHash)
+	return err
+}

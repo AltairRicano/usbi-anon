@@ -7,36 +7,64 @@ import (
 	"github.com/google/uuid"
 )
 
-// RegisterRequest is the body for POST /api/v1/auth/register.
-// FullName and Phone no existen: no se registra PII más allá del correo,
-// necesario únicamente para autenticar (ver plan/01_Base_de_datos.md §2.1).
-type RegisterRequest struct {
-	Email                string `json:"email"`
-	Password             string `json:"password"`
-	IsAdult              bool   `json:"is_adult"`
-	PrivacyNoticeVersion string `json:"privacy_notice_version"`
+// ── Registro en 3 pasos (plan/04_Rediseno_identidad_gustos.md §3) ───────────
+
+// RegisterQuestionsResponse es la respuesta de POST /auth/register/questions.
+type RegisterQuestionsResponse struct {
+	Questions         []QuestionOption `json:"questions"`
+	MaxQuestionsShown int16            `json:"max_questions_shown"`
 }
 
-// RegisterResponse is returned on successful registration.
-type RegisterResponse struct {
-	UserID  uuid.UUID `json:"user_id"`
-	Status  string    `json:"status"`
-	Message string    `json:"message"`
-	// RegistrationToken is only set when Status is pending_tutor_consent.
-	// The client must echo it back in TutorConsentRequest — it proves the
-	// caller was present at registration, preventing third parties who
-	// merely learn the user_id from submitting themselves as the tutor.
-	RegistrationToken string `json:"registration_token,omitempty"`
+type QuestionOption struct {
+	ID   uuid.UUID `json:"id"`
+	Text string    `json:"text"`
 }
 
-// LoginRequest is the body for POST /api/v1/auth/login.
+// AnswerInput es una respuesta individual dentro de RegisterAnswersRequest.
+type AnswerInput struct {
+	QuestionID uuid.UUID `json:"question_id"`
+	AnswerText string    `json:"answer_text"`
+}
+
+// RegisterAnswersRequest is the body for POST /auth/register/answers.
+type RegisterAnswersRequest struct {
+	Answers              []AnswerInput `json:"answers"`
+	IsAdult              bool          `json:"is_adult"`
+	PrivacyNoticeVersion string        `json:"privacy_notice_version"`
+}
+
+// RegisterAnswersResponse carga el token firmado que confirm() debe
+// devolver, más los 4 candidatos de nickname generados a partir de las
+// respuestas.
+type RegisterAnswersResponse struct {
+	RegistrationToken  string   `json:"registration_token"`
+	NicknameCandidates []string `json:"nickname_candidates"`
+}
+
+// RegisterConfirmRequest is the body for POST /auth/register/confirm.
+type RegisterConfirmRequest struct {
+	RegistrationToken string `json:"registration_token"`
+	ChosenNickname    string `json:"chosen_nickname"`
+}
+
+// RegisterConfirmResponse se muestra UNA sola vez: password en claro, jamás
+// vuelto a exponer por ningún otro endpoint.
+type RegisterConfirmResponse struct {
+	AccountID    uuid.UUID `json:"account_id"`
+	Nickname     string    `json:"nickname"`
+	Password     string    `json:"password"`
+	DisplayAlias string    `json:"display_alias"`
+}
+
+// ── Login / sesión ────────────────────────────────────────────────────────
+
+// LoginRequest is the body for POST /auth/login.
 type LoginRequest struct {
-	Email    string `json:"email"`
+	Nickname string `json:"nickname"`
 	Password string `json:"password"`
 }
 
-// LoginResponse is returned on successful login.
-// User is typed as domain.User — never contains PII or crypto material.
+// LoginResponse is returned on successful login/refresh.
 type LoginResponse struct {
 	AccessToken           string      `json:"access_token"`
 	RefreshToken          string      `json:"refresh_token"`
@@ -50,19 +78,9 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// TutorConsentRequest is the body for POST /api/v1/auth/tutor-consent.
-type TutorConsentRequest struct {
-	UserID               uuid.UUID `json:"user_id"`
-	TutorName            string    `json:"tutor_name"`
-	TutorEmail           string    `json:"tutor_email"`
-	PrivacyNoticeVersion string    `json:"privacy_notice_version"`
-	// RegistrationToken must match the value returned by /auth/register for
-	// this UserID (see RegisterResponse.RegistrationToken).
-	RegistrationToken string `json:"registration_token"`
-}
+// ── ARCO ──────────────────────────────────────────────────────────────────
 
 // ArcoRequestDTO is the body for POST /api/v1/arco.
-// Uses domain type for compile-time validation.
 type ArcoRequestDTO struct {
 	RequestType domain.ArcoRequestType `json:"request_type"`
 	Details     string                 `json:"details,omitempty"`
@@ -89,4 +107,37 @@ type ArcoPendingListDTO struct {
 type ResolveArcoRequestDTO struct {
 	Approved        bool   `json:"approved"`
 	ResponseSummary string `json:"response_summary"`
+}
+
+// ── Administración de cuentas ────────────────────────────────────────────
+
+// AdminCreateAccountRequest is the body for POST /admin/accounts. Sin
+// cuestionario de gustos: un admin crea otra cuenta de staff con
+// nickname+password explícitos (§2 del rediseño).
+type AdminCreateAccountRequest struct {
+	Nickname string          `json:"nickname"`
+	Password string          `json:"password"`
+	Role     domain.UserRole `json:"role"`
+}
+
+type AdminAccountResponse struct {
+	ID           uuid.UUID       `json:"id"`
+	Nickname     string          `json:"nickname"`
+	Role         domain.UserRole `json:"role"`
+	DisplayAlias string          `json:"display_alias"`
+	CreatedAt    time.Time       `json:"created_at"`
+}
+
+type AdminQuizAnswerDTO struct {
+	QuestionTextSnapshot string    `json:"question_text_snapshot"`
+	AnswerText           string    `json:"answer_text"`
+	CreatedAt            time.Time `json:"created_at"`
+}
+
+type AdminQuizAnswersResponse struct {
+	Items []AdminQuizAnswerDTO `json:"items"`
+}
+
+type AdminResetPasswordResponse struct {
+	NewPassword string `json:"new_password"`
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/devices"
 	"github.com/altair/usbi-anon-backend/internal/domain"
 	"github.com/altair/usbi-anon-backend/internal/levels"
+	"github.com/altair/usbi-anon-backend/internal/quiz"
 	syncpkg "github.com/altair/usbi-anon-backend/internal/sync"
 	"github.com/altair/usbi-anon-backend/internal/testdb"
 	"github.com/google/uuid"
@@ -22,15 +23,13 @@ import (
 // unit tests. Run with TEST_DATABASE_URL set (see internal/testdb); skipped
 // otherwise.
 //
-// Diferido de F3 a F4 (dependía de auth.NewService/testdb.Setup, reescritos
-// aquí — ver estado_proyecto.md). Frente a ../usbi, este archivo YA NO puede
-// ser diff-cero: testdb.Setup ahora devuelve *testdb.DB (dos bases, no una),
-// auth.NewService recibe (ident, main, cfg), Register perdió FullName, y
-// devices.RegisterDeviceRequest usa DeviceKind en vez de DeviceLabel. Es una
-// segunda excepción al criterio 4 de plan/02_Backend.md §8, de naturaleza
-// distinta a la de internal/devices: ahí el motivo fue un bug de esquema
-// heredado de F3; aquí es que este archivo depende directamente de firmas
-// que F4 reescribe a propósito.
+// Reescrito en F9 (plan/04_Rediseno_identidad_gustos.md §2 y §3) para el
+// esquema unificado: ya no hay dos bases (testdb.Setup devuelve un único
+// *testdb.DB{Repo, DB}) ni Register de una sola llamada por email —
+// setupFixtures ahora recorre el registro real en 3 pasos
+// (RegisterQuestions → RegisterAnswers → RegisterConfirm) contra las
+// registration_questions sembradas por el baseline de
+// 0001_esquema_unificado.up.sql, exactamente como lo haría un cliente real.
 
 const testHMACSecret = "integration-test-hmac-secret-32-bytes-min!!"
 
@@ -38,50 +37,76 @@ func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Se
 	t.Helper()
 	db := testdb.Setup(t)
 
-	authSvc := auth.NewService(db.Ident, db.Main, auth.Config{
-		EncryptionKey:    "integration-test-pgp-key-32-bytes-min!!",
-		BlindIndexSecret: []byte("integration-test-blind-index-32-bytes!!"),
-		HMACSecret:       []byte(testHMACSecret),
-		TokenConfig:      crypto.TokenConfig{Secret: []byte("integration-test-jwt-secret-32-bytes!!!"), AccessExpiry: time.Hour},
+	quizSvc := quiz.NewService(db.Repo)
+	authSvc := auth.NewService(db.Repo, quizSvc, auth.Config{
+		HMACSecret:  []byte(testHMACSecret),
+		TokenConfig: crypto.TokenConfig{Secret: []byte("integration-test-jwt-secret-32-bytes!!!"), AccessExpiry: time.Hour},
 	})
-	syncSvc := syncpkg.NewService(db.Main, []byte(testHMACSecret))
-	devicesSvc := devices.NewService(db.Main)
-	levelsSvc := levels.NewService(db.Main)
+	syncSvc := syncpkg.NewService(db.Repo, []byte(testHMACSecret))
+	devicesSvc := devices.NewService(db.Repo)
+	levelsSvc := levels.NewService(db.Repo)
 	return syncSvc, authSvc, devicesSvc, levelsSvc
 }
 
-// setupFixtures creates one adult user, one registered device, and one
-// published trivia level (difficulty 5, so attempt 1 = 20 XP) — everything
-// ProcessSync needs, all through the real services (Register does real
-// Argon2id hashing; nothing here is mocked).
+// setupFixtures creates one adult account (via the real 3-step registration
+// flow), one registered device, and one published trivia level (difficulty
+// 5, so attempt 1 = 20 XP) — everything ProcessSync needs, all through the
+// real services (RegisterConfirm does real Argon2id hashing; nothing here is
+// mocked).
 func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, devicesSvc *devices.Service, levelsSvc *levels.Service) (userID, deviceID, levelID uuid.UUID) {
 	t.Helper()
 
-	email := "sync-it-" + uuid.NewString() + "@example.test"
-	reg, err := authSvc.Register(ctx, auth.RegisterRequest{
-		Email: email, Password: "correct horse battery staple",
-		IsAdult: true, PrivacyNoticeVersion: "v1.0",
-	})
+	questions, err := authSvc.RegisterQuestions(ctx)
 	if err != nil {
-		t.Fatalf("Register() error = %v", err)
+		t.Fatalf("RegisterQuestions() error = %v", err)
+	}
+	if len(questions.Questions) < 2 {
+		t.Fatalf("RegisterQuestions() returned %d questions, want at least 2 (baseline seed)", len(questions.Questions))
 	}
 
-	// Login (no solo Register) es imprescindible aquí: la réplica accounts
-	// [P] se crea recién en el primer Login (plan/02_Backend.md §3.5), y
-	// devices.user_id tiene FK a accounts(id) — RegisterDevice fallaría con
-	// una violación de FK si se llamara justo después de Register.
-	if _, err := authSvc.Login(ctx, auth.LoginRequest{Email: email, Password: "correct horse battery staple"}); err != nil {
+	answers := make([]auth.AnswerInput, 0, 2)
+	for i, q := range questions.Questions[:2] {
+		answers = append(answers, auth.AnswerInput{
+			QuestionID: q.ID,
+			AnswerText: uuid.NewString()[:8] + string(rune('a'+i)),
+		})
+	}
+
+	answersResp, err := authSvc.RegisterAnswers(ctx, auth.RegisterAnswersRequest{
+		Answers:              answers,
+		IsAdult:              true,
+		PrivacyNoticeVersion: "v1.0",
+	})
+	if err != nil {
+		t.Fatalf("RegisterAnswers() error = %v", err)
+	}
+	if len(answersResp.NicknameCandidates) == 0 {
+		t.Fatalf("RegisterAnswers() returned no nickname candidates")
+	}
+
+	confirm, err := authSvc.RegisterConfirm(ctx, auth.RegisterConfirmRequest{
+		RegistrationToken: answersResp.RegistrationToken,
+		ChosenNickname:    answersResp.NicknameCandidates[0],
+	})
+	if err != nil {
+		t.Fatalf("RegisterConfirm() error = %v", err)
+	}
+
+	// Login (no solo RegisterConfirm) confirma que el password devuelto en
+	// claro es de verdad el que quedó hasheado en la cuenta — sin esto, un
+	// bug en el hash de RegisterConfirm pasaría inadvertido para este test.
+	if _, err := authSvc.Login(ctx, auth.LoginRequest{Nickname: confirm.Nickname, Password: confirm.Password}); err != nil {
 		t.Fatalf("Login() error = %v", err)
 	}
 
-	dev, err := devicesSvc.RegisterDevice(ctx, reg.UserID, devices.RegisterDeviceRequest{
+	dev, err := devicesSvc.RegisterDevice(ctx, confirm.AccountID, devices.RegisterDeviceRequest{
 		DeviceKind: "movil", Platform: "web",
 	})
 	if err != nil {
 		t.Fatalf("RegisterDevice() error = %v", err)
 	}
 
-	section, err := levelsSvc.CreateSection(ctx, reg.UserID, levels.CreateSectionRequest{
+	section, err := levelsSvc.CreateSection(ctx, confirm.AccountID, levels.CreateSectionRequest{
 		Title: "IT Section", Description: "integration test", Color: "#18529D",
 	})
 	if err != nil {
@@ -93,18 +118,18 @@ func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, dev
 			{"question": "2+2?", "options": []string{"3", "4"}, "correct_index": 1},
 		},
 	})
-	level, err := levelsSvc.CreateLevel(ctx, reg.UserID, levels.CreateLevelRequest{
+	level, err := levelsSvc.CreateLevel(ctx, confirm.AccountID, levels.CreateLevelRequest{
 		SectionID: section.ID, Title: "IT Level", Color: "#18529D",
 		TemplateType: "trivia", Content: content, Difficulty: 5,
 	})
 	if err != nil {
 		t.Fatalf("CreateLevel() error = %v", err)
 	}
-	if _, err := levelsSvc.PublishLevel(ctx, reg.UserID, level.ID); err != nil {
+	if _, err := levelsSvc.PublishLevel(ctx, confirm.AccountID, level.ID); err != nil {
 		t.Fatalf("PublishLevel() error = %v", err)
 	}
 
-	return reg.UserID, dev.ID, level.ID
+	return confirm.AccountID, dev.ID, level.ID
 }
 
 func signedRequest(t *testing.T, userID, deviceID, levelID uuid.UUID, score int, completed bool, attemptDate string) (domain.SyncEventRequest, []byte) {

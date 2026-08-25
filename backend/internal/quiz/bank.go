@@ -237,6 +237,25 @@ func (s *Service) DeleteQuestion(ctx context.Context, adminID, id uuid.UUID) err
 	return tx.Commit()
 }
 
+// GetActiveQuestionByID valida un question_id recibido en
+// POST /auth/register/answers (internal/auth, F9) y devuelve el texto a
+// congelar en account_quiz_answers.question_text_snapshot. internal/auth
+// pasa por aquí en vez de tocar internal/repository directo — el banco de
+// preguntas es dominio de este paquete, no del repositorio genérico.
+func (s *Service) GetActiveQuestionByID(ctx context.Context, id uuid.UUID) (QuestionResponse, error) {
+	question, err := s.repo.GetRegistrationQuestionByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return QuestionResponse{}, ErrNotFound
+		}
+		return QuestionResponse{}, err
+	}
+	if !question.IsActive {
+		return QuestionResponse{}, ErrNotFound
+	}
+	return questionToResponse(question), nil
+}
+
 func (s *Service) GetSettings(ctx context.Context) (SettingsResponse, error) {
 	settings, err := s.repo.GetRegistrationSettings(ctx)
 	if err != nil {

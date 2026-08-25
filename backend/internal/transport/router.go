@@ -17,9 +17,10 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/domain"
 	"github.com/altair/usbi-anon-backend/internal/httpproblem"
 	"github.com/altair/usbi-anon-backend/internal/httputil"
-	"github.com/altair/usbi-anon-backend/internal/identityrepo"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
 	"github.com/altair/usbi-anon-backend/internal/levels"
+	"github.com/altair/usbi-anon-backend/internal/quiz"
+	"github.com/altair/usbi-anon-backend/internal/repository"
 	syncHandler "github.com/altair/usbi-anon-backend/internal/sync"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -30,17 +31,17 @@ import (
 // so partial wiring (e.g. in tests) is safe.
 type RouterDependencies struct {
 	AuthHandler      *auth.Handler
+	QuizHandler      *quiz.Handler
 	SyncHandler      *syncHandler.Handler
 	LevelsHandler    *levels.Handler
 	DevicesHandler   *devices.Handler
 	IncidentsHandler *incidents.Handler
 	ReadyCheck       func(context.Context) error
 	TokenCfg         crypto.TokenConfig
-	// IdentQueries valida token_version contra la BASE DE IDENTIDAD — la
-	// única de las dos que sabe si un usuario cerró sesión o fue revocado.
-	// A diferencia de ../usbi, aquí NO puede ser *repository.Queries: esa
-	// tabla no vive en la base principal.
-	IdentQueries *identityrepo.Queries
+	// Repo valida token_version/status contra la ÚNICA base del sistema —
+	// con el rediseño de identidad ya no hace falta una base de identidad
+	// aparte (plan/04_Rediseno_identidad_gustos.md §1 y §2).
+	Repo *repository.Queries
 	// MaxBodyBytes caps incoming API request bodies. Defaults to 6 MiB.
 	MaxBodyBytes int64
 	// AllowedOrigin is a comma-separated CORS allowlist (or "*" to opt into
@@ -102,40 +103,71 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// ── Public routes ─────────────────────────────────────────────────────
+		// Registro en 3 pasos (plan/04_Rediseno_identidad_gustos.md §3): sin
+		// email ni flujo de tutor, así que no hay tutor-consent que exponer.
 		r.Group(func(r chi.Router) {
 			r.Use(rl.authMiddleware)
 			if deps.AuthHandler != nil {
-				r.Post("/auth/register", deps.AuthHandler.Register)
+				r.Post("/auth/register/questions", deps.AuthHandler.RegisterQuestions)
+				r.Post("/auth/register/answers", deps.AuthHandler.RegisterAnswers)
+				r.Post("/auth/register/confirm", deps.AuthHandler.RegisterConfirm)
 				r.Post("/auth/login", deps.AuthHandler.Login)
 				r.Post("/auth/refresh", deps.AuthHandler.Refresh)
-				r.Post("/auth/tutor-consent", deps.AuthHandler.TutorConsent)
-				r.Get("/auth/tutor-consent/verify", deps.AuthHandler.VerifyTutorConsent)
 			} else {
-				r.Post("/auth/register", notImplementedHandler("auth.register"))
+				r.Post("/auth/register/questions", notImplementedHandler("auth.registerQuestions"))
+				r.Post("/auth/register/answers", notImplementedHandler("auth.registerAnswers"))
+				r.Post("/auth/register/confirm", notImplementedHandler("auth.registerConfirm"))
 				r.Post("/auth/login", notImplementedHandler("auth.login"))
 				r.Post("/auth/refresh", notImplementedHandler("auth.refresh"))
-				r.Post("/auth/tutor-consent", notImplementedHandler("auth.tutorConsent"))
-				r.Get("/auth/tutor-consent/verify", notImplementedHandler("auth.verifyTutorConsent"))
 			}
 		})
 
 		// ── Authenticated routes ──────────────────────────────────────────────
 		r.Group(func(r chi.Router) {
-			r.Use(jwtAuthMiddleware(deps.TokenCfg, deps.IdentQueries))
+			r.Use(jwtAuthMiddleware(deps.TokenCfg, deps.Repo))
 			r.Use(rl.generalMiddleware)
 
 			if deps.AuthHandler != nil {
 				r.Post("/auth/logout", deps.AuthHandler.Logout)
+				r.Get("/auth/me", deps.AuthHandler.Me)
 				r.Post("/auth/age-up", deps.AuthHandler.AgeUp)
+				r.Delete("/auth/me", deps.AuthHandler.CancelSelf)
 				r.Post("/arco", deps.AuthHandler.Arco)
 				r.Get("/arco/pending", deps.AuthHandler.ListPendingArco)
 				r.Post("/arco/{request_id}/resolve", deps.AuthHandler.ResolveArco)
+
+				r.Post("/admin/accounts", deps.AuthHandler.CreateAdminAccount)
+				r.Delete("/admin/accounts/{account_id}", deps.AuthHandler.DeleteAdminAccount)
+				r.Get("/admin/accounts/{account_id}/quiz-answers", deps.AuthHandler.GetAccountQuizAnswers)
+				r.Post("/admin/accounts/{account_id}/reset-password", deps.AuthHandler.ResetAccountPassword)
 			} else {
 				r.Post("/auth/logout", notImplementedHandler("auth.logout"))
+				r.Get("/auth/me", notImplementedHandler("auth.me"))
 				r.Post("/auth/age-up", notImplementedHandler("auth.ageUp"))
+				r.Delete("/auth/me", notImplementedHandler("auth.cancelSelf"))
 				r.Post("/arco", notImplementedHandler("arco.submitRequest"))
 				r.Get("/arco/pending", notImplementedHandler("arco.listPending"))
 				r.Post("/arco/{request_id}/resolve", notImplementedHandler("arco.resolveRequest"))
+				r.Post("/admin/accounts", notImplementedHandler("admin.createAccount"))
+				r.Delete("/admin/accounts/{account_id}", notImplementedHandler("admin.deleteAccount"))
+				r.Get("/admin/accounts/{account_id}/quiz-answers", notImplementedHandler("admin.getAccountQuizAnswers"))
+				r.Post("/admin/accounts/{account_id}/reset-password", notImplementedHandler("admin.resetAccountPassword"))
+			}
+
+			// Banco de preguntas de registro (internal/quiz) — restringido a
+			// admin dentro del propio Handler, no aquí (bank.go: canManageQuizBank).
+			if deps.QuizHandler != nil {
+				r.Get("/admin/registration-questions", deps.QuizHandler.ListQuestions)
+				r.Post("/admin/registration-questions", deps.QuizHandler.CreateQuestion)
+				r.Patch("/admin/registration-questions/{id}", deps.QuizHandler.UpdateQuestion)
+				r.Delete("/admin/registration-questions/{id}", deps.QuizHandler.DeleteQuestion)
+				r.Put("/admin/registration-settings", deps.QuizHandler.UpdateSettings)
+			} else {
+				r.Get("/admin/registration-questions", notImplementedHandler("admin.listRegistrationQuestions"))
+				r.Post("/admin/registration-questions", notImplementedHandler("admin.createRegistrationQuestion"))
+				r.Patch("/admin/registration-questions/{id}", notImplementedHandler("admin.updateRegistrationQuestion"))
+				r.Delete("/admin/registration-questions/{id}", notImplementedHandler("admin.deleteRegistrationQuestion"))
+				r.Put("/admin/registration-settings", notImplementedHandler("admin.updateRegistrationSettings"))
 			}
 
 			if deps.SyncHandler != nil {
@@ -335,7 +367,7 @@ func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 				}
 			}
 
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
 			w.Header().Set("Access-Control-Max-Age", "86400")
 			if r.Method == http.MethodOptions {
@@ -349,10 +381,10 @@ func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 
 // jwtAuthMiddleware validates the JWT and injects claims into the request context.
 // Downstream handlers retrieve claims via ClaimsFromContext(r.Context()).
-// identQueries valida token_version contra la BASE DE IDENTIDAD (identities),
-// no contra la principal — ../usbi usaba *repository.Queries porque ahí
-// token_version vivía junto con el resto de `users`.
-func jwtAuthMiddleware(cfg crypto.TokenConfig, identQueries *identityrepo.Queries) func(http.Handler) http.Handler {
+// repo revalida token_version y status contra accounts, la única tabla del
+// sistema con esa información — con el rediseño de identidad ya no hay una
+// base de identidad separada que consultar (plan/04_Rediseno_identidad_gustos.md §1).
+func jwtAuthMiddleware(cfg crypto.TokenConfig, repo *repository.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -378,11 +410,13 @@ func jwtAuthMiddleware(cfg crypto.TokenConfig, identQueries *identityrepo.Querie
 				return
 			}
 
-			// Verify token_version against the database if identQueries is provided.
-			// This enables immediate token revocation on logout/password change.
-			if identQueries != nil {
-				dbVersion, err := identQueries.GetUserTokenVersion(r.Context(), claims.UserID)
-				if err != nil || int(dbVersion) != claims.TokenVersion {
+			// Verify token_version and status against the database if repo is
+			// provided. This enables immediate token revocation on
+			// logout/password reset/cancellation, and rejects a still-valid
+			// JWT for an account suspended after it was issued.
+			if repo != nil {
+				account, err := repo.GetAccountByID(r.Context(), claims.UserID)
+				if err != nil || int(account.TokenVersion) != claims.TokenVersion || account.Status != string(domain.StatusActive) {
 					httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 						"Unauthorized", "Token has been revoked or is invalid")
 					return
