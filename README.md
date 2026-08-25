@@ -1,71 +1,92 @@
 # USBI-Anon
 
-Documentación de diseño para una variante de la plataforma educativa
-gamificada USBI (Universidad Veracruzana) en la que la identidad de cada
-usuario queda representada únicamente por un identificador UUID en el sistema
-principal, separando la información de contacto y credenciales en una base de
-datos independiente.
+Variante de la plataforma educativa gamificada USBI (Universidad Veracruzana)
+en la que cada persona usuaria queda identificada únicamente por un **UUID**
+en el sistema principal. En vez de correo electrónico y contraseña, el
+registro se resuelve con un breve cuestionario de gustos no sensibles (color
+favorito, animal favorito, etc.) del que el sistema deriva automáticamente un
+nickname y una contraseña — nadie escribe su nombre, correo ni teléfono en
+ninguna parte del sistema.
 
 El sistema conserva las mismas capacidades funcionales que la propuesta
 original: catálogo de secciones y niveles, minijuegos, experiencia (XP),
 insignias, rachas, progreso persistente entre dispositivos y panel de
-administración. El cambio de fondo es de arquitectura de datos y de modelo de
-alojamiento, no de alcance funcional.
+administración. El cambio de fondo es de arquitectura de identidad y de
+modelo de alojamiento, no de alcance funcional.
 
-Licencia: Apache 2.0. Consulta [LICENSE](LICENSE) cuando se incorpore junto
-con el código.
+Licencia: Apache 2.0. Consulta [LICENSE](LICENSE).
 
 ## Estado actual
 
-Este repositorio contiene la documentación de arquitectura, el plan técnico de
-la migración, las convenciones de identidad visual y los **esquemas SQL de las
-dos bases de datos**, ya escritos y verificados contra PostgreSQL 15. No incluye
-todavía el código de aplicación (backend ni frontend): esa implementación parte
-de una plataforma hermana ya existente y se incorporará siguiendo las fases
-descritas en [`plan/00_Plan_maestro.md`](plan/00_Plan_maestro.md).
+El backend (Go) implementa el esquema de base de datos unificado, el registro
+en tres pasos, login/sesión, solicitudes ARCO y los paneles de administración
+de cuentas y del banco de preguntas de registro. El frontend (React + TypeScript
++ Vite) cubre esos mismos flujos: registro, inicio de sesión y los dos paneles
+de administración. El resto de la experiencia de juego (progreso, niveles,
+minijuegos) todavía no se ha portado a este proyecto.
 
 ## Arquitectura de datos
 
-El diseño divide la persistencia en dos bases de datos con distinto nivel de
-sensibilidad:
+A diferencia de un sistema tradicional, **una sola base de datos** contiene
+tanto las credenciales de acceso como el progreso y contenido educativo,
+indexados exclusivamente por UUID. Ninguna tabla contiene nombre, correo,
+teléfono ni cualquier otro dato de contacto: el nickname que identifica a
+cada cuenta se genera a partir de fragmentos de las respuestas al
+cuestionario de registro, no de un dato personal.
 
-- **Base de datos privada de identidad**: guarda exclusivamente correo
-  electrónico, contraseña (con hash) y el UUID asociado a cada persona
-  usuaria. Es la única pieza del sistema que constituye un dato personal
-  identificable de forma directa.
-- **Base de datos principal**: guarda todo el progreso, contenido educativo,
-  insignias, rachas y actividad administrativa, indexado por UUID. No
-  contiene nombre, correo, teléfono ni ningún otro dato de contacto.
-
-Esta separación permite que la base principal quede alojada en un servidor
-institucional sin necesidad de recurrir a un proveedor de hospedaje externo
-para la información sensible del proyecto.
+Retirar contenido educativo entre temporadas (rotación de niveles) preserva
+siempre la experiencia (XP) y los contadores de progreso ya ganados por cada
+jugador, aunque el nivel original se elimine para liberar espacio.
 
 ## Identidad visual
 
 El proyecto se presenta como producto de la Universidad Veracruzana / USBI y
-por lo tanto sigue las convenciones institucionales de color, contraste y
-accesibilidad documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_UV.md).
+sigue las convenciones institucionales de color, contraste y accesibilidad
+documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_UV.md).
 
 ## Estructura del proyecto
 
 ```text
 .
-├── backend/
-│   ├── migrations/
-│   │   ├── identity/                  # esquema de la base de identidad (credenciales)
-│   │   └── main/                      # esquema de la base principal (progreso y contenido)
-│   └── sql/                           # scripts de administración: roles y permisos
-├── plan/                              # documentos de diseño y planeación técnica
-│   ├── 00_Plan_maestro.md             # índice del plan de migración, fases y decisiones abiertas
-│   ├── 01_Base_de_datos.md            # esquema de las dos bases y scripts SQL a producir
-│   ├── 02_Backend.md                  # reparto de servicios entre ambas bases
-│   ├── 03_Frontend.md                 # alcance de los cambios de interfaz
-│   └── Convenciones_de_color_UV.md    # identidad visual institucional (colores, contraste, tipografía)
-├── LICENSE                            # licencia del proyecto (Apache 2.0)
-└── README.md                          # este archivo
+├── backend/                            # API en Go (chi router, PostgreSQL)
+│   ├── cmd/
+│   │   └── hash_password/              # binario standalone para el bootstrap del primer admin
+│   ├── internal/
+│   │   ├── audit/                      # bitácora unificada de auditoría
+│   │   ├── auth/                       # registro en 3 pasos, login, ARCO, admin de cuentas
+│   │   ├── config/                     # carga de variables de entorno
+│   │   ├── crypto/                     # Argon2id, HMAC, JWT
+│   │   ├── dbmaint/                    # mantenimiento de particiones de tablas
+│   │   ├── devices/                    # registro de dispositivos para sync
+│   │   ├── domain/                     # tipos de dominio compartidos (User, roles, estados)
+│   │   ├── httpjson/ httpproblem/ httputil/  # utilidades HTTP (RFC 7807, decodificación estricta)
+│   │   ├── incidents/                  # incidentes de seguridad reportados por el cliente
+│   │   ├── levels/                     # secciones y niveles de contenido educativo
+│   │   ├── maintenance/                # retención automática (inactividad, cancelación)
+│   │   ├── privacy/                    # cancelación de cuenta (ARCO) en una sola transacción
+│   │   ├── quiz/                       # banco de preguntas de registro y generación de credenciales
+│   │   ├── repository/                 # acceso a datos de la base única
+│   │   ├── sync/                       # sincronización de progreso offline
+│   │   ├── testdb/                     # esquema Postgres desechable para pruebas de integración
+│   │   └── transport/                  # rutas HTTP, middleware, límites de tasa
+│   ├── migrations/                     # esquema SQL versionado (golang-migrate)
+│   ├── sql/                            # scripts de administración: roles, permisos, seed del primer admin
+│   └── main.go                         # punto de entrada del servidor
+├── frontend/                           # SPA en React + TypeScript + Vite
+│   └── src/
+│       ├── features/
+│       │   ├── auth/                   # registro (wizard de 3 pasos) y login
+│       │   ├── admin-accounts/         # alta de staff, borrado, reseteo de contraseña
+│       │   ├── admin-quiz-bank/        # CRUD del banco de preguntas de registro
+│       │   └── home/                   # landing mínima tras el login
+│       └── shared/                     # cliente HTTP, componentes de interfaz, esquemas comunes
+├── plan/                               # documentos de diseño y planeación técnica
+│   ├── 00_Plan_maestro.md              # índice del plan de migración, fases y decisiones abiertas
+│   ├── 01_Base_de_datos.md             # esquema de la base de datos
+│   ├── 02_Backend.md                   # reparto de paquetes Go
+│   ├── 03_Frontend.md                  # historia de los cambios de interfaz (diseño descartado, ver 04)
+│   ├── 04_Rediseno_identidad_gustos.md # diseño vigente: cuestionario de gustos, esquema unificado
+│   └── Convenciones_de_color_UV.md     # identidad visual institucional (colores, contraste, tipografía)
+├── LICENSE                             # licencia del proyecto (Apache 2.0)
+└── README.md                           # este archivo
 ```
-
-La estructura se ampliará con `backend/`, `frontend/` y `docs_referencia/`
-cuando se incorpore la implementación técnica y la documentación legal
-completa del proyecto.

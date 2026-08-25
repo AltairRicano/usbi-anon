@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* ============================================================
+   SISTEMA DE DISEÑO INSTITUCIONAL – USBI / Universidad Veracruzana
+   Fuente de verdad: plan/Convenciones_de_color_UV.md
+   Heredado sin cambios de ../usbi/frontend/src/index.css
+   (plan/03_Frontend.md §3: "components/ui/, styles/, identidad visual UV —
+   sin cambios. Siguen aplicando plan/Convenciones_de_color_UV.md").
+   Contraste verificado WCAG 2.2:
+     - primary (azul UV #18529D) sobre blanco → 7.69:1 ✓  (modo claro)
+     - primary (azul claro #6f9fe0) sobre tarjeta oscura #1e293b → 5.37:1 ✓ (modo oscuro)
+     - secondary (verde UV #28AD56) sobre negro → 7.20:1 ✓
+     - secondary sobre blanco → 2.92:1 ✗ → usar solo como acento
+   ============================================================ */
+
+:root {
+  --theme-bg: #FFFFFF;
+  --theme-fg: #000000;
+  --theme-surface: #F5F5F5;
+  --theme-muted: #4A4A4A;
+  --theme-border: #D1D5DB;
+  --theme-card: #FFFFFF;
+  --theme-text-card: #0f172a;
+  --theme-primary: #18529D;
+  --theme-primary-hover: #0f3d76;
+  --theme-primary-foreground: #FFFFFF;
+}
+
+html.dark {
+  --theme-bg: #020617;
+  --theme-fg: #f8fafc;
+  --theme-surface: #0f172a;
+  --theme-muted: #94a3b8;
+  --theme-border: #475569;
+  --theme-card: #1e293b;
+  --theme-text-card: #f8fafc;
+  --theme-primary: #6f9fe0;
+  --theme-primary-hover: #7fb0e8;
+  --theme-primary-foreground: #0f172a;
+}
+
+@theme {
+  /* ── Paleta institucional UV ─────────────────────────────── */
+  --color-primary:            var(--theme-primary);
+  --color-primary-hover:      var(--theme-primary-hover);
+  --color-primary-foreground: var(--theme-primary-foreground);
+
+  --color-secondary:          #28AD56;
+  --color-secondary-dark:     #006633;
+  --color-secondary-foreground: #000000;
+
+  /* ── Neutros (dinámicos por tema) ────────────────────────── */
+  --color-background:   var(--theme-bg);
+  --color-foreground:   var(--theme-fg);
+  --color-surface:      var(--theme-surface);
+  --color-muted:        var(--theme-muted);
+  --color-border:       var(--theme-border);
+  --color-card:         var(--theme-card);
+  --color-text-card:    var(--theme-text-card);
+
+  /* ── Estado (accesibles WCAG) ────────────────────────────── */
+  --color-success:      #006633;
+  --color-warning:      #7A4E00;
+  --color-error:        #B00020;
+  --color-info:         #18529D;
+
+  /* ── Tipografía ──────────────────────────────────────────── */
+  --font-sans: 'Inter', 'Avenir', 'Helvetica', 'Arial', sans-serif;
+
+  /* ── Accesibilidad motriz ────────────────────────────────── */
+  --spacing-touch: 44px; /* Área mínima de clic WCAG 2.5.5 */
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  .color-filter-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Área de clic mínima 44×44px (WCAG 2.5.5). */
+  button, [role="button"], a, input, select, textarea {
+    min-height: var(--spacing-touch);
+  }
+  button, [role="button"] {
+    min-width: var(--spacing-touch);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-primary);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--color-primary-hover);
+  }
+
+  button a {
+    color: inherit;
+    text-decoration: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ── Filtros de accesibilidad daltónica ──────────────────────
+   Sin toggle de configuración todavía en F10 (no hay SettingsPage en el
+   alcance de esta fase) — las reglas quedan listas para cuando esa página se
+   porte, igual que en ../usbi. */
+html.deuteranopia #root {
+  filter: contrast(1.06) saturate(0.78) hue-rotate(-12deg);
+}
+html.protanopia #root {
+  filter: contrast(1.08) saturate(0.82) hue-rotate(8deg);
+}
+html.tritanopia #root {
+  filter: contrast(1.06) saturate(0.85) hue-rotate(28deg);
+}
+
+@supports (filter: url("#deuteranopia-filter")) {
+  html.deuteranopia #root {
+    filter: url("#deuteranopia-filter") contrast(1.03);
+  }
+  html.protanopia #root {
+    filter: url("#protanopia-filter") contrast(1.03);
+  }
+  html.tritanopia #root {
+    filter: url("#tritanopia-filter") contrast(1.03);
+  }
+}
+
+/* ── Reducir movimiento ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Tamaño de texto ajustable ────────────────────────────────────────── */
+html.text-scale-large {
+  font-size: 18px;
+}
+html.text-scale-larger {
+  font-size: 20px;
+}

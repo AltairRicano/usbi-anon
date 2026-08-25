@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>USBI Universidad Veracruzana</title>
+  </head>
+  <body>
+    <!--
+      Filtros asistivos de daltonismo (heredados de ../usbi/frontend,
+      plan/03_Frontend.md §3: "components/ui/, styles/, identidad visual UV
+      — sin cambios").
+
+      Son matrices de DALTONIZACIÓN (corrección), NO de simulación. Una
+      matriz de simulación le muestra a una persona sin daltonismo cómo ve
+      una persona daltónica; aplicarla a alguien que SÍ es daltónico solo le
+      quita más información de color. Cada matriz de abajo es en cambio
+      M = I + C·(I − S), donde S es la simulación de dicromacia
+      Brettel/Viénot para la condición y C es la matriz de redistribución de
+      error del algoritmo Fidaner/"Daltonize": calcula la información de
+      color que esa condición pierde y la empuja a canales que la persona
+      todavía puede distinguir.
+    -->
+    <svg class="color-filter-defs" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+      <defs>
+        <filter id="deuteranopia-filter" color-interpolation-filters="linearRGB">
+          <feColorMatrix
+            type="matrix"
+            values="1       0       0    0 0
+                    -0.4375 1.4375  0    0 0
+                    0.2625  -0.5625 1.3  0 0
+                    0       0       0    1 0"
+          />
+        </filter>
+        <filter id="protanopia-filter" color-interpolation-filters="linearRGB">
+          <feColorMatrix
+            type="matrix"
+            values="1       0       0      0 0
+                    -0.2549 1.2549  0      0 0
+                    0.3031  -0.5451 1.242  0 0
+                    0       0       0      1 0"
+          />
+        </filter>
+        <filter id="tritanopia-filter" color-interpolation-filters="linearRGB">
+          <feColorMatrix
+            type="matrix"
+            values="1.05 -0.3825 0.3325  0 0
+                    0    1.2345  -0.2345 0 0
+                    0    0       1       0 0
+                    0    0       0       1 0"
+          />
+        </filter>
+      </defs>
+    </svg>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

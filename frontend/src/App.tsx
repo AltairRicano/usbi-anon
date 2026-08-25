@@ -1,0 +1,83 @@
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { ProtectedRoute } from './features/auth/ProtectedRoute';
+
+const LoginPage = lazy(() => import('./features/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
+const HomePage = lazy(() => import('./features/home/HomePage'));
+const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQuizBankPage'));
+const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthEventBridge />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/registration-questions"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminQuizBankPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/accounts"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAccountsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/unauthorized"
+            element={
+              <main className="min-h-screen flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <h1 style={{ color: 'var(--color-error)' }}>Acceso no autorizado</h1>
+                  <p style={{ color: 'var(--color-muted)' }}>No tienes permiso para ver esta página.</p>
+                </div>
+              </main>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+
+function RouteFallback() {
+  return (
+    <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
+      <p className="text-[--color-muted]">Cargando...</p>
+    </main>
+  );
+}
+
+function AuthEventBridge() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleUnauthorized = () => navigate('/login', { replace: true });
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [navigate]);
+
+  return null;
+}
