@@ -1,14 +1,22 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { applyDocumentClasses, useSettingsStore } from './features/settings/useSettingsStore';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
 const HomePage = lazy(() => import('./features/home/HomePage'));
 const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQuizBankPage'));
 const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
+const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 
 export default function App() {
+  const { theme, colorBlindFilter, reduceMotion, textScale } = useSettingsStore();
+
+  useEffect(() => {
+    applyDocumentClasses({ theme, colorBlindFilter, reduceMotion, textScale });
+  }, [theme, colorBlindFilter, reduceMotion, textScale]);
+
   return (
     <BrowserRouter>
       <AuthEventBridge />
@@ -16,6 +24,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          {/* Pública a propósito: alguien con baja visión o daltonismo debe
+              poder ajustar apariencia/accesibilidad ANTES de tener cuenta. */}
+          <Route path="/settings" element={<SettingsPage />} />
 
           <Route
             path="/"

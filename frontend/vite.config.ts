@@ -19,6 +19,10 @@ export default defineConfig({
     },
   },
   preview: {
+    // Sin esto, `vite preview` responde 403 "Blocked request" a cualquier
+    // request cuyo header Host no sea localhost/IP — bloquea justo el tráfico
+    // que llega vía el túnel de Cloudflare con Host: usbi.heimdall-lab.com.
+    allowedHosts: ["usbi.heimdall-lab.com"],
     proxy: {
       "/api": {
         target: process.env.VITE_BACKEND_URL ?? "http://localhost:8088",

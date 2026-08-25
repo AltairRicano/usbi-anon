@@ -78,7 +78,8 @@ documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_
 │       │   ├── auth/                   # registro (wizard de 3 pasos) y login
 │       │   ├── admin-accounts/         # alta de staff, borrado, reseteo de contraseña
 │       │   ├── admin-quiz-bank/        # CRUD del banco de preguntas de registro
-│       │   └── home/                   # landing mínima tras el login
+│       │   ├── home/                   # landing mínima tras el login
+│       │   └── settings/               # tema, tamaño de texto, filtros de daltonismo, movimiento
 │       └── shared/                     # cliente HTTP, componentes de interfaz, esquemas comunes
 ├── plan/                               # documentos de diseño y planeación técnica
 │   ├── 00_Plan_maestro.md              # índice del plan de migración, fases y decisiones abiertas

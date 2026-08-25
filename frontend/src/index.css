@@ -142,9 +142,8 @@ html.dark {
 }
 
 /* ── Filtros de accesibilidad daltónica ──────────────────────
-   Sin toggle de configuración todavía en F10 (no hay SettingsPage en el
-   alcance de esta fase) — las reglas quedan listas para cuando esa página se
-   porte, igual que en ../usbi. */
+   Toggle en features/settings/SettingsPage.tsx (F10.5), vía
+   useSettingsStore / clases en <html>, igual que en ../usbi. */
 html.deuteranopia #root {
   filter: contrast(1.06) saturate(0.78) hue-rotate(-12deg);
 }

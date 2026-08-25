@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../shared/components/ui/Card';
+import { SettingsEntry } from '../../shared/components/SettingsEntry';
 import { useAuthStore } from '../auth/useAuthStore';
 
 /**
@@ -22,7 +23,10 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold">Hola, {user?.display_alias ?? user?.nickname}</h1>
             <p className="text-sm text-[--color-muted]">Rol: {user?.role}</p>
           </div>
-          <Button variant="outline" onClick={logout}>Cerrar sesión</Button>
+          <div className="flex items-center gap-2">
+            <SettingsEntry />
+            <Button variant="outline" onClick={logout}>Cerrar sesión</Button>
+          </div>
         </header>
 
         <Card>

@@ -4,6 +4,7 @@ import { ZodError } from 'zod';
 import { Button } from '../../shared/components/ui/Button';
 import { Input } from '../../shared/components/ui/Input';
 import { UsbiEmblem, Spinner } from '../../shared/components/ui/Brand';
+import { SettingsEntry } from '../../shared/components/SettingsEntry';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import {
@@ -162,6 +163,10 @@ export default function RegisterPage() {
         <div aria-hidden="true" className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }} />
 
         <div className="space-y-6 p-8">
+          <div className="flex justify-end">
+            <SettingsEntry />
+          </div>
+
           <header className="flex flex-col items-center gap-3 text-center">
             <UsbiEmblem />
             <div className="space-y-0.5">
