@@ -11,6 +11,12 @@ import (
 
 var ErrValidation = errors.New("validation error")
 
+// validDeviceKinds refleja el CHECK de devices.device_kind. Rechazar aquí,
+// antes del INSERT, da un 422 legible en vez de un error crudo de Postgres.
+var validDeviceKinds = map[string]bool{
+	"movil": true, "tablet": true, "laptop": true, "escritorio": true, "otro": true,
+}
+
 type Service struct {
 	repo *repository.Queries
 }
@@ -20,7 +26,8 @@ func NewService(repo *repository.Queries) *Service {
 }
 
 func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) (DeviceResponse, error) {
-	if userID == uuid.Nil || strings.TrimSpace(req.DeviceLabel) == "" {
+	deviceKind := strings.TrimSpace(req.DeviceKind)
+	if userID == uuid.Nil || !validDeviceKinds[deviceKind] {
 		return DeviceResponse{}, ErrValidation
 	}
 	platform := strings.TrimSpace(req.Platform)
@@ -28,10 +35,10 @@ func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req Regi
 		return DeviceResponse{}, ErrValidation
 	}
 	device, err := s.repo.CreateDevice(ctx, repository.CreateDeviceParams{
-		ID:          uuid.New(),
-		UserID:      userID,
-		DeviceLabel: strings.TrimSpace(req.DeviceLabel),
-		Platform:    platform,
+		ID:         uuid.New(),
+		UserID:     userID,
+		DeviceKind: deviceKind,
+		Platform:   platform,
 	})
 	if err != nil {
 		return DeviceResponse{}, err
@@ -58,7 +65,7 @@ func deviceToResponse(device repository.Device) DeviceResponse {
 	resp := DeviceResponse{
 		ID:            device.ID,
 		UserID:        device.UserID,
-		DeviceLabel:   device.DeviceLabel,
+		DeviceKind:    device.DeviceKind,
 		Platform:      device.Platform,
 		RegisteredAt:  device.RegisteredAt,
 		LastSeenAt:    device.LastSeenAt,

@@ -323,7 +323,29 @@ sin tener antes el esquema cerrado y el repositorio partido.
    `level_attempts`, `experience_history`, `daily_streak` ni `accounts`.
 4. `levels`, `sync`, `devices`, `incidents`, `crypto`, `dbmaint`, `mailer`,
    `audit`, `httpjson`, `httpproblem`, `httputil` tienen **diff cero** contra
-   `../usbi` salvo la línea `module` de los imports.
+   `../usbi` salvo la línea `module` de los imports. **Dos excepciones
+   detectadas y aceptadas al cerrar F4** (verificado con `diff -rq` contra
+   `../usbi` sobre los 11 paquetes, `estado_proyecto.md` fecha 2026-08-25):
+   - `internal/devices` (`dto.go`, `service.go`): F3 copió verbatim
+     `device_label` (texto libre), pero el esquema de F1
+     (`migrations/main/0001_esquema_principal.up.sql`) ya había renombrado la
+     columna a `device_kind` con un CHECK de vocabulario cerrado — decisión
+     tomada y marcada "✅ Resuelto" en
+     [`01_Base_de_datos.md` §3.4](01_Base_de_datos.md) antes de F3. El diff
+     de F3 estaba roto contra el esquema real (`column "device_label" does
+     not exist` en cualquier base de verdad); F4 lo corrige. `handler.go` sí
+     queda diff-cero (solo cambia la ruta de import).
+   - `internal/sync/integration_test.go`: F3 lo difirió explícitamente a F4
+     por depender de `auth.NewService`/`testdb.Setup`, que no existían
+     todavía. Ahora que ambos se reescribieron (dos bases, no una), este
+     archivo no puede ser diff-cero por construcción: `testdb.Setup` devuelve
+     `*testdb.DB` en vez de `(*repository.Queries, *sql.DB)`,
+     `auth.NewService` recibe `(ident, main, cfg)` en vez de `(q, cfg)`,
+     `Register` perdió `FullName`, y el fixture necesitó un `Login` explícito
+     tras `Register` (la réplica `accounts` — con la que `devices.user_id`
+     tiene FK — se crea recién en el primer login, no en el registro). El
+     resto de `sync` (`service.go`, `handler.go`, `service_test.go`) sigue
+     diff-cero.
 5. `/health/ready` falla si **cualquiera** de las dos bases no responde, e
    indica cuál.
 6. La saga ARCO reanuda correctamente desde cada estado intermedio (prueba de

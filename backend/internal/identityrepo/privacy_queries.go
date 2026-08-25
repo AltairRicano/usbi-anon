@@ -128,6 +128,77 @@ FOR UPDATE
 	return req, err
 }
 
+// UpdateArcoRequestStatus persiste un checkpoint de la saga de cancelación
+// (plan/02_Backend.md §5): pending → purging_main → identity_pseudonymized →
+// resolved/rejected. Deliberadamente NO toca resolved_at/handled_by/
+// response_summary — eso lo hace ResolveArcoRequest solo en el paso final,
+// para no fijar esos campos antes de que el trámite realmente concluya.
+func (q *Queries) UpdateArcoRequestStatus(ctx context.Context, id uuid.UUID, status string) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE arco_requests SET status = $2 WHERE id = $1
+`, id, status)
+	return err
+}
+
+// ClaimArcoRequestForCancellation transiciona pending → purging_main Y
+// persiste handled_by/response_summary EN ESE MISMO UPDATE, no en el paso
+// final de la saga. Es lo que le permite al job de reconciliación (o a un
+// segundo llamador que estaba bloqueado detrás del FOR UPDATE de
+// GetArcoRequestForUpdate) terminar un trámite atascado sin depender de
+// información que solo existía en la petición HTTP original del admin, que
+// para entonces ya pudo haber terminado o el proceso haber muerto.
+func (q *Queries) ClaimArcoRequestForCancellation(ctx context.Context, id uuid.UUID, handledBy uuid.NullUUID, responseSummary string) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE arco_requests
+SET status = 'purging_main', handled_by = $2, response_summary = $3
+WHERE id = $1 AND status = 'pending'
+`, id, handledBy, responseSummary)
+	return err
+}
+
+// MarkArcoRequestResolved cierra el último paso de una cancelación aprobada
+// cuyo handled_by/response_summary ya se guardaron en ClaimArcoRequestForCancellation.
+// Deliberadamente separado de ResolveArcoRequest (que sí recibe esos dos
+// campos): esta versión la puede llamar el job de reconciliación, que no
+// tiene ni el actor ni el resumen de la solicitud original, solo el
+// checkpoint ya persistido.
+func (q *Queries) MarkArcoRequestResolved(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE arco_requests SET status = 'resolved', resolved_at = NOW() WHERE id = $1
+`, id)
+	return err
+}
+
+// ListStuckArcoRequests alimenta el job de reconciliación (regla 5 de
+// plan/02_Backend.md §5): solicitudes que quedaron a medio camino porque el
+// proceso murió entre el paso [P] y el paso [I] de la saga. olderThan evita
+// que el job se pise con una resolución que apenas está en curso en otro
+// request del mismo proceso.
+func (q *Queries) ListStuckArcoRequests(ctx context.Context, olderThan time.Time, limit int32) ([]ArcoRequestForResolution, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT id, user_id, request_type, status
+FROM arco_requests
+WHERE status IN ('purging_main', 'identity_pseudonymized')
+  AND received_at < $1
+ORDER BY received_at ASC
+LIMIT $2
+`, olderThan, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]ArcoRequestForResolution, 0)
+	for rows.Next() {
+		var item ArcoRequestForResolution
+		if err := rows.Scan(&item.ID, &item.UserID, &item.RequestType, &item.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 type ResolveArcoRequestParams struct {
 	ID              uuid.UUID
 	HandledBy       uuid.NullUUID

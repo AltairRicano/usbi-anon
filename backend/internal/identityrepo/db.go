@@ -17,6 +17,7 @@ package identityrepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 )
 
 type DBTX interface {
@@ -38,4 +39,23 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db: tx,
 	}
+}
+
+// BeginTx/txBeginner/ErrTransactionsUnsupported son el mismo patrón que
+// repository.BeginTx (ver internal/repository/content_queries.go, heredado
+// de ../usbi): no existían aquí en F2 porque ninguna consulta de F2 abría su
+// propia transacción. F4 los necesita porque AgeUp, el doble opt-in de tutor
+// y la fase de identidad de la saga ARCO (internal/privacy) sí la abren.
+var ErrTransactionsUnsupported = errors.New("identityrepo: configured DBTX does not support transactions")
+
+type txBeginner interface {
+	BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
+}
+
+func (q *Queries) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	db, ok := q.db.(txBeginner)
+	if !ok {
+		return nil, ErrTransactionsUnsupported
+	}
+	return db.BeginTx(ctx, opts)
 }

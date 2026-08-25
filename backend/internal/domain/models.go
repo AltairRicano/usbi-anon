@@ -28,13 +28,19 @@ const (
 
 // User is the decoupled public DTO. It NEVER includes password_hash,
 // email/phone ciphertext, HMAC keys, or any cryptographic material.
+//
+// FullName no existe: USBI-Anon no guarda nombre real en ningún lado del
+// sistema principal. DisplayAlias lo sustituye — un alias generado por el
+// sistema ("Jaguar Azul 42"), resuelto contra la vista account_aliases de la
+// base principal (ver plan/01_Base_de_datos.md §3.1 y plan/02_Backend.md
+// §3.6). No es un identificador y nunca debe usarse como clave de búsqueda.
 type User struct {
-	ID        uuid.UUID  `json:"id"`
-	FullName  string     `json:"full_name"`
-	IsAdult   bool       `json:"is_adult"`
-	Role      UserRole   `json:"role"`
-	Status    UserStatus `json:"status"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID           uuid.UUID  `json:"id"`
+	DisplayAlias string     `json:"display_alias"`
+	IsAdult      bool       `json:"is_adult"`
+	Role         UserRole   `json:"role"`
+	Status       UserStatus `json:"status"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 // JWTClaims carries the standard claims embedded in every USBI JWT.

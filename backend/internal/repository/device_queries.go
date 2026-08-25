@@ -8,18 +8,18 @@ import (
 )
 
 type CreateDeviceParams struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	DeviceLabel string
-	Platform    string
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	DeviceKind string
+	Platform   string
 }
 
 func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (Device, error) {
 	row := q.db.QueryRowContext(ctx, `
-INSERT INTO devices (id, user_id, device_label, platform)
+INSERT INTO devices (id, user_id, device_kind, platform)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, device_label, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
-`, arg.ID, arg.UserID, arg.DeviceLabel, arg.Platform)
+RETURNING id, user_id, device_kind, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
+`, arg.ID, arg.UserID, arg.DeviceKind, arg.Platform)
 	return scanDevice(row)
 }
 
@@ -30,7 +30,7 @@ type GetActiveDeviceParams struct {
 
 func (q *Queries) GetActiveDevice(ctx context.Context, arg GetActiveDeviceParams) (Device, error) {
 	row := q.db.QueryRowContext(ctx, `
-SELECT id, user_id, device_label, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
+SELECT id, user_id, device_kind, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
 FROM devices
 WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
 `, arg.ID, arg.UserID)
@@ -70,7 +70,7 @@ type ListDevicesParams struct {
 
 func (q *Queries) ListDevices(ctx context.Context, arg ListDevicesParams) ([]Device, error) {
 	rows, err := q.db.QueryContext(ctx, `
-SELECT id, user_id, device_label, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
+SELECT id, user_id, device_kind, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
 FROM devices
 WHERE user_id = $1 AND revoked_at IS NULL
 ORDER BY last_seen_at DESC
@@ -102,7 +102,7 @@ func scanDevice(row interface {
 	err := row.Scan(
 		&device.ID,
 		&device.UserID,
-		&device.DeviceLabel,
+		&device.DeviceKind,
 		&device.Platform,
 		&device.RegisteredAt,
 		&device.LastSeenAt,

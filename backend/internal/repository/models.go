@@ -38,10 +38,17 @@ type DailyStreak struct {
 	ActivityDate time.Time `json:"activity_date"`
 }
 
+// Device.DeviceKind (no DeviceLabel): la migración F1 sustituyó la columna de
+// texto libre device_label por device_kind, un vocabulario cerrado (movil,
+// tablet, laptop, escritorio, otro) — ver plan/01_Base_de_datos.md §3.4. F3
+// copió este archivo verbatim desde ../usbi sin detectar el desajuste contra
+// el esquema ya decidido; se corrige en F4 al tocar el paquete devices para
+// la saga ARCO (MarkUserDevicesForWipe). Esto rompe deliberadamente el
+// diff-cero de internal/devices contra ../usbi.
 type Device struct {
 	ID            uuid.UUID    `json:"id"`
 	UserID        uuid.UUID    `json:"user_id"`
-	DeviceLabel   string       `json:"device_label"`
+	DeviceKind    string       `json:"device_kind"`
 	Platform      string       `json:"platform"`
 	RegisteredAt  time.Time    `json:"registered_at"`
 	LastSeenAt    time.Time    `json:"last_seen_at"`

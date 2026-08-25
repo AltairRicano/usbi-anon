@@ -1,12 +1,20 @@
 # Plan maestro — Migración de USBI a USBI-Anon (dos bases de datos, identidad por UUID)
 
-> **Fecha:** 2026-08-24
-> **Estado:** **F3 cerrada** — `levels`, `sync` (sin `integration_test.go`),
-> `devices`, `incidents`, `crypto`, `dbmaint`, `mailer`, `audit`, `httpjson`,
-> `httpproblem`, `httputil`, `domain` copiados verbatim, más el `internal/repository`
-> de la base principal reconstruido a partir de la partición de `query.sql.go`/
-> `models.go`. Compilado, `go vet` y `go test ./...` en verde contra Go 1.22.
-> Falta F4 (reescritura de `auth`, `maintenance`, `transport`, `main.go`).
+> **Fecha:** 2026-08-25
+> **Estado:** **F4 cerrada** — `auth` (dto/service/handler), `maintenance`
+> (con el job de reconciliación ARCO), `transport/router.go`, `main.go` (dos
+> pools, dos health checks), `cmd/create_admin` (escribe en las dos bases) y
+> `internal/testdb` (dos esquemas desechables) reescritos para el reparto en
+> dos bases. Saga ARCO de cancelación implementada como checkpoint reanudable
+> en `arco_requests.status`, con reclamo bajo `FOR UPDATE` y dos pruebas de
+> integración que matan el proceso entre cada paso, corridas contra un
+> esquema desechable en `usbi-database`. Compilado, `go vet`, `go test ./...`
+> y `gofmt -l` en verde (Go 1.22); servidor arrancado de extremo a extremo
+> contra dos bases desechables reales (registro→login→alias→`/health/ready`
+> detectando la caída de cada base por separado). Ver
+> [`02_Backend.md` §8](02_Backend.md) para el detalle de los 7 criterios de
+> aceptación, incluidas dos excepciones documentadas al diff-cero del
+> criterio 4. Falta F5 (frontend).
 > **Fuente de verdad de este plan:** el código real de `../usbi` (migraciones aplicadas
 > y verificadas contra el contenedor `usbi-database`), **no** el `plan/` de `../usbi`.
 
@@ -84,7 +92,7 @@ que hoy.
 | **F1** | **Scripts SQL** ✅ **hecha** | `backend/migrations/{identity,main}/0001_*.{up,down}.sql` + `backend/sql/00_roles_*.sql` | F2 |
 | **F2** | **Esqueleto Go** ✅ **hecha** | Módulo nuevo, `config` con dos DSN, `internal/identityrepo` | F3 |
 | **F3** | **Copia verbatim** ✅ **hecha** | `levels`, `sync`, `devices`, `incidents`, `crypto`, `httpjson`, `httpproblem`, `httputil`, `audit`, `mailer`, `dbmaint`, `domain` + `internal/repository` [P] | F4 |
-| F4 | Reescritura | `auth`, `maintenance`, `transport`, `main.go`, `cmd/create_admin` | F5 |
+| **F4** | **Reescritura** ✅ **hecha** | `auth`, `maintenance`, `transport`, `main.go`, `cmd/create_admin`, `internal/testdb` | F5 |
 | F5 | Frontend | 6 archivos (ver [`03_Frontend.md`](03_Frontend.md)) | F6 |
 | F6 | Legal | Reescritura completa de Convenio/EIPDP/Documento de seguridad/Condiciones/Diccionario | — |
 
@@ -124,6 +132,39 @@ puros (`content_queries.go`, `badge_queries.go`, `device_queries.go`,
 línea `module`) en los 11 paquetes verbatim, y los criterios 1 y 2 de
 [`02_Backend.md` §8](02_Backend.md). No se tocó ningún paquete de `../usbi` ni
 se levantó ninguna base de datos.
+
+**F4 reescribió los cinco paquetes que solo tienen sentido hablando con dos
+bases** (`auth`, `maintenance`, `transport`, `main.go`, `cmd/create_admin`),
+más `internal/testdb` (dos esquemas desechables en vez de uno) y
+`internal/domain` (quitó `FullName`, añadió `DisplayAlias`, pendiente desde
+F3). `auth.Service`/`maintenance.Service` reciben ahora `(ident, main, cfg)`
+en vez de `(q, cfg)`; `Login`/`Refresh` sincronizan la réplica `accounts` [P]
+(alias sorteado una sola vez, nunca sobrescrito) y son la única escritura
+cruzada a las dos bases fuera de la cancelación. La saga de cancelación
+(`internal/privacy.PurgeMain`/`PseudonymizeIdentity`) queda persistida como
+checkpoint reanudable en `arco_requests.status` (`pending → purging_main →
+identity_pseudonymized → resolved/rejected`), reclamado bajo `SELECT ... FOR
+UPDATE` dentro de una transacción corta para que dos llamadas concurrentes
+sobre el mismo trámite no corran la purga dos veces en paralelo; el mismo
+mecanismo lo comparten `auth.Service.ResolveArcoRequest` (reanuda si lo
+vuelven a llamar) y el nuevo job de reconciliación de `maintenance` (retoma
+trámites que nadie volvió a tocar, vía `identityrepo.ListStuckArcoRequests`).
+Se detectó y corrigió un bug heredado de F3 (`device_label` en vez de
+`device_kind`, columna ya renombrada en el esquema de F1) y se descubrió que
+`cmd/create_admin` necesita escribir también en la base principal
+(`admin_audit_log.actor_user_id` tiene FK a `accounts(id)`, así que un admin
+recién creado no podría auditar ninguna acción de contenido sin esa réplica).
+Verificado con `go build ./...`, `go vet ./...`, `go test ./...` y
+`gofmt -l .` en verde (Go 1.22), dos pruebas de integración que matan el
+proceso entre cada paso de la saga (una por cada estado intermedio) corridas
+contra un esquema desechable en `usbi-database`, y un arranque real del
+binario compilado contra dos bases Postgres desechables (registro, login,
+alias generado, y `/health/ready` devolviendo 503 con el nombre de la base
+caída al derribar cada una por separado). Los 7 criterios de
+[`02_Backend.md` §8](02_Backend.md) se verificaron uno a uno; el criterio 4
+(diff-cero) quedó con dos excepciones documentadas ahí mismo. Ninguna base
+del proyecto (`usbi_db`, `maker_db`) se modificó — todas las verificaciones
+usaron bases/esquemas desechables creados y eliminados en la misma sesión.
 
 ## 4. Decisiones que hay que cerrar antes de escribir el SQL definitivo
 
