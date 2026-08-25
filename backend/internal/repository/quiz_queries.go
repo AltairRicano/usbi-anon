@@ -91,8 +91,14 @@ ORDER BY display_order ASC, created_at ASC
 // condición de carrera.
 func (q *Queries) CountActiveRegistrationQuestions(ctx context.Context) (int, error) {
 	var count int
+	// Postgres rechaza FOR UPDATE combinado directo con una función de
+	// agregación ("FOR UPDATE is not allowed with aggregate functions") — el
+	// lock de fila va en la subconsulta, el COUNT(*) en la externa, que ya no
+	// lleva FOR UPDATE.
 	err := q.db.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM registration_questions WHERE is_active FOR UPDATE
+SELECT COUNT(*) FROM (
+    SELECT id FROM registration_questions WHERE is_active FOR UPDATE
+) locked_active
 `).Scan(&count)
 	return count, err
 }
