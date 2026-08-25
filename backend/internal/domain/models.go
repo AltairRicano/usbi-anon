@@ -20,22 +20,26 @@ const (
 type UserStatus string
 
 const (
-	StatusActive              UserStatus = "active"
-	StatusSuspended           UserStatus = "suspended"
-	StatusPendingTutorConsent UserStatus = "pending_tutor_consent"
-	StatusDeleted             UserStatus = "deleted"
+	StatusActive    UserStatus = "active"
+	StatusSuspended UserStatus = "suspended"
+	StatusDeleted   UserStatus = "deleted"
 )
 
 // User is the decoupled public DTO. It NEVER includes password_hash,
 // email/phone ciphertext, HMAC keys, or any cryptographic material.
 //
 // FullName no existe: USBI-Anon no guarda nombre real en ningún lado del
-// sistema principal. DisplayAlias lo sustituye — un alias generado por el
-// sistema ("Jaguar Azul 42"), resuelto contra la vista account_aliases de la
-// base principal (ver plan/01_Base_de_datos.md §3.1 y plan/02_Backend.md
-// §3.6). No es un identificador y nunca debe usarse como clave de búsqueda.
+// sistema principal. Tampoco existe ningún dato de tutor ni de correo — el
+// registro se hace por cuestionario de gustos (ver
+// plan/04_Rediseno_identidad_gustos.md), y Nickname es la credencial de login
+// derivada de esas respuestas. DisplayAlias es un dato distinto y no
+// relacionado: un alias 100% aleatorio ("Jaguar Azul 42"), resuelto contra la
+// vista account_aliases. Ninguno de los dos debe usarse como clave de
+// búsqueda salvo Nickname, que sí lo es por diseño (UNIQUE, `WHERE nickname =
+// $1`).
 type User struct {
 	ID           uuid.UUID  `json:"id"`
+	Nickname     string     `json:"nickname"`
 	DisplayAlias string     `json:"display_alias"`
 	IsAdult      bool       `json:"is_adult"`
 	Role         UserRole   `json:"role"`

@@ -1,8 +1,8 @@
-// Package config centralises environment loading and parsing shared by both
-// backend binaries (main server and cmd/create_admin). Copiado de
-// ../usbi/backend/internal/config con una sola adición: USBI-Anon abre DOS
-// pools de PostgreSQL (identidad y principal), así que la construcción del
-// DSN se parametrizó para servir a ambos sin duplicar la lógica de parseo.
+// Package config centralises environment loading and parsing para el binario
+// del servidor. Copiado de ../usbi/backend/internal/config; el rediseño de
+// identidad de plan/04_Rediseno_identidad_gustos.md volvió a dejar una sola
+// base de datos, así que la construcción del DSN vuelve a ser la de
+// ../usbi (un único pool).
 package config
 
 import (
@@ -32,9 +32,10 @@ func LoadEnvironment() {
 	}
 }
 
-// DatabaseURL builds the Postgres DSN for the BASE PRINCIPAL (progreso,
-// contenido, auditoría de contenido) from DATABASE_URL if set, else from the
-// individual DB_* variables (DB_USER/DB_PASSWORD/DB_HOST required).
+// DatabaseURL builds the Postgres DSN for la única base del sistema
+// (identidad + progreso + contenido, ver plan/04_Rediseno_identidad_gustos.md)
+// from DATABASE_URL if set, else from the individual DB_* variables
+// (DB_USER/DB_PASSWORD/DB_HOST required).
 func DatabaseURL() string {
 	return databaseURLFromEnv(dsnEnvNames{
 		urlVar:      "DATABASE_URL",
@@ -47,29 +48,8 @@ func DatabaseURL() string {
 	})
 }
 
-// IdentityDatabaseURL builds the Postgres DSN for the BASE DE IDENTIDAD
-// (correo + hash de contraseña + UUID) desde IDENT_DATABASE_URL si está
-// definida, o desde las variables IDENT_DB_* individuales
-// (IDENT_DB_USER/IDENT_DB_PASSWORD/IDENT_DB_HOST requeridas).
-//
-// Esta base razonablemente vivirá en una máquina distinta a la principal
-// (ver plan/00_Plan_maestro.md §4.1), así que el aviso de DB_SSLMODE=disable
-// con host no-loopback importa aquí más que en DatabaseURL().
-func IdentityDatabaseURL() string {
-	return databaseURLFromEnv(dsnEnvNames{
-		urlVar:      "IDENT_DATABASE_URL",
-		userVar:     "IDENT_DB_USER",
-		passwordVar: "IDENT_DB_PASSWORD",
-		hostVar:     "IDENT_DB_HOST",
-		portVar:     "IDENT_DB_PORT",
-		nameVar:     "IDENT_DB_NAME",
-		sslModeVar:  "IDENT_DB_SSLMODE",
-	})
-}
-
 // dsnEnvNames names the environment variables that describe one Postgres
-// connection. Both bases share the same shape (una URL completa opcional,
-// o el juego de variables sueltas), solo cambia el prefijo.
+// connection (una URL completa opcional, o el juego de variables sueltas).
 type dsnEnvNames struct {
 	urlVar      string
 	userVar     string
@@ -200,8 +180,7 @@ func GetInt32Env(key string, fallback int32) int32 {
 }
 
 // CheckConnPoolBounds fatally exits if idle connections exceed open connections
-// — la misma comprobación que main.go aplicaba y que USBI-Anon debe correr
-// para los DOS pools (principal e identidad) por separado.
+// — la misma comprobación que main.go aplica sobre el único pool del sistema.
 func CheckConnPoolBounds(maxIdle, maxOpen int32) {
 	if maxIdle > maxOpen {
 		log.Fatalf("[FATAL] DB_MAX_IDLE_CONNS (%d) cannot exceed DB_MAX_OPEN_CONNS (%d)", maxIdle, maxOpen)
