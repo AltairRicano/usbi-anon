@@ -9,6 +9,7 @@ const HomePage = lazy(() => import('./features/home/HomePage'));
 const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQuizBankPage'));
 const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
+const MakerPage = lazy(() => import('./features/maker').then((mod) => ({ default: mod.MakerPage })));
 
 export default function App() {
   const { theme, colorBlindFilter, reduceMotion, textScale } = useSettingsStore();
@@ -33,6 +34,19 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <HomePage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Sin restricción de rol a propósito: el maker local guarda en
+              localStorage, no toca la base de datos ni necesita sección —
+              cualquier persona con sesión puede probar una idea de nivel
+              (plan/05_Contenido_maker_y_juego.md §5). */}
+          <Route
+            path="/maker"
+            element={
+              <ProtectedRoute>
+                <MakerPage />
               </ProtectedRoute>
             }
           />

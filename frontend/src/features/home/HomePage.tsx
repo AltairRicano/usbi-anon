@@ -5,10 +5,9 @@ import { SettingsEntry } from '../../shared/components/SettingsEntry';
 import { useAuthStore } from '../auth/useAuthStore';
 
 /**
- * Landing mínima tras el login. F10 solo cubre auth + paneles de admin
- * (plan/04_Rediseno_identidad_gustos.md §5) — el dashboard de progreso,
- * niveles y minijuegos de ../usbi/frontend se porta en una fase posterior,
- * no listada todavía en el plan de fases F5–F11.
+ * Landing mínima tras el login. El dashboard de progreso, niveles y
+ * minijuegos (F10.10, plan/05_Contenido_maker_y_juego.md) todavía no se ha
+ * portado — el maker local (F10.8) sí, y por eso ya tiene entrada aquí.
  */
 export default function HomePage() {
   const user = useAuthStore((s) => s.user);
@@ -36,8 +35,22 @@ export default function HomePage() {
           <CardContent>
             <p className="text-sm text-[--color-muted]">
               Esta pantalla es un punto de aterrizaje mínimo para probar el registro y el login de punta a punta.
-              El dashboard de progreso, niveles y minijuegos todavía no se ha portado a este proyecto.
+              El dashboard de progreso y los niveles jugables todavía no se han portado a este proyecto.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Maker local</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-[--color-muted]">
+              Crea niveles de prueba y guárdalos en este navegador, o expórtalos como archivo JSON.
+            </p>
+            <Button variant="outline">
+              <Link to="/maker">Abrir maker local</Link>
+            </Button>
           </CardContent>
         </Card>
 

@@ -2,11 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Greenfield para F10 (plan/04_Rediseno_identidad_gustos.md §5): sin Tauri
-// todavía — esta fase solo cubre registro/login/paneles de admin, no los
-// minijuegos que justificarían el empaquetado de escritorio. El wrapper
-// Tauri se añade cuando se porte el resto de la app de juego (dashboard,
-// niveles, sync offline), no antes.
+// Sin empaquetado de escritorio (Tauri) en ningún plan de este proyecto —
+// decisión de F10.8 (plan/05_Contenido_maker_y_juego.md §5), no una omisión
+// temporal: USBI-Anon es web, y el maker local exporta niveles como descarga
+// de navegador (Blob + <a download>), igual que el fallback web que ya tenía
+// ../usbi. No reintroducir la rama Tauri en MakerPage.tsx.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
@@ -17,6 +17,14 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    environment: "jsdom",
+    // packages/* tiene su propio vitest.config.ts (ver frontend/packages/
+    // engine/vitest.config.ts) y corre por separado vía
+    // `npm run test --workspace=@usbi/engine` — excluido aquí para no
+    // duplicar su ejecución.
+    exclude: ["**/node_modules/**", "packages/**"],
   },
   preview: {
     // Sin esto, `vite preview` responde 403 "Blocked request" a cualquier
