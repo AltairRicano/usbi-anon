@@ -404,8 +404,16 @@ z.string().trim().min(1).max(200)
 | F7 ✅ **hecha** | Repositorio + privacidad | `internal/repository` unificado, `internal/privacy.CancelAccount`, `internal/testdb` con un esquema | F5, F6 |
 | F8 ✅ **hecha** | `internal/quiz` | Banco de preguntas + generación nickname/password, con pruebas unitarias de determinismo/colisión | F5 (solo necesita el esquema, no F6/F7) |
 | F9 | `internal/auth`, transport, main.go, bootstrap admin | Registro en 3 pasos, login, age-up, ARCO simplificado, gestión de admins | F7, F8 |
-| F10 | Frontend | Wizard de registro, login, panel de banco de preguntas con modal, panel de admins | Ninguna para maquetar (el contrato de API de §3 ya está fijo); F9 para probar contra backend real |
+| F10 ✅ **hecha** | Frontend de identidad | Wizard de registro, login, panel de banco de preguntas con modal, panel de admins | Ninguna para maquetar (el contrato de API de §3 ya está fijo); F9 para probar contra backend real |
+| F10.5 ✅ **hecha** | Personalización y accesibilidad | Tema claro/oscuro, tamaño de texto, filtros de daltonismo, reducir movimiento, `/settings` pública | F10 |
+| F10.6 – F10.12 | Contenido, maker y juego | Poda de roles, engine+schema, maker local, admin de contenido con purga, vista de jugador, borrado de cuenta, navegación | Detalle completo en [`plan/05_Contenido_maker_y_juego.md`](05_Contenido_maker_y_juego.md) |
 | F11 | Legal | Reescritura completa (ya prevista como F6 original, renumerada) | — (totalmente independiente) |
+
+> **El árbol de archivos de la §5 de este documento describe únicamente el
+> frontend de identidad.** Nunca cubrió maker, contenido, juegos ni vista de
+> jugador — y esa omisión es la causa de que F10 entregara solo el registro y
+> los paneles de administración. Para todo lo demás manda
+> `plan/05_Contenido_maker_y_juego.md`.
 
 **Cómo paralelizar con varios agentes o sesiones simultáneas:**
 

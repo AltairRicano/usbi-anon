@@ -49,6 +49,7 @@ Este documento es el índice y el contrato de fases. El detalle vive en:
 | [`01_Base_de_datos.md`](01_Base_de_datos.md) | Qué tabla/columna se conserva, se va, se crea o se mueve. Scripts SQL a producir. Mejoras y skill asociada. |
 | [`02_Backend.md`](02_Backend.md) | Qué paquetes Go se copian tal cual, cuáles se reescriben, qué firmas cambian, contra qué base habla cada una. |
 | [`03_Frontend.md`](03_Frontend.md) | Los 6 archivos que cambian y por qué el resto no se toca. |
+| [`05_Contenido_maker_y_juego.md`](05_Contenido_maker_y_juego.md) | **F10.6–F10.12**: poda de roles, motor de juego, maker local, panel de contenido con purga real, vista de jugador, borrado duro de cuenta y navegación. Manda sobre `03_Frontend.md` y sobre la §5 de `04` en todo lo de contenido y juego. |
 
 ---
 
