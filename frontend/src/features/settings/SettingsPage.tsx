@@ -17,6 +17,8 @@ export default function SettingsPage() {
     setTheme,
     colorBlindFilter,
     setColorBlindFilter,
+    muteGameSounds,
+    setMuteGameSounds,
     reduceMotion,
     setReduceMotion,
     textScale,
@@ -100,6 +102,18 @@ export default function SettingsPage() {
             label="Reducir animaciones"
             checked={reduceMotion}
             onChange={setReduceMotion}
+          />
+        </section>
+
+        <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+          <h2 className="mb-1 text-xl font-semibold">Sonido</h2>
+          <p className="mb-4 text-sm text-[--color-muted]">
+            Controla el sonido de los minijuegos (efectos de dados, temporizadores, etc.).
+          </p>
+          <ToggleRow
+            label="Silenciar sonidos de juego"
+            checked={muteGameSounds}
+            onChange={setMuteGameSounds}
           />
         </section>
       </div>

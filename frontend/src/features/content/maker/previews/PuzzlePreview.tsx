@@ -1,9 +1,11 @@
-// F10.8 (plan/05_Contenido_maker_y_juego.md §5): el original renderiza el
-// PuzzleGame real (features/games/PuzzleGame.tsx) dentro de la
-// previsualización, pero features/games/ todavía no se ha portado — eso es
-// F10.10. Placeholder temporal: se sustituye por el import real de
-// PuzzleGame en cuanto F10.10 traiga la carpeta games/.
-export function PuzzlePreview({ value }: { value: { phrase?: string; pieces?: number; seed?: number } }) {
+// F10.10 cerrada: features/games/PuzzleGame ya existe — se conecta aquí el
+// componente real en lugar del placeholder de texto que F10.8 dejó pendiente.
+import { lazy, Suspense } from 'react';
+import type { Puzzle } from '@usbi/schema';
+
+const PuzzleGame = lazy(() => import('../../../games/PuzzleGame').then((mod) => ({ default: mod.PuzzleGame })));
+
+export function PuzzlePreview({ value }: { value: Partial<Puzzle> }) {
   if (!value.phrase) {
     return (
       <div className="p-4 bg-gray-50 border rounded-md text-[--color-muted] text-center">
@@ -13,12 +15,19 @@ export function PuzzlePreview({ value }: { value: { phrase?: string; pieces?: nu
   }
 
   return (
-    <div className="p-4 bg-gray-50 border rounded-md text-center text-[--color-muted]">
-      <h3 className="font-bold text-gray-700 mb-2">Vista previa</h3>
-      <p className="text-sm">
-        «{value.phrase}» — {value.pieces ?? 3} piezas. La previsualización jugable del rompecabezas
-        estará disponible cuando se porten los minijuegos (F10.10).
-      </p>
-    </div>
+    <Suspense
+      fallback={
+        <div className="p-4 bg-gray-50 border rounded-md text-center text-[--color-muted]">
+          Cargando previsualización...
+        </div>
+      }
+    >
+      <PuzzleGame
+        phrase={value.phrase}
+        pieces={value.pieces ?? 3}
+        seed={value.seed ?? 1}
+        onFinish={() => undefined}
+      />
+    </Suspense>
   );
 }

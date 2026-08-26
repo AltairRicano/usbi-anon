@@ -5,12 +5,18 @@ import { applyDocumentClasses, useSettingsStore } from './features/settings/useS
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
-const HomePage = lazy(() => import('./features/home/HomePage'));
 const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQuizBankPage'));
 const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const MakerPage = lazy(() => import('./features/maker').then((mod) => ({ default: mod.MakerPage })));
 const AdminContentPage = lazy(() => import('./features/content/AdminContentPage').then((mod) => ({ default: mod.AdminContentPage })));
+
+// F10.10 — vista de jugador
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
+const SectionLevelsPage = lazy(() => import('./features/content/SectionLevelsPage').then((mod) => ({ default: mod.SectionLevelsPage })));
+const OfficialLevelPage = lazy(() => import('./features/content/OfficialLevelPage').then((mod) => ({ default: mod.OfficialLevelPage })));
+const LocalLevelPage = lazy(() => import('./features/content/LocalLevelPage').then((mod) => ({ default: mod.LocalLevelPage })));
+const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 
 export default function App() {
   const { theme, colorBlindFilter, reduceMotion, textScale } = useSettingsStore();
@@ -30,11 +36,50 @@ export default function App() {
               poder ajustar apariencia/accesibilidad ANTES de tener cuenta. */}
           <Route path="/settings" element={<SettingsPage />} />
 
+          {/* / → dashboard; HomePage fue una landing temporal de F10 que ya no hace falta. */}
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <HomePage />
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={<Navigate to="/" replace />}
+          />
+
+          {/* F10.10 — secciones, niveles oficial/local, perfil */}
+          <Route
+            path="/sections/:sectionId"
+            element={
+              <ProtectedRoute>
+                <SectionLevelsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/levels/:levelId/play"
+            element={
+              <ProtectedRoute>
+                <OfficialLevelPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/local-levels/:levelId/play"
+            element={
+              <ProtectedRoute>
+                <LocalLevelPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

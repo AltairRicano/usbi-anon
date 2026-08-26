@@ -462,6 +462,11 @@ export function AdminContentPage() {
                                 <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => void exportLevel(level.id)}>
                                   Exportar
                                 </Button>
+                                {level.is_published && (
+                                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs">
+                                    <Link to={`/levels/${level.id}/play`}>Previsualizar</Link>
+                                  </Button>
+                                )}
                                 {!level.is_published && <Button size="sm" className="h-8 px-2 text-xs" onClick={() => void publishLevel(level.id)}>Publicar</Button>}
                                 {level.is_published && <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => void unpublishLevel(level.id)}>Ocultar</Button>}
                                 <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white" onClick={() => void archiveLevel(level.id)}>Archivar</Button>

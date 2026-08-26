@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "npm run build --workspace=@usbi/engine && tsc --noEmit && vite build",
+    "build:engine": "npm run build --workspace=@usbi/engine",
+    "build": "NODE_OPTIONS=--max-old-space-size=400 tsc --noEmit && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "npm run test --workspace=@usbi/engine && vitest run"
@@ -19,6 +20,8 @@
     "@usbi/schema": "*",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.42.2",
+    "phaser": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
