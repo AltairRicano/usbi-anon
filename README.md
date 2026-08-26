@@ -81,7 +81,7 @@ documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_
 │       │   ├── auth/                   # registro (wizard de 3 pasos) y login
 │       │   ├── admin-accounts/         # alta de staff, borrado, reseteo de contraseña
 │       │   ├── admin-quiz-bank/        # CRUD del banco de preguntas de registro
-│       │   ├── content/                # tipos de contenido educativo y editor de niveles por plantilla
+│       │   ├── content/                # panel de admin de secciones/niveles, editor por plantilla, archivo y purga
 │       │   ├── home/                   # landing mínima tras el login
 │       │   ├── maker/                  # maker local: crear niveles de prueba sin necesidad de admin
 │       │   └── settings/               # tema, tamaño de texto, filtros de daltonismo, movimiento

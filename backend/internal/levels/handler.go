@@ -194,6 +194,70 @@ func (h *Handler) ArchiveLevel(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
+func (h *Handler) ListArchivedLevels(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canManageContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only content managers can list archived levels")
+		return
+	}
+
+	sectionID := uuid.Nil
+	if raw := r.URL.Query().Get("section_id"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request", "Bad Request", "section_id must be a valid UUID")
+			return
+		}
+		sectionID = parsed
+	}
+
+	resp, err := h.svc.ListArchivedLevels(r.Context(), sectionID)
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve archived levels")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) UnarchiveLevel(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canArchiveContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can restore archived levels")
+		return
+	}
+
+	levelID, ok := parseURLUUID(w, r, "level_id")
+	if !ok {
+		return
+	}
+
+	resp, err := h.svc.UnarchiveLevel(r.Context(), claims.UserID, levelID)
+	if err != nil {
+		writeServiceError(w, r, err, "Could not restore level")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) PurgeLevel(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canArchiveContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can purge levels")
+		return
+	}
+
+	levelID, ok := parseURLUUID(w, r, "level_id")
+	if !ok {
+		return
+	}
+
+	if err := h.svc.PurgeLevel(r.Context(), claims.UserID, levelID); err != nil {
+		writeServiceError(w, r, err, "Could not purge level")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) CompleteLevel(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	if !ok {
@@ -355,6 +419,60 @@ func (h *Handler) ArchiveSection(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
+func (h *Handler) ListArchivedSections(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canManageContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only content managers can list archived sections")
+		return
+	}
+
+	resp, err := h.svc.ListArchivedSections(r.Context())
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve archived sections")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) UnarchiveSection(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canArchiveContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can restore archived sections")
+		return
+	}
+
+	sectionID, ok := parseURLUUID(w, r, "section_id")
+	if !ok {
+		return
+	}
+
+	resp, err := h.svc.UnarchiveSection(r.Context(), claims.UserID, sectionID)
+	if err != nil {
+		writeServiceError(w, r, err, "Could not restore section")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) PurgeSection(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok || !canArchiveContent(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can purge sections")
+		return
+	}
+
+	sectionID, ok := parseURLUUID(w, r, "section_id")
+	if !ok {
+		return
+	}
+
+	if err := h.svc.PurgeSection(r.Context(), claims.UserID, sectionID); err != nil {
+		writeServiceError(w, r, err, "Could not purge section")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func parseURLUUID(w http.ResponseWriter, r *http.Request, key string) (uuid.UUID, bool) {
 	parsed, err := uuid.Parse(chi.URLParam(r, key))
 	if err != nil {
@@ -372,6 +490,10 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error, fallba
 		httpproblem.WriteProblem(w, r, http.StatusNotFound, "not-found", "Not Found", "Resource not found")
 	case errors.Is(err, ErrForbidden):
 		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", err.Error())
+	case errors.Is(err, ErrNotArchived):
+		httpproblem.WriteProblem(w, r, http.StatusConflict, "not-archived", "Conflict", "Content must be archived before it can be purged or restored")
+	case errors.Is(err, ErrSectionHasLevels):
+		httpproblem.WriteProblem(w, r, http.StatusConflict, "section-has-levels", "Conflict", "Purge every level in this section (archived or not) before purging the section itself")
 	default:
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", fallback)
 	}

@@ -10,6 +10,7 @@ const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQui
 const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const MakerPage = lazy(() => import('./features/maker').then((mod) => ({ default: mod.MakerPage })));
+const AdminContentPage = lazy(() => import('./features/content/AdminContentPage').then((mod) => ({ default: mod.AdminContentPage })));
 
 export default function App() {
   const { theme, colorBlindFilter, reduceMotion, textScale } = useSettingsStore();
@@ -64,6 +65,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminAccountsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/content"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminContentPage />
               </ProtectedRoute>
             }
           />

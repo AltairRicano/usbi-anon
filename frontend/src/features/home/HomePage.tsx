@@ -66,6 +66,9 @@ export default function HomePage() {
               <Button variant="outline">
                 <Link to="/admin/accounts">Cuentas</Link>
               </Button>
+              <Button variant="outline">
+                <Link to="/admin/content">Contenido</Link>
+              </Button>
             </CardContent>
           </Card>
         )}

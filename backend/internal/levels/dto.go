@@ -93,6 +93,18 @@ type SectionsResponse struct {
 	Items []SectionResponse `json:"items"`
 }
 
+// ArchivedLevelsResponse / ArchivedSectionsResponse listan contenido archivado
+// (F10.9, plan/05_Contenido_maker_y_juego.md §6). Sin paginación por cursor a
+// propósito: lo archivado es, por diseño, un subconjunto pequeño de lo que
+// existió alguna vez, no el catálogo completo.
+type ArchivedLevelsResponse struct {
+	Items []LevelSummary `json:"items"`
+}
+
+type ArchivedSectionsResponse struct {
+	Items []SectionResponse `json:"items"`
+}
+
 type CompleteLevelRequest struct {
 	Score            int32           `json:"score"`
 	Completed        bool            `json:"completed"`

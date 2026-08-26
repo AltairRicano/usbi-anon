@@ -122,6 +122,76 @@ RETURNING id, title, description, color, created_by_admin_id, is_published, crea
 	return scanSection(row)
 }
 
+// GetSectionByIDAny, a diferencia de ListSections, no filtra por archived_at:
+// la purga y el unarchive necesitan poder leer una sección archivada para
+// decidir si la operación es válida (plan/05_Contenido_maker_y_juego.md §6).
+func (q *Queries) GetSectionByIDAny(ctx context.Context, id uuid.UUID) (Section, error) {
+	row := q.db.QueryRowContext(ctx, `
+SELECT id, title, description, color, created_by_admin_id, is_published, created_at, deleted_at, archived_at
+FROM sections
+WHERE id = $1
+`, id)
+	return scanSection(row)
+}
+
+func (q *Queries) ListArchivedSections(ctx context.Context) ([]Section, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT id, title, description, color, created_by_admin_id, is_published, created_at, deleted_at, archived_at
+FROM sections
+WHERE deleted_at IS NULL AND archived_at IS NOT NULL
+ORDER BY archived_at DESC
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sections []Section
+	for rows.Next() {
+		section, err := scanSection(rows)
+		if err != nil {
+			return nil, err
+		}
+		sections = append(sections, section)
+	}
+	return sections, rows.Err()
+}
+
+func (q *Queries) UnarchiveSection(ctx context.Context, id uuid.UUID) (Section, error) {
+	row := q.db.QueryRowContext(ctx, `
+UPDATE sections
+SET archived_at = NULL
+WHERE id = $1 AND deleted_at IS NULL AND archived_at IS NOT NULL
+RETURNING id, title, description, color, created_by_admin_id, is_published, created_at, deleted_at, archived_at
+`, id)
+	return scanSection(row)
+}
+
+// CountLevelsBySection cuenta TODOS los niveles de la sección, archivados o
+// no: levels.section_id es ON DELETE RESTRICT a propósito (ver comentario en
+// la migración 0001, sección "CONTENIDO EDUCATIVO"), así que una sección con
+// cualquier nivel restante — vivo o archivado — no se puede purgar todavía.
+func (q *Queries) CountLevelsBySection(ctx context.Context, sectionID uuid.UUID) (int64, error) {
+	var count int64
+	err := q.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM levels WHERE section_id = $1`, sectionID).Scan(&count)
+	return count, err
+}
+
+// PurgeSection es el DELETE físico — irreversible, libera almacenamiento de
+// verdad. Solo puede ejecutarse sobre una sección ya archivada; RESTRICT en
+// levels.section_id la rechaza además si queda cualquier nivel referenciándola
+// (ver CountLevelsBySection). rowsAffected en 0 significa "no existe" o "no
+// estaba archivada" — el servicio decide cuál con una lectura previa.
+func (q *Queries) PurgeSection(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, `
+DELETE FROM sections WHERE id = $1 AND deleted_at IS NULL AND archived_at IS NOT NULL
+`, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 type CreateLevelReturningParams struct {
 	ID               uuid.UUID
 	SectionID        uuid.UUID
@@ -290,6 +360,99 @@ SET deleted_at = NOW(), deleted_by = $2, is_published = false, updated_at = NOW(
 WHERE section_id = $1 AND deleted_at IS NULL
 `, arg.SectionID, arg.DeletedBy)
 	return err
+}
+
+// GetLevelByIDAny, a diferencia de GetLevelByID, no filtra por deleted_at: la
+// purga y el unarchive necesitan poder leer un nivel archivado (levels no
+// tiene archived_at propio — su archivo ES deleted_at, ver comentario
+// "CONTENIDO EDUCATIVO" en la migración 0001).
+func (q *Queries) GetLevelByIDAny(ctx context.Context, id uuid.UUID) (Level, error) {
+	row := q.db.QueryRowContext(ctx, `
+SELECT id, section_id, title, color, template_type, content, difficulty, is_published,
+       created_by_admin_id, created_at, updated_at, deleted_at, deleted_by
+FROM levels
+WHERE id = $1
+`, id)
+	return scanLevel(row)
+}
+
+type ListArchivedLevelsParams struct {
+	HasSectionID bool
+	SectionID    uuid.UUID
+}
+
+func (q *Queries) ListArchivedLevels(ctx context.Context, arg ListArchivedLevelsParams) ([]ListLevelsRow, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT id, section_id, title, color, template_type, difficulty, is_published, created_at
+FROM levels
+WHERE deleted_at IS NOT NULL
+  AND (NOT $1::boolean OR section_id = $2)
+ORDER BY deleted_at DESC
+`, arg.HasSectionID, arg.SectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var levels []ListLevelsRow
+	for rows.Next() {
+		var item ListLevelsRow
+		if err := rows.Scan(
+			&item.ID, &item.SectionID, &item.Title, &item.Color,
+			&item.TemplateType, &item.Difficulty, &item.IsPublished, &item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		levels = append(levels, item)
+	}
+	return levels, rows.Err()
+}
+
+func (q *Queries) UnarchiveLevel(ctx context.Context, id uuid.UUID) (Level, error) {
+	row := q.db.QueryRowContext(ctx, `
+UPDATE levels
+SET deleted_at = NULL, deleted_by = NULL, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NOT NULL
+RETURNING id, section_id, title, color, template_type, content, difficulty, is_published,
+          created_by_admin_id, created_at, updated_at, deleted_at, deleted_by
+`, id)
+	return scanLevel(row)
+}
+
+// AccumulateRetiredProgressForLevel debe ejecutarse dentro de la misma
+// transacción que PurgeLevel, y ANTES del DELETE — es la consulta exacta
+// documentada en el comentario de account_retired_progress en la migración
+// 0001. Sin esto, purgar un nivel le bajaría a cada jugador su contador de
+// "niveles completados" e "intentos totales" (el XP no corre este riesgo:
+// vive en experience_history, que sobrevive vía SET NULL).
+func (q *Queries) AccumulateRetiredProgressForLevel(ctx context.Context, levelID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, `
+INSERT INTO account_retired_progress AS arp
+    (account_id, levels_completed, attempts_total)
+SELECT user_id,
+       COUNT(*) FILTER (WHERE first_completed_at IS NOT NULL),
+       COALESCE(SUM(attempts_count), 0)
+FROM player_progress
+WHERE level_id = $1
+GROUP BY user_id
+ON CONFLICT (account_id) DO UPDATE SET
+    levels_completed = arp.levels_completed + EXCLUDED.levels_completed,
+    attempts_total   = arp.attempts_total   + EXCLUDED.attempts_total,
+    updated_at       = NOW()
+`, levelID)
+	return err
+}
+
+// PurgeLevel es el DELETE físico. Dispara los CASCADE de level_attempts y
+// player_progress y el SET NULL de experience_history.level_id — por eso
+// AccumulateRetiredProgressForLevel debe correr antes, en la misma tx. Solo
+// afecta niveles ya archivados (deleted_at IS NOT NULL).
+func (q *Queries) PurgeLevel(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.ExecContext(ctx, `DELETE FROM levels WHERE id = $1 AND deleted_at IS NOT NULL`, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 type LockLevelAttemptParams struct {

@@ -243,6 +243,224 @@ func (s *Service) ArchiveLevel(ctx context.Context, adminID, levelID uuid.UUID) 
 	return resp, nil
 }
 
+// ErrNotArchived se devuelve cuando se intenta purgar o restaurar contenido
+// que no ha pasado primero por archivar — la purga irreversible solo opera
+// sobre lo ya archivado (plan/05_Contenido_maker_y_juego.md §6).
+var ErrNotArchived = errors.New("content is not archived")
+
+// ErrSectionHasLevels se devuelve cuando se intenta purgar una sección que
+// todavía tiene niveles (archivados o no) referenciándola. levels.section_id
+// es ON DELETE RESTRICT a propósito: cada nivel se purga uno por uno, con sus
+// contadores acumulados, nunca en cascada silenciosa.
+var ErrSectionHasLevels = errors.New("section still has levels")
+
+func (s *Service) UnarchiveLevel(ctx context.Context, adminID, levelID uuid.UUID) (LevelResponse, error) {
+	if levelID == uuid.Nil {
+		return LevelResponse{}, ErrValidation
+	}
+	current, err := s.repo.GetLevelByIDAny(ctx, levelID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LevelResponse{}, ErrNotFound
+		}
+		return LevelResponse{}, err
+	}
+	if !current.DeletedAt.Valid {
+		return LevelResponse{}, ErrNotArchived
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return LevelResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	level, err := qtx.UnarchiveLevel(ctx, levelID)
+	if err != nil {
+		return LevelResponse{}, err
+	}
+	resp := levelToResponse(level)
+	if err := logAdminAudit(ctx, AuditParams{
+		Repo: qtx, ActorID: adminID, Action: "level.unarchive",
+		EntityType: "level", EntityID: level.ID, AfterState: levelAuditPayload(resp),
+	}); err != nil {
+		return LevelResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return LevelResponse{}, err
+	}
+	return resp, nil
+}
+
+func (s *Service) ListArchivedLevels(ctx context.Context, sectionID uuid.UUID) (ArchivedLevelsResponse, error) {
+	rows, err := s.repo.ListArchivedLevels(ctx, repository.ListArchivedLevelsParams{
+		HasSectionID: sectionID != uuid.Nil,
+		SectionID:    sectionID,
+	})
+	if err != nil {
+		return ArchivedLevelsResponse{}, err
+	}
+	items := make([]LevelSummary, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, LevelSummary{
+			ID: r.ID, SectionID: r.SectionID, Title: r.Title, Color: r.Color,
+			TemplateType: r.TemplateType, Difficulty: r.Difficulty,
+			IsPublished: r.IsPublished, CreatedAt: r.CreatedAt,
+		})
+	}
+	return ArchivedLevelsResponse{Items: items}, nil
+}
+
+// PurgeLevel es irreversible. Solo opera sobre un nivel ya archivado: acumula
+// sus contadores de progreso en account_retired_progress ANTES del DELETE
+// (dentro de la misma transacción, orden que importa) para que la XP y los
+// "niveles completados" de cada jugador sobrevivan a la rotación de
+// temporada — ver CLAUDE.md, "rotación de niveles por temporadas".
+func (s *Service) PurgeLevel(ctx context.Context, adminID, levelID uuid.UUID) error {
+	if levelID == uuid.Nil {
+		return ErrValidation
+	}
+	current, err := s.repo.GetLevelByIDAny(ctx, levelID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if !current.DeletedAt.Valid {
+		return ErrNotArchived
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	if err := qtx.AccumulateRetiredProgressForLevel(ctx, levelID); err != nil {
+		return fmt.Errorf("accumulating retired progress: %w", err)
+	}
+	rowsAffected, err := qtx.PurgeLevel(ctx, levelID)
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	beforeState := levelAuditPayload(levelToResponse(current))
+	if err := logAdminAudit(ctx, AuditParams{
+		Repo: qtx, ActorID: adminID, Action: "level.purge",
+		EntityType: "level", EntityID: levelID, BeforeState: beforeState,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Service) UnarchiveSection(ctx context.Context, adminID, sectionID uuid.UUID) (SectionResponse, error) {
+	if sectionID == uuid.Nil {
+		return SectionResponse{}, ErrValidation
+	}
+	current, err := s.repo.GetSectionByIDAny(ctx, sectionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return SectionResponse{}, ErrNotFound
+		}
+		return SectionResponse{}, err
+	}
+	if !current.ArchivedAt.Valid {
+		return SectionResponse{}, ErrNotArchived
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return SectionResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	section, err := qtx.UnarchiveSection(ctx, sectionID)
+	if err != nil {
+		return SectionResponse{}, err
+	}
+	resp := sectionToResponse(section)
+	if err := logAdminAudit(ctx, AuditParams{
+		Repo: qtx, ActorID: adminID, Action: "section.unarchive",
+		EntityType: "section", EntityID: section.ID, AfterState: resp,
+	}); err != nil {
+		return SectionResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return SectionResponse{}, err
+	}
+	return resp, nil
+}
+
+func (s *Service) ListArchivedSections(ctx context.Context) (ArchivedSectionsResponse, error) {
+	sections, err := s.repo.ListArchivedSections(ctx)
+	if err != nil {
+		return ArchivedSectionsResponse{}, err
+	}
+	items := make([]SectionResponse, 0, len(sections))
+	for _, section := range sections {
+		items = append(items, sectionToResponse(section))
+	}
+	return ArchivedSectionsResponse{Items: items}, nil
+}
+
+// PurgeSection es irreversible. Solo opera sobre una sección ya archivada y
+// sin ningún nivel restante (archivado o no) referenciándola — levels.
+// section_id es RESTRICT a propósito, así que primero hay que purgar sus
+// niveles uno por uno.
+func (s *Service) PurgeSection(ctx context.Context, adminID, sectionID uuid.UUID) error {
+	if sectionID == uuid.Nil {
+		return ErrValidation
+	}
+	current, err := s.repo.GetSectionByIDAny(ctx, sectionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if !current.ArchivedAt.Valid {
+		return ErrNotArchived
+	}
+	remaining, err := s.repo.CountLevelsBySection(ctx, sectionID)
+	if err != nil {
+		return err
+	}
+	if remaining > 0 {
+		return ErrSectionHasLevels
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	rowsAffected, err := qtx.PurgeSection(ctx, sectionID)
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	if err := logAdminAudit(ctx, AuditParams{
+		Repo: qtx, ActorID: adminID, Action: "section.purge",
+		EntityType: "section", EntityID: sectionID, BeforeState: sectionToResponse(current),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Service) GetLevel(ctx context.Context, levelID uuid.UUID, includeUnpublished bool) (LevelResponse, error) {
 	if levelID == uuid.Nil {
 		return LevelResponse{}, ErrValidation

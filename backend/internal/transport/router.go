@@ -194,19 +194,30 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 			if deps.LevelsHandler != nil {
 				r.Get("/sections", deps.LevelsHandler.ListSections)
 				r.Post("/sections", deps.LevelsHandler.CreateSection)
+				// /sections/archived antes que /sections/{section_id}: chi
+				// prioriza rutas estáticas sobre parámetros dentro del mismo
+				// nivel, pero se declara en este orden por legibilidad.
+				r.Get("/sections/archived", deps.LevelsHandler.ListArchivedSections)
 				r.Patch("/sections/{section_id}", deps.LevelsHandler.UpdateSection)
 				r.Post("/sections/{section_id}/publish", deps.LevelsHandler.PublishSection)
 				r.Post("/sections/{section_id}/unpublish", deps.LevelsHandler.UnpublishSection)
 				r.Post("/sections/{section_id}/archive", deps.LevelsHandler.ArchiveSection)
+				r.Post("/sections/{section_id}/unarchive", deps.LevelsHandler.UnarchiveSection)
+				// F10.9: purga irreversible, solo sobre contenido ya archivado
+				// (plan/05_Contenido_maker_y_juego.md §6).
+				r.Delete("/sections/{section_id}", deps.LevelsHandler.PurgeSection)
 
 				r.Post("/levels", deps.LevelsHandler.CreateLevel)
 				r.Get("/levels", deps.LevelsHandler.ListLevels)
+				r.Get("/levels/archived", deps.LevelsHandler.ListArchivedLevels)
 				r.Get("/levels/{level_id}", deps.LevelsHandler.GetLevel)
 				r.Patch("/levels/{level_id}", deps.LevelsHandler.UpdateLevel)
 				r.Post("/levels/{level_id}/publish", deps.LevelsHandler.PublishLevel)
 				r.Post("/levels/{level_id}/unpublish", deps.LevelsHandler.UnpublishLevel)
 				r.Post("/levels/{level_id}/archive", deps.LevelsHandler.ArchiveLevel)
+				r.Post("/levels/{level_id}/unarchive", deps.LevelsHandler.UnarchiveLevel)
 				r.Post("/levels/{level_id}/complete", deps.LevelsHandler.CompleteLevel)
+				r.Delete("/levels/{level_id}", deps.LevelsHandler.PurgeLevel)
 
 				r.Get("/profile/progress", deps.LevelsHandler.GetProfileProgress)
 			} else {
