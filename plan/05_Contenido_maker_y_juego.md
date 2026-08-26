@@ -142,10 +142,38 @@ frontend/packages/
     snakes.ts
 ```
 
-Y se replica el cableado de workspace: `pnpm-workspace.yaml` con
-`frontend/packages/*`, `@usbi/engine` y `@usbi/schema` como
-`workspace:*` en `frontend/package.json`, y el `build` del frontend
-compilando el engine antes de `tsc --noEmit && vite build`.
+**Ejecutada 2026-08-26 — dos desviaciones frente a lo escrito arriba, ambas
+verificadas antes de portar, no supuestas:**
+
+1. **npm workspaces, no pnpm.** `usbi-anon/frontend` es un proyecto npm
+   independiente (`package-lock.json`, sin `pnpm-workspace.yaml` en ningún
+   lado del repo) — introducir pnpm solo para dos paquetes locales habría sido
+   una dependencia nueva sin beneficio. Cableado real:
+   `"workspaces": ["packages/*"]` en `frontend/package.json`,
+   `"@usbi/engine": "*"` y `"@usbi/schema": "*"` como dependencias (el
+   protocolo `workspace:*` es de pnpm/yarn, no existe en npm), y
+   `"build": "npm run build --workspace=@usbi/engine && tsc --noEmit && vite build"`.
+2. **`@usbi/schema` NO se copia verbatim — se cura.** El `index.ts` original
+   trae `RegisterSchema`, `LoginSchema`, `TutorConsentSchema` (con
+   `tutor_email`), `ArcoSchema` y `SyncEventSchema`: esquemas de identidad con
+   correo y datos de tutor, justo lo que este proyecto quitó. Se verificó por
+   `grep` en `../usbi/frontend/src` que **ningún componente de contenido o
+   juego los importa** — nada que portar depende de ellos. La versión que se
+   trajo solo tiene los esquemas de las siete plantillas de contenido más
+   `LevelMetadataSchema`/`LevelExportSchema` (el formato del maker local).
+   También se retiró `DragAndDropSchema`: no es una de las siete plantillas
+   del `CHECK` de `levels.template_type` y no tiene formulario ni motor en
+   ningún lado — nunca se llegó a usar ni en `../usbi`.
+
+Además: zod quedó en `^4.4.3` (ya presente en `usbi-anon` desde F10) en vez
+de fijar `^3.22.4` como `../usbi` — verificado por compilación, no por
+changelog, que la API usada (incluido `z.ZodIssueCode.custom` en
+`snakes.ts`) sigue funcionando igual. Y `packages/engine/vitest.config.ts`
+(nuevo, no existe en `../usbi`) fija `environment: 'jsdom'` porque
+`TriviaEngine` usa `window.setInterval`: sin eso las pruebas de temporizador
+fallan con `window is not defined`. `../usbi` lo resuelve heredando la config
+de la SPA; aquí se prefirió que el paquete no dependa de que quien lo consuma
+tenga jsdom configurado.
 
 **Punto de atención — nombre de los paquetes.** Se conservan como `@usbi/*`
 aunque el proyecto sea `usbi-anon`: renombrarlos obligaría a tocar cada
@@ -154,9 +182,12 @@ cero beneficio funcional. Si el nombre final del producto se decide algún día
 (decisión abierta n.º 2 del plan maestro), el renombre es un `sed` de un solo
 paso y se hace entonces.
 
-**Verificación:** las pruebas que ya vienen en `packages/engine/src`
-(`TriviaEngine.test.ts`, `PuzzleEngine.test.ts`, `CrosswordEngine.test.ts`,
-`WordSearchEngine.test.ts`) pasan; `tsc --noEmit` del frontend en verde.
+**Verificación (F10.7 cerrada):** las 4 suites de `packages/engine/src`
+(`TriviaEngine`, `PuzzleEngine`, `CrosswordEngine`, `WordSearchEngine`, 30
+pruebas) pasan; `tsc --noEmit` del frontend en verde; `npm run build`
+completo corrido dentro del contenedor `usbi-anon` vía `docker restart`
+(ciclo real del entrypoint), 220 MB de 500 MB de RAM tras el build. Detalle
+completo en `estado_proyecto.md`, sesión 21.
 
 ---
 

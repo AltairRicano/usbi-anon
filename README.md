@@ -73,6 +73,9 @@ documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_
 │   ├── sql/                            # scripts de administración: roles, permisos, seed del primer admin
 │   └── main.go                         # punto de entrada del servidor
 ├── frontend/                           # SPA en React + TypeScript + Vite
+│   ├── packages/                       # paquetes locales del workspace npm
+│   │   ├── engine/                     # lógica pura de los minijuegos (trivia, memorama, sopa de letras, etc.)
+│   │   └── schema/                     # esquemas de validación del contenido educativo de cada plantilla
 │   └── src/
 │       ├── features/
 │       │   ├── auth/                   # registro (wizard de 3 pasos) y login
