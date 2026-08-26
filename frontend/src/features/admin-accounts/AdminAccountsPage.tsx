@@ -16,7 +16,7 @@ import {
 
 type UserRole = z.infer<typeof UserRoleSchema>;
 
-const STAFF_ROLES: UserRole[] = ['player', 'operator', 'director', 'admin'];
+const STAFF_ROLES: UserRole[] = ['player', 'admin'];
 
 interface QuizAnswerRow {
   question_text_snapshot: string;
@@ -28,7 +28,7 @@ export default function AdminAccountsPage() {
   // ── Crear cuenta de staff ──────────────────────────────────────────────
   const [newNickname, setNewNickname] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>('operator');
+  const [newRole, setNewRole] = useState<UserRole>('player');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<AdminAccountResponse | null>(null);

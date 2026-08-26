@@ -58,10 +58,10 @@ func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 	return &Service{queries: q, hmacSecret: hmacSecret}
 }
 
-// CreateIncident records a security incident (admins/directors only), sealing it
+// CreateIncident records a security incident (admins only), sealing it
 // with an HMAC evidence hash for No-Repudio and writing an admin_audit_log entry.
 func (s *Service) CreateIncident(ctx context.Context, actor domain.JWTClaims, req CreateIncidentRequest, ip, userAgent string) (CreateIncidentResponse, error) {
-	if actor.Role != domain.RoleAdmin && actor.Role != domain.RoleDirector {
+	if actor.Role != domain.RoleAdmin {
 		return CreateIncidentResponse{}, ErrForbidden
 	}
 

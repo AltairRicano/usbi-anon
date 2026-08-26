@@ -378,9 +378,9 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error, fallba
 }
 
 func canManageContent(role domain.UserRole) bool {
-	return role == domain.RoleAdmin || role == domain.RoleOperator || role == domain.RoleDirector
+	return role == domain.RoleAdmin
 }
 
 func canArchiveContent(role domain.UserRole) bool {
-	return role == domain.RoleAdmin || role == domain.RoleDirector
+	return role == domain.RoleAdmin
 }

@@ -10,10 +10,8 @@ import (
 type UserRole string
 
 const (
-	RolePlayer   UserRole = "player"
-	RoleAdmin    UserRole = "admin"
-	RoleOperator UserRole = "operator"
-	RoleDirector UserRole = "director"
+	RolePlayer UserRole = "player"
+	RoleAdmin  UserRole = "admin"
 )
 
 // UserStatus defines valid account lifecycle statuses.

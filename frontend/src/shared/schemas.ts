@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Espejan domain.User / domain.UserRole / domain.UserStatus en Go
 // (backend/internal/domain). Sin full_name/email: el DTO nunca incluye dato
 // identificable directo, solo UUID + nickname generado (plan/04 §1).
-export const UserRoleSchema = z.enum(['player', 'admin', 'operator', 'director']);
+export const UserRoleSchema = z.enum(['player', 'admin']);
 export const UserStatusSchema = z.enum(['active', 'suspended', 'deleted']);
 
 export const UserSchema = z.object({

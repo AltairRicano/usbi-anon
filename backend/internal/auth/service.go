@@ -553,7 +553,7 @@ func isValidArcoRequestType(t domain.ArcoRequestType) bool {
 }
 
 func (s *Service) ListPendingArcoRequests(ctx context.Context, actor domain.JWTClaims, limit int32) (ArcoPendingListDTO, error) {
-	if actor.Role != domain.RoleAdmin && actor.Role != domain.RoleDirector {
+	if actor.Role != domain.RoleAdmin {
 		return ArcoPendingListDTO{}, ErrForbidden
 	}
 	if limit <= 0 || limit > 100 {
@@ -581,7 +581,7 @@ func (s *Service) ListPendingArcoRequests(ctx context.Context, actor domain.JWTC
 // bajo lock, dentro de una transacción corta que solo existe para que dos
 // admins no puedan resolver el mismo trámite a la vez.
 func (s *Service) ResolveArcoRequest(ctx context.Context, actor domain.JWTClaims, requestID uuid.UUID, req ResolveArcoRequestDTO, ip, userAgent string) error {
-	if actor.Role != domain.RoleAdmin && actor.Role != domain.RoleDirector {
+	if actor.Role != domain.RoleAdmin {
 		return ErrForbidden
 	}
 	if requestID == uuid.Nil || strings.TrimSpace(req.ResponseSummary) == "" {
@@ -716,7 +716,7 @@ func (s *Service) CreateAdminAccount(ctx context.Context, actor domain.JWTClaims
 
 func isValidStaffRole(role domain.UserRole) bool {
 	switch role {
-	case domain.RoleAdmin, domain.RoleOperator, domain.RoleDirector, domain.RolePlayer:
+	case domain.RoleAdmin, domain.RolePlayer:
 		return true
 	default:
 		return false
