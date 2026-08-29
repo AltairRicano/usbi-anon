@@ -1,3 +1,10 @@
 CLAUDE.md
 SKILLS.md
 estado_proyecto.md
+
+# Fase de pruebas de integración final: entregables operativos del equipo,
+# no artefactos del producto. Se comparten fuera de git (copia local → Word).
+pruebas/
+
+# Core dumps generados dentro del contenedor (límite de 500 MB de RAM).
+core.*
