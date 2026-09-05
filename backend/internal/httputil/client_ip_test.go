@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// httputil had zero tests (audit finding B9) despite ClientIP feeding both the
-// rate limiter and the tutor-consent legal-evidence IP.
+// httputil no tenía pruebas (hallazgo de auditoría B9) a pesar de que ClientIP alimenta tanto al
+// limitador de tasa como a la IP de evidencia legal del consentimiento de tutor. (Útil)
 
 func TestClientIPSplitsHostPort(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
@@ -35,12 +35,12 @@ func TestClientIPFallsBackWhenNoPort(t *testing.T) {
 	}
 }
 
-// TestClientIPIgnoresForwardedHeaders is a regression guard for the B3 fix:
-// ClientIP must never trust client-supplied headers directly, or a direct
-// client could spoof its own IP for rate limiting and tutor-consent audit
-// evidence. Header-trusting (when a reverse proxy is confirmed to strip/set
-// them) is exclusively chi's RealIP middleware's job, gated by
-// TRUST_PROXY_HEADERS — never this function.
+// TestClientIPIgnoresForwardedHeaders es una protección de regresión para la corrección B3:
+// ClientIP nunca debe confiar en encabezados provistos por el cliente directamente, o un cliente directo
+// podría falsificar su propia IP para la limitación de tasa y evidencia de auditoría de
+// consentimiento de tutor. Confiar en encabezados (cuando se confirma que un proxy inverso los quita/pone)
+// es trabajo exclusivo del middleware RealIP de chi, controlado por
+// TRUST_PROXY_HEADERS — nunca de esta función. (Útil)
 func TestClientIPIgnoresForwardedHeaders(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.RemoteAddr = "203.0.113.7:54321"

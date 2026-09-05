@@ -4,7 +4,7 @@
 // donde vivía junto a las consultas de auth. Entre F2 y F6 existió una copia
 // duplicada en identityrepo por la misma razón que DBTX (ver el db.go que
 // tenía ese paquete); con identityrepo eliminado (F6) ya no hay nada que
-// duplicar.
+// duplicar. (Útil)
 package repository
 
 import "database/sql"

@@ -16,15 +16,40 @@
 -- ausentes son lo que convierte varias promesas del diseño en garantías
 -- verificables en vez de convenciones de código.
 --
+-- usbi_app vs usbi_moderador (2026-09-02): dentro de "quién puede leer y
+-- escribir datos" hay dos niveles de confianza, no uno. usbi_app es la
+-- credencial de todo lo NO privilegiado — login, registro, autoservicio de
+-- jugador — y usbi_moderador es una credencial nueva, exclusiva de las
+-- operaciones que YA estaban detrás de un guard de rol admin en Go
+-- (internal/levels.canManageContent, internal/quiz.canManageQuizBank, etc.).
+-- La app sigue decidiendo con ese guard quién puede llamar a esas funciones;
+-- lo que gana esta separación es que, si algún día un bug o una inyección
+-- corre bajo la credencial de usbi_app, no puede escribir en el contenido ni
+-- en la configuración del sistema aunque el chequeo de rol en Go falle —
+-- la base de datos ya no se lo permite, no solo el código.
+--
+-- No cubre `accounts`, `account_quiz_answers` (lectura) ni `audit_log`
+-- (lectura): mover esas operaciones de administración de cuentas a
+-- usbi_moderador no añadía ninguna restricción real (accounts no tiene
+-- Row-Level Security, así que ambas credenciales podrían tocar cualquier
+-- fila igual) — decisión explícita, ver estado_proyecto.md 2026-09-02.
+--
 -- Sustituir las contraseñas por valores reales tomados del gestor de secretos.
 -- Nunca dejarlas escritas en este archivo ni en el control de versiones.
 --
 -- Uso:
 --   psql -U postgres -v app_password="'…'" -v migrate_password="'…'" \
---        -f 00_roles_unificado.sql
+--        -v moderador_password="'…'" -f 00_roles_unificado.sql
 
--- Rol de aplicación: lo usa el backend en tiempo de ejecución.
+-- Rol de aplicación: lo usa el backend en tiempo de ejecución para todo lo
+-- no privilegiado (login, registro, autoservicio de jugador).
 CREATE ROLE usbi_app LOGIN PASSWORD :'app_password';
+
+-- Rol de moderación: lo usa el backend SOLO para las operaciones ya
+-- restringidas a rol admin en Go (gestión de contenido, banco de preguntas,
+-- catálogo de insignias, incidentes de seguridad). Ver bloque de permisos
+-- más abajo para el detalle tabla por tabla.
+CREATE ROLE usbi_moderador LOGIN PASSWORD :'moderador_password';
 
 -- Rol de migración: solo aplica migraciones. El backend NO lo usa.
 CREATE ROLE usbi_migrate LOGIN PASSWORD :'migrate_password';
@@ -35,8 +60,17 @@ CREATE DATABASE usbi_anon_db OWNER usbi_migrate;
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT  USAGE ON SCHEMA public TO usbi_app;
+GRANT  USAGE ON SCHEMA public TO usbi_moderador;
+
+-- ── usbi_app ─────────────────────────────────────────────────────────────
 
 -- Permisos del rol de aplicación sobre lo que ya existe y lo que se cree luego.
+-- Las tablas que abajo se le retiran (sections, levels, badges,
+-- registration_questions, registration_settings) parten de aquí con el
+-- mismo CRUD completo que el resto y se recortan explícitamente después —
+-- así una tabla nueva creada por una migración futura queda accesible por
+-- defecto y hay que decidir activamente si se le recorta, en vez de que el
+-- olvido la deje sin abrir.
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO usbi_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE usbi_migrate IN SCHEMA public
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO usbi_app;
@@ -46,22 +80,91 @@ ALTER DEFAULT PRIVILEGES FOR ROLE usbi_migrate IN SCHEMA public
 -- con que el código "no lo haga", la base no se lo permite.
 REVOKE INSERT, UPDATE, DELETE ON alias_adjectives, alias_nouns FROM usbi_app;
 
--- Catálogo de insignias: lo gestiona una migración, no la aplicación.
+-- Secciones y niveles: jugador es SOLO LECTURA. Crear/editar/publicar/
+-- archivar/purgar contenido corre con usbi_moderador (internal/levels, los
+-- métodos ya separados de CreateLevel/PublishLevel/ArchiveLevel/PurgeLevel/…
+-- frente a ListLevels/GetLevel/CompleteLevel).
+REVOKE INSERT, UPDATE, DELETE ON sections, levels FROM usbi_app;
+
+-- Catálogo de insignias: gestionado por moderador (decisión de producto
+-- 2026-09-02 — antes lo gestionaba solo una migración; se abrió para que el
+-- equipo de USBI pueda agregar insignias sin depender de un ingeniero). El
+-- CRUD en Go todavía no existe (no hay rutas /admin/badges) — este GRANT
+-- deja el terreno listo para cuando se construya.
 REVOKE INSERT, UPDATE, DELETE ON badges FROM usbi_app;
 
--- Bitácoras append-only: sin DELETE. El trigger enforce_append_only_ledgers()
--- ya lo impide, pero esto lo bloquea una capa antes, y un trigger puede
--- desactivarse mientras que un permiso ausente deja rastro en la bitácora del
--- servidor.
-REVOKE DELETE ON audit_log, experience_history FROM usbi_app;
+-- Banco de preguntas de registro y su configuración: jugador solo lee
+-- (registro, muestreo aleatorio); administrar el banco corre con
+-- usbi_moderador (internal/quiz, canManageQuizBank).
+REVOKE INSERT, UPDATE, DELETE ON registration_questions FROM usbi_app;
+REVOKE INSERT, UPDATE, DELETE ON registration_settings FROM usbi_app;
 
--- Fila única de configuración: se actualiza, nunca se borra ni se duplica.
-REVOKE INSERT, DELETE ON registration_settings FROM usbi_app;
+-- Respuestas del cuestionario de registro: jugador solo inserta las suyas
+-- durante el registro, nunca las lee de vuelta — leerlas (para que un admin
+-- compare y decida si resetea una cuenta olvidada) es exclusivo de
+-- usbi_moderador.
+REVOKE SELECT, UPDATE, DELETE ON account_quiz_answers FROM usbi_app;
 
--- Contadores de niveles ya retirados: solo crecen. Sin DELETE, un bug en la
--- purga de un nivel no puede borrarle a un jugador el progreso acumulado de
--- temporadas anteriores. Las filas se van solas al cancelar la cuenta, por el
--- CASCADE desde accounts, que no necesita este permiso.
-REVOKE DELETE ON account_retired_progress FROM usbi_app;
+-- Bitácora unificada: jugador solo inserta (account.register, account.age_up
+-- en internal/auth) — nunca lee. Sin DELETE tampoco: el trigger
+-- enforce_append_only_ledgers() ya lo impide, pero esto lo bloquea una capa
+-- antes, y un trigger puede desactivarse mientras que un permiso ausente deja
+-- rastro en la bitácora del servidor.
+REVOKE SELECT, DELETE ON audit_log FROM usbi_app;
+
+-- Libro mayor de XP: sin DELETE, mismo razonamiento que audit_log.
+REVOKE DELETE ON experience_history FROM usbi_app;
+
+-- Contadores de niveles ya retirados: jugador solo lee su propio total
+-- (GetProfileProgress combina progreso vivo + retirado). Escribir ahí ocurre
+-- solo al purgar un nivel (AccumulateRetiredProgressForLevel), exclusivo de
+-- usbi_moderador. Sin DELETE para nadie: los contadores solo crecen: un bug
+-- en la purga no puede borrarle a un jugador el progreso acumulado de
+-- temporadas anteriores. Las filas se van solas al cancelar la cuenta, por
+-- el CASCADE desde accounts, que no necesita este permiso.
+REVOKE INSERT, UPDATE, DELETE ON account_retired_progress FROM usbi_app;
+
+-- security_incidents nunca lo toca usbi_app: ningún flujo de jugador lo usa,
+-- solo POST /admin/security-incidents (usbi_moderador, ver abajo).
+REVOKE ALL ON security_incidents FROM usbi_app;
 
 GRANT SELECT ON account_aliases TO usbi_app;
+
+-- ── usbi_moderador ───────────────────────────────────────────────────────
+-- Sin ALTER DEFAULT PRIVILEGES: a diferencia de usbi_app (acceso amplio por
+-- defecto, recortado tabla por tabla), el acceso de usbi_moderador es
+-- selectivo por diseño — una tabla nueva NO le llega automáticamente, hay
+-- que concedérsela explícitamente aquí si corresponde.
+
+-- Contenido: CRUD completo (internal/levels — todos los métodos detrás de
+-- canManageContent/canArchiveContent).
+GRANT SELECT, INSERT, UPDATE, DELETE ON sections, levels TO usbi_moderador;
+
+-- Catálogo de insignias: CRUD completo (ver nota junto al REVOKE de usbi_app
+-- arriba — pendiente aún el endpoint Go).
+GRANT SELECT, INSERT, UPDATE, DELETE ON badges TO usbi_moderador;
+
+-- Banco de preguntas de registro y su configuración: CRUD completo
+-- (internal/quiz, canManageQuizBank).
+GRANT SELECT, INSERT, UPDATE, DELETE ON registration_questions TO usbi_moderador;
+GRANT SELECT, INSERT, UPDATE, DELETE ON registration_settings TO usbi_moderador;
+
+-- Respuestas del cuestionario: solo lectura (GetAccountQuizAnswers). Nunca
+-- inserta — eso solo pasa durante el registro, bajo usbi_app.
+GRANT SELECT ON account_quiz_answers TO usbi_moderador;
+
+-- Contadores de niveles retirados: inserta/actualiza durante la purga
+-- (AccumulateRetiredProgressForLevel, upsert). Sin SELECT ni DELETE — leer
+-- el total combinado sigue siendo cosa del jugador vía usbi_app.
+GRANT INSERT, UPDATE ON account_retired_progress TO usbi_moderador;
+
+-- Bitácora unificada: inserta las auditorías de contenido/incidentes
+-- (internal/levels.logAdminAudit, internal/incidents). Sin SELECT todavía —
+-- no existe endpoint de lectura de audit_log (ver hallazgo en
+-- estado_proyecto.md 2026-09-02); se agrega el día que se construya.
+GRANT INSERT ON audit_log TO usbi_moderador;
+
+-- Incidentes de seguridad: solo inserta (POST /admin/security-incidents).
+-- Sin SELECT todavía — mismo caso que audit_log, sin endpoint de lectura
+-- (decisión "déjalo" registrada en estado_proyecto.md).
+GRANT INSERT ON security_incidents TO usbi_moderador;

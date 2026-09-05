@@ -12,7 +12,7 @@ import (
 var ErrValidation = errors.New("validation error")
 
 // validDeviceKinds refleja el CHECK de devices.device_kind. Rechazar aquí,
-// antes del INSERT, da un 422 legible en vez de un error crudo de Postgres.
+// antes del INSERT, da un 422 legible en vez de un error crudo de Postgres. (Útil)
 var validDeviceKinds = map[string]bool{
 	"movil": true, "tablet": true, "laptop": true, "escritorio": true, "otro": true,
 }

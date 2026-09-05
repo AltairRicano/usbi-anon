@@ -10,9 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// crypto/jwt.go had zero tests (audit finding B9) despite being the real
-// signing/verification path for every authenticated request. These exercise
-// the actual jwt/v5 library end to end — no mocking of the cryptography.
+// crypto/jwt.go no tenía pruebas (hallazgo de auditoría B9) a pesar de ser la ruta
+// real de firma/verificación para cada petición autenticada. Estas prueban
+// la biblioteca jwt/v5 real de extremo a extremo — sin mockear la criptografía. (Útil)
 
 func testConfig() TokenConfig {
 	return TokenConfig{Secret: []byte("test-secret-at-least-32-bytes-long!!"), AccessExpiry: time.Hour}
@@ -71,8 +71,8 @@ func TestValidateTokenRejectsTamperedPayload(t *testing.T) {
 		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
-	// Flip a character in the payload segment to simulate a privilege-escalation
-	// attempt (e.g. rewriting "player" to "admin") without re-signing.
+	// Voltea un carácter en el segmento del payload para simular un intento de
+	// escalamiento de privilegios (ej. reescribiendo "player" a "admin") sin volver a firmar. (Útil)
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		t.Fatalf("unexpected token shape: %d segments", len(parts))
@@ -84,10 +84,10 @@ func TestValidateTokenRejectsTamperedPayload(t *testing.T) {
 	}
 }
 
-// TestValidateTokenRejectsAlgorithmConfusion guards the explicit
-// SigningMethodHMAC check in ValidateToken against an attacker who crafts a
-// token with a different alg (here "none") hoping the verifier skips signature
-// checking entirely — a well-known real-world JWT vulnerability class.
+// TestValidateTokenRejectsAlgorithmConfusion protege la comprobación explícita de
+// SigningMethodHMAC en ValidateToken contra un atacante que crea un
+// token con un alg diferente (aquí "none") esperando que el verificador salte por
+// completo la comprobación de la firma — una vulnerabilidad de JWT del mundo real bien conocida. (Útil)
 func TestValidateTokenRejectsAlgorithmConfusion(t *testing.T) {
 	cfg := testConfig()
 	claims := jwt.MapClaims{

@@ -428,14 +428,14 @@ RETURNING id, section_id, title, color, template_type, content, difficulty, is_p
 func (q *Queries) AccumulateRetiredProgressForLevel(ctx context.Context, levelID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, `
 INSERT INTO account_retired_progress AS arp
-    (account_id, levels_completed, attempts_total)
+    (user_id, levels_completed, attempts_total)
 SELECT user_id,
        COUNT(*) FILTER (WHERE first_completed_at IS NOT NULL),
        COALESCE(SUM(attempts_count), 0)
 FROM player_progress
 WHERE level_id = $1
 GROUP BY user_id
-ON CONFLICT (account_id) DO UPDATE SET
+ON CONFLICT (user_id) DO UPDATE SET
     levels_completed = arp.levels_completed + EXCLUDED.levels_completed,
     attempts_total   = arp.attempts_total   + EXCLUDED.attempts_total,
     updated_at       = NOW()
@@ -573,9 +573,9 @@ func (q *Queries) GetUserProgressTotals(ctx context.Context, userID uuid.UUID) (
 SELECT
     COALESCE((SELECT SUM(xp_gained)::int FROM experience_history WHERE user_id = $1), 0) AS total_xp,
     COALESCE((SELECT COUNT(*)::int FROM player_progress WHERE user_id = $1 AND first_completed_at IS NOT NULL), 0)
-        + COALESCE((SELECT levels_completed FROM account_retired_progress WHERE account_id = $1), 0) AS completed_levels,
+        + COALESCE((SELECT levels_completed FROM account_retired_progress WHERE user_id = $1), 0) AS completed_levels,
     COALESCE((SELECT SUM(attempts_count)::int FROM player_progress WHERE user_id = $1), 0)
-        + COALESCE((SELECT attempts_total FROM account_retired_progress WHERE account_id = $1), 0) AS total_attempts
+        + COALESCE((SELECT attempts_total FROM account_retired_progress WHERE user_id = $1), 0) AS total_attempts
 `, userID).Scan(&totals.TotalXP, &totals.CompletedLevels, &totals.TotalAttempts)
 	return totals, err
 }

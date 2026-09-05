@@ -1,7 +1,3 @@
-// Reescrito en F9 (plan/04_Rediseno_identidad_gustos.md §2) para el esquema
-// unificado: UN solo pool PostgreSQL, no dos — el diseño de dos bases
-// (identidad + principal) se descartó por completo en F5. auth ya no recibe
-// identityrepo ni mailer (no hay flujo de tutor por correo); recibe
 // internal/quiz.Service para el registro en 3 pasos.
 package main
 
@@ -39,25 +35,22 @@ import (
 func main() {
 	config.LoadEnvironment()
 
-	// ── Structured logging (B4) ───────────────────────────────────────────────
 	logger := newLogger()
 	slog.SetDefault(logger)
-	// The background schedulers take a *log.Logger; bridge it through slog so
-	// their output is structured too.
+	
 	schedulerLogger := slog.NewLogLogger(logger.Handler(), slog.LevelInfo)
 
 	// Root context cancelled on SIGINT/SIGTERM so the server and the background
-	// schedulers all drain cleanly on `systemctl restart` (B4).
+	// schedulers all drain cleanly on `systemctl restart`.
 	rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// ── Required environment variables ────────────────────────────────────────
+	// ── Required environment variables ────────────────
 	dbURL := config.DatabaseURL()
 	jwtSecret := config.RequireSecret("JWT_SECRET")
 	// HMACSecret firma el token de registro (registration_token.go), el sello
-	// de aceptación del aviso de privacidad, los tokens de refresh y la
-	// evidencia ARCO — el único secreto de firmado que sobrevive sin cifrado
-	// ni blind index (F6, plan/04 §2).
+	// de aceptación del aviso de privacidad y los tokens de refresh — el único
+	// secreto de firmado que sobrevive sin cifrado ni blind index.
 	hmacSecret := config.RequireSecret("HMAC_SECRET")
 
 	// Optional with defaults
@@ -173,7 +166,7 @@ func main() {
 	certFile := config.GetEnv("TLS_CERT_FILE", "")
 	keyFile := config.GetEnv("TLS_KEY_FILE", "")
 
-	// Serve in the background so main can wait for a shutdown signal (B4).
+	// Serve in the background so main can wait for a shutdown signal.
 	serverErr := make(chan error, 1)
 	go func() {
 		if certFile != "" && keyFile != "" {

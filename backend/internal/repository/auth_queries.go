@@ -1,9 +1,12 @@
 // auth_queries.go absorbe las consultas de refresh_tokens que antes vivían en
 // identityrepo/auth_queries.go (F2, dos bases). Migradas sin más cambio que
-// el JOIN contra `accounts` en vez de `identities` — la tabla ya traía la FK
-// renombrada a account_id desde F5 (ver
-// plan/04_Rediseno_identidad_gustos.md §1). IsNoRows no se duplica aquí: ya
-// vive en errors.go, en este mismo paquete.
+// el JOIN contra `accounts` en vez de `identities`. La FK se llamó
+// `account_id` desde F5 hasta la sesión de revisión de tablas de 2026-09-02,
+// que la renombró a `user_id` para quedar consistente con el resto de tablas
+// de progreso/identidad — la razón histórica del nombre distinto (no
+// invalidar la capa de repositorio copiada verbatim) ya no aplicaba: esa capa
+// se reescribió por completo en F7. IsNoRows no se duplica aquí: ya vive en
+// errors.go, en este mismo paquete.
 package repository
 
 import (
@@ -15,16 +18,16 @@ import (
 
 type InsertRefreshTokenParams struct {
 	ID        uuid.UUID
-	AccountID uuid.UUID
+	UserID    uuid.UUID
 	TokenHash []byte
 	ExpiresAt time.Time
 }
 
 func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) error {
 	_, err := q.db.ExecContext(ctx, `
-INSERT INTO refresh_tokens (id, account_id, token_hash, expires_at)
+INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
 VALUES ($1, $2, $3, $4)
-`, arg.ID, arg.AccountID, arg.TokenHash, arg.ExpiresAt)
+`, arg.ID, arg.UserID, arg.TokenHash, arg.ExpiresAt)
 	return err
 }
 
@@ -33,7 +36,7 @@ VALUES ($1, $2, $3, $4)
 // revalidar la sesión y volver a emitir el JWT.
 type RefreshTokenAccount struct {
 	TokenID      uuid.UUID
-	AccountID    uuid.UUID
+	UserID       uuid.UUID
 	IsAdult      bool
 	Role         string
 	Status       string
@@ -46,14 +49,14 @@ func (q *Queries) GetRefreshTokenAccount(ctx context.Context, tokenHash []byte) 
 	err := q.db.QueryRowContext(ctx, `
 SELECT rt.id, a.id, a.is_adult, a.role, a.status, a.token_version, a.created_at
 FROM refresh_tokens rt
-JOIN accounts a ON a.id = rt.account_id
+JOIN accounts a ON a.id = rt.user_id
 WHERE rt.token_hash = $1
   AND rt.revoked_at IS NULL
   AND rt.expires_at > NOW()
   AND a.deleted_at IS NULL
 `, tokenHash).Scan(
 		&row.TokenID,
-		&row.AccountID,
+		&row.UserID,
 		&row.IsAdult,
 		&row.Role,
 		&row.Status,
@@ -72,12 +75,12 @@ WHERE id = $1 AND revoked_at IS NULL
 	return err
 }
 
-func (q *Queries) RevokeRefreshTokensForAccount(ctx context.Context, accountID uuid.UUID) error {
+func (q *Queries) RevokeRefreshTokensForUser(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, `
 UPDATE refresh_tokens
 SET revoked_at = NOW()
-WHERE account_id = $1 AND revoked_at IS NULL
-`, accountID)
+WHERE user_id = $1 AND revoked_at IS NULL
+`, userID)
 	return err
 }
 

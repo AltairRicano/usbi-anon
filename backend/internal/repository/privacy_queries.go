@@ -12,7 +12,7 @@
 // y PseudonymizeTutorConsents no vuelven: el flujo de tutor se eliminó
 // completo. InsertArcoRequest/ListPendingArcoRequests/GetArcoRequestForUpdate/
 // ResolveArcoRequest tampoco vuelven aquí todavía — F9 los añade junto con
-// internal/auth.Arco/ListPendingArco/ResolveArco, que son quienes los usan.
+// internal/auth.Arco/ListPendingArco/ResolveArco, que son quienes los usan. (Útil)
 package repository
 
 import (
@@ -25,7 +25,7 @@ import (
 // while preserving the rows for No-Repudio. Run as two separate statements: with
 // lib/pq's extended protocol a single parameterised query may contain only one
 // command, and each UPDATE matches exactly the SET-NULL pattern the append-only
-// trigger permits.
+// trigger permits. (Útil)
 func (q *Queries) NullUserInPseudonymizableLedgers(ctx context.Context, userID uuid.UUID) error {
 	if _, err := q.db.ExecContext(ctx,
 		`UPDATE experience_history SET user_id = NULL WHERE user_id = $1`, userID); err != nil {
@@ -50,7 +50,7 @@ type DeactivateAccountParams struct {
 // para reuso y no deja rastro de las respuestas que lo originaron), marcar
 // status='deleted' y forzar token_version+1 para invalidar cualquier JWT
 // vivo. La fila NUNCA se borra: es la misma garantía de no repudio que
-// ../usbi ya aplicaba a `users`.
+// ../usbi ya aplicaba a `users`. (Útil)
 func (q *Queries) DeactivateAccount(ctx context.Context, arg DeactivateAccountParams) error {
 	_, err := q.db.ExecContext(ctx, `
 UPDATE accounts
@@ -70,10 +70,10 @@ WHERE id = $1 AND deleted_at IS NULL
 // respuestas y recuperar una cuenta viva (§1 decisión 4) — una vez cancelada
 // la cuenta esa recuperación ya no aplica, así que conservarlas sería
 // retener datos sin propósito. No es una bitácora append-only: a diferencia
-// de experience_history/audit_log, aquí sí toca DELETE, no SET NULL.
+// de experience_history/audit_log, aquí sí toca DELETE, no SET NULL. (Útil)
 func (q *Queries) PurgeAccountQuizAnswers(ctx context.Context, accountID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx,
-		`DELETE FROM account_quiz_answers WHERE account_id = $1`, accountID)
+		`DELETE FROM account_quiz_answers WHERE user_id = $1`, accountID)
 	return err
 }
 
@@ -82,7 +82,7 @@ func (q *Queries) PurgeAccountQuizAnswers(ctx context.Context, accountID uuid.UU
 //   - experience_history / admin_audit_log — append-only ledgers, pseudonymized
 //     via NullUserInPseudonymizableLedgers instead of deleted;
 //   - sync_events — deleting it would cascade SET NULL onto
-//     experience_history.sync_event_id, which the append-only trigger rejects.
+//     experience_history.sync_event_id, which the append-only trigger rejects. (Útil)
 func (q *Queries) PurgeUserProgressData(ctx context.Context, userID uuid.UUID) error {
 	stmts := []string{
 		`DELETE FROM player_progress WHERE user_id = $1`,

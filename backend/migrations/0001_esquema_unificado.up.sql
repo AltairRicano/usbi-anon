@@ -175,22 +175,17 @@ JOIN alias_nouns      n   ON n.id   = a.alias_noun_id;
 
 -- ── refresh_tokens ───────────────────────────────────────────────────────────
 -- Tokens opacos de sesión (7 días) con revocación del lado servidor.
---
--- Es la ÚNICA tabla cuya columna de usuario se renombra a `account_id`: nació
--- en el esquema de identidad, que desaparece, y su capa Go se reescribe en F7
--- de todas formas. Las tablas de progreso y contenido conservan `user_id`
--- literal para no invalidar la capa de repositorio copiada verbatim (ver §6).
 CREATE TABLE refresh_tokens (
     id         UUID        PRIMARY KEY,
-    account_id UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id    UUID        NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     token_hash BYTEA       NOT NULL UNIQUE,
     issued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ
 );
 
-CREATE INDEX refresh_tokens_account_active_idx
-    ON refresh_tokens (account_id)
+CREATE INDEX refresh_tokens_user_active_idx
+    ON refresh_tokens (user_id)
     WHERE revoked_at IS NULL;
 
 -- Soporta la purga periódica de tokens vencidos o revocados hace más de 7 días.
@@ -269,7 +264,7 @@ INSERT INTO registration_settings (id, max_questions_shown) VALUES (1, 5);
 -- admin y queda auditado en audit_log.
 CREATE TABLE account_quiz_answers (
     id                     UUID         PRIMARY KEY,
-    account_id             UUID         NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id                UUID         NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     -- SET NULL: borrar una pregunta del banco no puede borrar la respuesta que
     -- alguien dio, porque es la única vía de recuperación de esa cuenta.
     question_id            UUID         REFERENCES registration_questions(id) ON DELETE SET NULL,
@@ -281,7 +276,7 @@ CREATE TABLE account_quiz_answers (
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX account_quiz_answers_account_idx  ON account_quiz_answers (account_id);
+CREATE INDEX account_quiz_answers_user_idx     ON account_quiz_answers (user_id);
 CREATE INDEX account_quiz_answers_question_idx ON account_quiz_answers (question_id);
 
 COMMENT ON COLUMN account_quiz_answers.answer_text IS
@@ -307,8 +302,9 @@ CREATE TABLE devices (
     platform        VARCHAR     NOT NULL CHECK (platform IN ('web', 'tauri')),
     registered_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- Bandera ARCO: cuando es TRUE, la siguiente respuesta de sync DEBE inyectar
-    -- wipe_local_data = true para que el dispositivo borre su SQLite local.
+    -- Bandera de borrado local: cuando es TRUE (la cancelación de cuenta la
+    -- activa), la siguiente respuesta de sync DEBE inyectar wipe_local_data =
+    -- true para que el dispositivo borre su SQLite local.
     wipe_local_data BOOLEAN     NOT NULL DEFAULT FALSE,
     revoked_at      TIMESTAMPTZ,
     -- Única compuesta: habilita la FK compuesta desde sync_events, que impide
@@ -462,21 +458,21 @@ CREATE INDEX player_progress_level_id_idx ON player_progress (level_id);
 -- debe ejecutar esto ANTES del DELETE, en la misma transacción:
 --
 --   INSERT INTO account_retired_progress AS arp
---       (account_id, levels_completed, attempts_total)
+--       (user_id, levels_completed, attempts_total)
 --   SELECT user_id,
 --          COUNT(*) FILTER (WHERE first_completed_at IS NOT NULL),
 --          COALESCE(SUM(attempts_count), 0)
 --   FROM player_progress
 --   WHERE level_id = $1
 --   GROUP BY user_id
---   ON CONFLICT (account_id) DO UPDATE SET
+--   ON CONFLICT (user_id) DO UPDATE SET
 --       levels_completed = arp.levels_completed + EXCLUDED.levels_completed,
 --       attempts_total   = arp.attempts_total   + EXCLUDED.attempts_total,
 --       updated_at       = NOW();
 --
 -- Y GetUserProgressTotals pasa a sumar las dos fuentes (vivos + retirados).
 CREATE TABLE account_retired_progress (
-    account_id       UUID        PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    user_id          UUID        PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
     levels_completed INTEGER     NOT NULL DEFAULT 0 CHECK (levels_completed >= 0),
     attempts_total   INTEGER     NOT NULL DEFAULT 0 CHECK (attempts_total >= 0),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -568,53 +564,24 @@ CREATE TABLE user_badges (
 CREATE INDEX user_badges_badge_id_idx ON user_badges (badge_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 6. DERECHOS ARCO, AUDITORÍA Y SEGURIDAD
+-- 6. AUDITORÍA Y SEGURIDAD
 -- ═══════════════════════════════════════════════════════════════════════════
-
--- ── arco_requests ────────────────────────────────────────────────────────────
--- SIMPLIFICADA FRENTE A F1/F4. Con dos bases, resolver una cancelación era una
--- saga reanudable de tres pasos (pending → purging_main →
--- identity_pseudonymized → resolved) porque no había forma de hacer 2PC entre
--- instancias. Con una sola base el problema desaparece: la cancelación es una
--- transacción única (internal/privacy.CancelAccount), y con ella se van los
--- dos estados intermedios, el reclamo bajo FOR UPDATE y el job de
--- reconciliación de internal/maintenance.
 --
--- La cancelación además pasa a ser autoservicio inmediato (DELETE /auth/me,
--- decisión 7): esta tabla la registra ya resuelta, para trazabilidad legal.
--- Los trámites que siguen necesitando intervención de un admin son
--- acceso / rectificacion / oposicion.
-CREATE TABLE arco_requests (
-    id               UUID        PRIMARY KEY,
-    -- SET NULL: la solicitud sobrevive a la cancelación del titular, para
-    -- conservar trazabilidad legal.
-    user_id          UUID        REFERENCES accounts(id) ON DELETE SET NULL,
-    requester_type   VARCHAR     NOT NULL,
-    request_type     VARCHAR     NOT NULL
-        CHECK (request_type IN ('acceso', 'rectificacion', 'cancelacion', 'oposicion')),
-    received_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    resolved_at      TIMESTAMPTZ,
-    status           VARCHAR     NOT NULL
-        CHECK (status IN ('pending', 'resolved', 'rejected')),
-    handled_by       UUID        REFERENCES accounts(id) ON DELETE SET NULL,
-    response_summary TEXT,
-    evidence_hash    BYTEA       NOT NULL -- sello criptográfico (no repudio)
-);
-
-CREATE INDEX arco_requests_user_id_idx    ON arco_requests (user_id);
-CREATE INDEX arco_requests_handled_by_idx ON arco_requests (handled_by);
-
--- Cola de trabajo del panel ARCO.
-CREATE INDEX arco_requests_open_idx
-    ON arco_requests (received_at)
-    WHERE status = 'pending';
+-- Este proyecto NO opera bajo un régimen de derechos ARCO (acceso,
+-- rectificación, cancelación, oposición) con trámite de aprobación admin: no
+-- hay correo ni ningún otro dato personal directo que un titular deba
+-- reclamar por esa vía, y la cancelación de cuenta es autoservicio inmediato
+-- (DELETE /auth/me, internal/privacy.CancelAccount) — cualquier jugador puede
+-- eliminar su cuenta cuando quiera, sin trámite ni aprobación de por medio.
+-- La tabla `arco_requests` (heredada de ../usbi, donde sí regía ese marco por
+-- el correo electrónico) se eliminó por completo: no aplica aquí.
 
 -- ── experience_history ───────────────────────────────────────────────────────
 -- APPEND-ONLY, y FUENTE DE VERDAD DEL XP TOTAL DEL JUGADOR: el total se calcula
 -- con SUM(xp_gained) sobre esta tabla, no con un contador guardado en accounts.
 --
 -- Por eso sus dos referencias se anulan en vez de arrastrar la fila:
---   · user_id  → NULL en la seudonimización ARCO (la fila del libro mayor
+--   · user_id  → NULL al cancelar la cuenta (la fila del libro mayor
 --                sobrevive para el no repudio, sin vínculo con la cuenta).
 --   · level_id → NULL al retirar un nivel en la rotación de temporadas. La fila
 --                sobrevive con su xp_gained intacto: el jugador conserva la
@@ -654,12 +621,12 @@ CREATE INDEX experience_history_sync_event_idx ON experience_history (sync_event
 -- que promete no tenerla. Sin correo en el sistema esa razón desaparece, y
 -- mantener dos bitácoras idénticas solo complicaría la consulta.
 --
--- APPEND-ONLY: sin UPDATE ni DELETE, salvo el SET NULL del actor durante la
--- seudonimización ARCO. Lo garantiza el trigger de más abajo.
+-- APPEND-ONLY: sin UPDATE ni DELETE, salvo el SET NULL del actor cuando se
+-- cancela su cuenta. Lo garantiza el trigger de más abajo.
 --
 -- before_state / after_state NO DEBEN contener datos identificables. La única
 -- tabla de la que podrían copiarse respuestas de texto libre es
--- account_quiz_answers: al auditar su consulta, registrar el account_id y el
+-- account_quiz_answers: al auditar su consulta, registrar el user_id y el
 -- conteo, nunca el contenido.
 CREATE TABLE audit_log (
     id               UUID        PRIMARY KEY,
@@ -726,7 +693,7 @@ BEGIN
     -- Mutaciones permitidas: anular UNA de las dos referencias de la fila,
     -- dejando todo lo demás —y en particular xp_gained— byte a byte idéntico.
     --
-    --   · user_id  → NULL: seudonimización ARCO.
+    --   · user_id  → NULL: cancelación de cuenta (autoservicio).
     --   · level_id → NULL: retiro de un nivel en la rotación de temporadas.
     --
     -- Nótese que nunca se permite tocar xp_gained: ni la cancelación de una
@@ -795,8 +762,12 @@ FOR EACH ROW EXECUTE FUNCTION enforce_append_only_ledgers();
 -- contenido y auditoría heredadas de ../usbi, para no invalidar la copia
 -- verbatim de la capa de repositorio en Go. Lo que cambió no es el nombre sino
 -- el contenido: aquí un user_id es un UUID sin ningún dato personal asociado.
--- Solo refresh_tokens (que nació en el esquema de identidad, hoy inexistente) y
--- audit_log (tabla nueva por fusión) usan account_id / actor_account_id.
+-- Solo audit_log (tabla nueva por fusión) usa actor_account_id — ahí sí tiene
+-- sentido semántico distinto: identifica a quien ejecutó la acción, no de
+-- quién es el dato, y puede quedar NULL si esa cuenta se cancela.
+-- account_quiz_answers.user_id y account_retired_progress.user_id ya no son
+-- excepción: se renombraron desde account_id el 2026-09-02 por la misma
+-- razón que refresh_tokens — no había justificación semántica para diferir.
 COMMENT ON COLUMN devices.user_id IS
     'UUID de accounts.id. Esta base no guarda ningún dato que permita resolverlo '
     'a una persona por sí sola.';
@@ -804,5 +775,5 @@ COMMENT ON COLUMN player_progress.user_id IS
     'UUID de accounts.id. Esta base no guarda ningún dato que permita resolverlo '
     'a una persona por sí sola.';
 COMMENT ON COLUMN experience_history.user_id IS
-    'UUID de accounts.id. NULL tras la seudonimización ARCO: la fila del libro '
-    'mayor sobrevive para el no repudio, sin vínculo con la cuenta.';
+    'UUID de accounts.id. NULL tras la cancelación de la cuenta: la fila del '
+    'libro mayor sobrevive para el no repudio, sin vínculo con la cuenta.';

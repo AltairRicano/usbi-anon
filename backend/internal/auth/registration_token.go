@@ -4,7 +4,7 @@
 // El payload completo (respuestas, is_adult, versión del aviso de
 // privacidad, los 4 candidatos ya generados) viaja firmado en el propio
 // token — el servidor no necesita recordar nada entre /register/answers y
-// /register/confirm.
+// /register/confirm. (Útil)
 package auth
 
 import (
@@ -38,7 +38,7 @@ type registrationTokenPayload struct {
 // es base64url(json) + "." + base64url(hmac-sha256(json)). No es un JWT
 // (no hace falta el resto del estándar para un token interno de un solo
 // flujo), pero el mismo principio: firmar, no cifrar — el cliente puede leer
-// el contenido, no puede falsificarlo.
+// el contenido, no puede falsificarlo. (Útil)
 func (s *Service) signRegistrationToken(payload registrationTokenPayload) (string, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Service) signRegistrationToken(payload registrationTokenPayload) (strin
 // verifyRegistrationToken valida la firma ANTES de confiar en cualquier
 // campo del payload (incluido ExpiresAt) — el orden importa: comprobar la
 // expiración de un payload no verificado le daría a un atacante una forma de
-// sondear el reloj del servidor con datos falsificados.
+// sondear el reloj del servidor con datos falsificados. (Útil)
 func (s *Service) verifyRegistrationToken(token string) (registrationTokenPayload, error) {
 	var payload registrationTokenPayload
 

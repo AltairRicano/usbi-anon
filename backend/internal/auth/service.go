@@ -4,7 +4,7 @@
 // por completo: no hay Register de una sola llamada, sino tres pasos
 // (RegisterQuestions → RegisterAnswers → RegisterConfirm, ver
 // registration_token.go), y no hay SubmitTutorConsent/VerifyTutorConsent —
-// un menor autoreportado juega de inmediato.
+// un menor autoreportado juega de inmediato. (Útil)
 package auth
 
 import (
@@ -28,7 +28,7 @@ import (
 	"github.com/lib/pq"
 )
 
-// Sentinel errors — used by handler for correct HTTP status mapping.
+// Errores centinela — usados por el handler para un mapeo correcto del estado HTTP. (Útil)
 var (
 	ErrValidation           = errors.New("validation error")
 	ErrUserNotFound         = errors.New("user not found")
@@ -45,9 +45,9 @@ var (
 
 const defaultMaxConcurrentPasswordHashes = 2
 
-// dummyPasswordHash is a precomputed Argon2id hash used to pad the
-// "nickname not found" login path with the same CPU cost as a real password
-// verification, so response latency doesn't leak whether a nickname exists.
+// dummyPasswordHash es un hash de Argon2id precalculado usado para rellenar la
+// ruta de login de "nickname no encontrado" con el mismo costo de CPU que una
+// verificación de contraseña real, así la latencia no filtra si un nickname existe. (Útil)
 var dummyPasswordHash string
 
 func init() {
@@ -58,27 +58,27 @@ func init() {
 	dummyPasswordHash = h
 }
 
-// Config holds all secrets and settings needed by auth.Service.
+// Config contiene todos los secretos y configuraciones necesarios para auth.Service. (Relleno)
 type Config struct {
 	// HMACSecret firma el token de registro y el sello de aceptación del
 	// aviso de privacidad, y los tokens de refresh.
 	HMACSecret []byte
-	// TokenConfig carries the JWT signing key and expiry duration.
+	// TokenConfig transporta la clave de firma JWT y la duración de expiración. (Relleno)
 	TokenConfig crypto.TokenConfig
-	// MaxConcurrentPasswordHashes caps concurrent Argon2 work. Defaults to 2.
+	// MaxConcurrentPasswordHashes limita el trabajo concurrente de Argon2. Por defecto 2. (Relleno)
 	MaxConcurrentPasswordHashes int
 	// StaffPrivacyNoticeVersion se sella en las cuentas creadas por un admin
 	// (POST /admin/accounts, decisión 6 del rediseño) — esas cuentas no
 	// pasan por el cuestionario de gustos, así que no traen su propia
 	// versión del aviso. Placeholder hasta la reescritura legal completa
-	// (F11): no hay todavía un aviso de privacidad específico para staff.
+	// (F11): no hay todavía un aviso de privacidad específico para staff. (Útil)
 	StaffPrivacyNoticeVersion string
 }
 
 // Service implementa la lógica de autenticación contra la única base del
 // sistema. quiz orquesta la generación de nickname/password y el banco de
 // preguntas — auth nunca genera candidatos ni toca registration_questions
-// directo, siempre a través de ese paquete.
+// directo, siempre a través de ese paquete. (Útil)
 type Service struct {
 	repo              *repository.Queries
 	quiz              *quiz.Service
@@ -86,8 +86,8 @@ type Service struct {
 	passwordHashSlots chan struct{}
 }
 
-// NewService creates an auth.Service. It panics if cfg contains zero values
-// for required secrets, preventing silent misconfigurations at startup.
+// NewService crea un auth.Service. Entra en pánico si cfg contiene valores cero
+// para secretos requeridos, previniendo malas configuraciones silenciosas al inicio. (Útil)
 func NewService(repo *repository.Queries, quizSvc *quiz.Service, cfg Config) *Service {
 	if len(cfg.HMACSecret) == 0 {
 		panic("auth.Config: HMACSecret must not be empty")
@@ -110,11 +110,11 @@ func NewService(repo *repository.Queries, quizSvc *quiz.Service, cfg Config) *Se
 	}
 }
 
-// ── Registro en 3 pasos ──────────────────────────────────────────────────
+// ── Registro en 3 pasos ────────────────────────────────────────────────── (Útil)
 
-// RegisterQuestions handles the first step: a random subset of active
-// questions. Delegates entirely to internal/quiz — auth no decide el
-// muestreo, solo traduce el DTO.
+// RegisterQuestions maneja el primer paso: un subconjunto aleatorio de preguntas
+// activas. Delega enteramente a internal/quiz — auth no decide el
+// muestreo, solo traduce el DTO. (Útil)
 func (s *Service) RegisterQuestions(ctx context.Context) (RegisterQuestionsResponse, error) {
 	resp, err := s.quiz.SelectQuestionsForRegistration(ctx)
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *Service) RegisterQuestions(ctx context.Context) (RegisterQuestionsRespo
 // RegisterAnswers valida las respuestas, genera 4 candidatos de nickname y
 // devuelve el estado firmado que RegisterConfirm necesitará — sin escribir
 // nada en la base todavía: una persona que abandona aquí no deja ninguna
-// fila a medias.
+// fila a medias. (Útil)
 func (s *Service) RegisterAnswers(ctx context.Context, req RegisterAnswersRequest) (RegisterAnswersResponse, error) {
 	if strings.TrimSpace(req.PrivacyNoticeVersion) == "" {
 		return RegisterAnswersResponse{}, fmt.Errorf("%w: privacy_notice_version is required", ErrValidation)
@@ -194,7 +194,7 @@ func (s *Service) RegisterAnswers(ctx context.Context, req RegisterAnswersReques
 // RegisterConfirm valida el nickname elegido contra los 4 candidatos
 // firmados, RE-verifica la colisión (pudo tomarse en los minutos que pasaron
 // desde /answers), genera el password y crea la cuenta — respuestas,
-// account_quiz_answers y alias en una sola transacción.
+// account_quiz_answers y alias en una sola transacción. (Útil)
 func (s *Service) RegisterConfirm(ctx context.Context, req RegisterConfirmRequest) (RegisterConfirmResponse, error) {
 	payload, err := s.verifyRegistrationToken(req.RegistrationToken)
 	if err != nil {
@@ -280,7 +280,7 @@ func (s *Service) RegisterConfirm(ctx context.Context, req RegisterConfirmReques
 	for _, a := range payload.Answers {
 		if err := qtx.InsertAccountQuizAnswer(ctx, repository.InsertAccountQuizAnswerParams{
 			ID:                   uuid.New(),
-			AccountID:            accountID,
+			UserID:               accountID,
 			QuestionID:           a.QuestionID,
 			QuestionTextSnapshot: a.QuestionTextSnapshot,
 			AnswerText:           a.AnswerText,
@@ -336,10 +336,10 @@ func isUniqueViolation(err error) bool {
 	return false
 }
 
-// ── Login / sesión ────────────────────────────────────────────────────────
+// ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
 
 // Login busca la cuenta directo por nickname (sin blind index: no es PII
-// cifrada) y verifica el password con comparación en tiempo constante.
+// cifrada) y verifica el password con comparación en tiempo constante. (Útil)
 func (s *Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, error) {
 	if err := validateLogin(req); err != nil {
 		return LoginResponse{}, fmt.Errorf("%w: %s", ErrValidation, err.Error())
@@ -403,7 +403,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (LoginRespons
 		return LoginResponse{}, err
 	}
 
-	account, err := s.repo.GetAccountByID(ctx, rt.AccountID)
+	account, err := s.repo.GetAccountByID(ctx, rt.UserID)
 	if err != nil {
 		return LoginResponse{}, fmt.Errorf("reading account: %w", err)
 	}
@@ -457,7 +457,7 @@ func (s *Service) Logout(ctx context.Context, accountID uuid.UUID) error {
 	if err := s.repo.IncrementAccountTokenVersion(ctx, accountID); err != nil {
 		return fmt.Errorf("incrementing token_version: %w", err)
 	}
-	if err := s.repo.RevokeRefreshTokensForAccount(ctx, accountID); err != nil {
+	if err := s.repo.RevokeRefreshTokensForUser(ctx, accountID); err != nil {
 		return fmt.Errorf("revoking refresh tokens: %w", err)
 	}
 	return nil
@@ -508,131 +508,6 @@ func (s *Service) CancelSelf(ctx context.Context, accountID uuid.UUID) error {
 		AccountID: accountID,
 		Reason:    "self_service_cancellation",
 	})
-}
-
-// ── ARCO (acceso / rectificación / oposición) ────────────────────────────
-
-// SubmitArcoRequest registra una solicitud ARCO. "cancelacion" se rechaza a
-// propósito: esa vía ahora es DELETE /auth/me, autoservicio e inmediata —
-// dejarla aceptable aquí resucitaría la pregunta de qué hace un admin con
-// una "cancelación" que ya no tiene ninguna acción pendiente de aprobar.
-func (s *Service) SubmitArcoRequest(ctx context.Context, accountID uuid.UUID, req ArcoRequestDTO) (uuid.UUID, error) {
-	if accountID == uuid.Nil {
-		return uuid.Nil, ErrValidation
-	}
-	if req.RequestType == domain.ArcoCancelacion {
-		return uuid.Nil, fmt.Errorf("%w: use DELETE /auth/me to cancel your account, not this endpoint", ErrValidation)
-	}
-	if !isValidArcoRequestType(req.RequestType) || len(strings.TrimSpace(req.Details)) > 1000 {
-		return uuid.Nil, ErrValidation
-	}
-
-	payload := []byte(accountID.String() + "|" + string(req.RequestType) + "|" + req.Details)
-	evidenceHash := crypto.GenerateHMAC(payload, s.cfg.HMACSecret)
-	requestID := uuid.New()
-
-	if err := s.repo.InsertArcoRequest(ctx, repository.InsertArcoRequestParams{
-		ID:            requestID,
-		UserID:        uuid.NullUUID{UUID: accountID, Valid: true},
-		RequesterType: "user",
-		RequestType:   string(req.RequestType),
-		EvidenceHash:  evidenceHash,
-	}); err != nil {
-		return uuid.Nil, fmt.Errorf("inserting arco request: %w", err)
-	}
-	return requestID, nil
-}
-
-func isValidArcoRequestType(t domain.ArcoRequestType) bool {
-	switch t {
-	case domain.ArcoAcceso, domain.ArcoRectificacion, domain.ArcoOposicion:
-		return true
-	default:
-		return false
-	}
-}
-
-func (s *Service) ListPendingArcoRequests(ctx context.Context, actor domain.JWTClaims, limit int32) (ArcoPendingListDTO, error) {
-	if actor.Role != domain.RoleAdmin {
-		return ArcoPendingListDTO{}, ErrForbidden
-	}
-	if limit <= 0 || limit > 100 {
-		limit = 50
-	}
-	rows, err := s.repo.ListPendingArcoRequests(ctx, limit)
-	if err != nil {
-		return ArcoPendingListDTO{}, err
-	}
-	items := make([]ArcoPendingItemDTO, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, ArcoPendingItemDTO{
-			ID:            row.ID,
-			RequesterType: row.RequesterType,
-			RequestType:   row.RequestType,
-			Status:        row.Status,
-			ReceivedAt:    row.ReceivedAt,
-		})
-	}
-	return ArcoPendingListDTO{Items: items}, nil
-}
-
-// ResolveArcoRequest ya no orquesta ninguna saga (plan/04 §1.2 y §2): con
-// cancelacion fuera de este flujo, resolver un trámite es un solo UPDATE
-// bajo lock, dentro de una transacción corta que solo existe para que dos
-// admins no puedan resolver el mismo trámite a la vez.
-func (s *Service) ResolveArcoRequest(ctx context.Context, actor domain.JWTClaims, requestID uuid.UUID, req ResolveArcoRequestDTO, ip, userAgent string) error {
-	if actor.Role != domain.RoleAdmin {
-		return ErrForbidden
-	}
-	if requestID == uuid.Nil || strings.TrimSpace(req.ResponseSummary) == "" {
-		return ErrValidation
-	}
-
-	status := "rejected"
-	if req.Approved {
-		status = "resolved"
-	}
-
-	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	qtx := s.repo.WithTx(tx)
-
-	arcoReq, err := qtx.GetArcoRequestForUpdate(ctx, requestID)
-	if err != nil {
-		if repository.IsNoRows(err) {
-			return ErrNotFound
-		}
-		return err
-	}
-	if arcoReq.Status != "pending" {
-		return ErrValidation
-	}
-
-	if err := qtx.ResolveArcoRequest(ctx, repository.ResolveArcoRequestParams{
-		ID:              requestID,
-		HandledBy:       uuid.NullUUID{UUID: actor.UserID, Valid: true},
-		Status:          status,
-		ResponseSummary: strings.TrimSpace(req.ResponseSummary),
-	}); err != nil {
-		return fmt.Errorf("resolving arco request: %w", err)
-	}
-
-	var subjectID uuid.UUID
-	if arcoReq.UserID.Valid {
-		subjectID = arcoReq.UserID.UUID
-	}
-	if err := logAuditEntry(ctx, qtx, actor.UserID, "arco.resolve", "arco_request", requestID,
-		map[string]any{"status": "pending", "request_type": arcoReq.RequestType},
-		map[string]any{"status": status, "approved": req.Approved, "subject_account_id": subjectID},
-		ip, userAgent,
-	); err != nil {
-		return fmt.Errorf("logging arco resolution: %w", err)
-	}
-
-	return tx.Commit()
 }
 
 // ── Administración de cuentas ────────────────────────────────────────────
@@ -856,7 +731,7 @@ func (s *Service) issueRefreshToken(ctx context.Context, accountID uuid.UUID) (s
 	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
 	if err := s.repo.InsertRefreshToken(ctx, repository.InsertRefreshTokenParams{
 		ID:        uuid.New(),
-		AccountID: accountID,
+		UserID:    accountID,
 		TokenHash: tokenHash,
 		ExpiresAt: expiresAt,
 	}); err != nil {

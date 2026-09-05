@@ -14,7 +14,7 @@
 //
 // Las otras dos (retención legal automática por inactividad, purga de
 // refresh_tokens vencidos) siguen aplicando igual que antes, solo que contra
-// una única base.
+// una única base. (Útil)
 package maintenance
 
 import (
@@ -79,8 +79,8 @@ func (s *Service) RunOnce(ctx context.Context, now time.Time) (Summary, error) {
 		summary.SuspendedCancelled++
 	}
 
-	// Housekeeping purge (A1): drop expired/long-revoked refresh tokens so the
-	// table doesn't grow unbounded.
+	// Purga de mantenimiento (A1): elimina refresh tokens expirados/revocados hace tiempo para que la
+	// tabla no crezca sin límite. (Útil)
 	refreshTokens, err := s.repo.PurgeExpiredRefreshTokens(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("purging expired refresh tokens: %w", err)
@@ -96,7 +96,7 @@ func (s *Service) RunOnce(ctx context.Context, now time.Time) (Summary, error) {
 // distintos (A4). Idempotente por construcción: si un reintento la vuelve a
 // listar (no debería, DeactivateAccount la saca de 'suspended' en la misma
 // tx), CancelAccount simplemente no encuentra fila con deleted_at IS NULL
-// que actualizar.
+// que actualizar. (Útil)
 func (s *Service) cancelAccount(ctx context.Context, accountID uuid.UUID) error {
 	return privacy.CancelAccount(ctx, s.repo, privacy.CancelAccountParams{
 		AccountID: accountID,

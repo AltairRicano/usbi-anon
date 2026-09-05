@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// AllowedTemplateTypes are the valid values for template_type.
+// AllowedTemplateTypes son los valores válidos para template_type. (Relleno)
 var AllowedTemplateTypes = map[string]struct{}{
 	"trivia":         {},
 	"puzzle":         {},
@@ -71,7 +71,7 @@ type SectionResponse struct {
 	CreatedAt        time.Time `json:"created_at,omitempty"`
 }
 
-// LevelSummary is the public-safe DTO for listing levels (no content blob).
+// LevelSummary es el DTO seguro para el público para listar niveles (sin el blob de contenido). (Relleno)
 type LevelSummary struct {
 	ID           uuid.UUID `json:"id"`
 	SectionID    uuid.UUID `json:"section_id"`
@@ -83,7 +83,7 @@ type LevelSummary struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// LevelsPage is the paginated response for GET /levels.
+// LevelsPage es la respuesta paginada para GET /levels. (Relleno)
 type LevelsPage struct {
 	Items      []LevelSummary `json:"items"`
 	NextCursor string         `json:"next_cursor,omitempty"` // UUID string of last item, empty if no more pages
@@ -96,7 +96,7 @@ type SectionsResponse struct {
 // ArchivedLevelsResponse / ArchivedSectionsResponse listan contenido archivado
 // (F10.9, plan/05_Contenido_maker_y_juego.md §6). Sin paginación por cursor a
 // propósito: lo archivado es, por diseño, un subconjunto pequeño de lo que
-// existió alguna vez, no el catálogo completo.
+// existió alguna vez, no el catálogo completo. (Útil)
 type ArchivedLevelsResponse struct {
 	Items []LevelSummary `json:"items"`
 }

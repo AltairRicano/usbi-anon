@@ -8,7 +8,7 @@
 // UpsertAccount de este mismo archivo. Con una sola base ya no existe la
 // réplica no autoritativa que UpsertAccount mantenía sincronizada en cada
 // login/refresh — accounts es ahora la única fila, se crea una vez en el
-// registro y se lee directo por nickname en el login.
+// registro y se lee directo por nickname en el login. (Útil)
 package repository
 
 import (
@@ -32,7 +32,7 @@ const aliasVocabularySize = 24
 // el alias visible de una cuenta nueva. Se llama UNA SOLA VEZ, en el INSERT
 // de registro (CreateAccount) — con una sola base ya no hay una réplica que
 // reconciliar en cada login/refresh, así que generar el alias de más ya no
-// tiene sentido (plan/04_Rediseno_identidad_gustos.md §1).
+// tiene sentido (plan/04_Rediseno_identidad_gustos.md §1). (Útil)
 func RandomAlias() (adjectiveID, nounID, number int16, err error) {
 	adj, err := cryptorand.Int(cryptorand.Reader, big.NewInt(aliasVocabularySize))
 	if err != nil {
@@ -53,7 +53,7 @@ func RandomAlias() (adjectiveID, nounID, number int16, err error) {
 // metadatos de cuenta. Es un tipo interno de acceso a datos, no el DTO
 // público (ese es domain.User): incluye PasswordHash y el resto de columnas
 // sensibles porque solo lo consumen internal/auth e internal/privacy, nunca
-// se serializa directo a un response HTTP.
+// se serializa directo a un response HTTP. (Útil)
 type Account struct {
 	ID                      uuid.UUID
 	Nickname                string
@@ -114,7 +114,7 @@ type CreateAccountParams struct {
 // CreateAccount da de alta la cuenta. Es la ÚNICA inserción de la fila en
 // toda la vida de la cuenta: status nace 'active' siempre (ya no hay
 // 'pending_tutor_consent' — un menor autoreportado juega de inmediato) y
-// token_version nace en 1 vía DEFAULT del esquema.
+// token_version nace en 1 vía DEFAULT del esquema. (Útil)
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
 	row := q.db.QueryRowContext(ctx, `
 INSERT INTO accounts (
@@ -136,7 +136,7 @@ RETURNING `+accountColumns,
 
 // FindAccountByNickname es la consulta del login: busca la credencial
 // directo por nickname (sin blind index — el nickname no es PII cifrada, ver
-// plan/04_Rediseno_identidad_gustos.md §1) y excluye cuentas ya canceladas.
+// plan/04_Rediseno_identidad_gustos.md §1) y excluye cuentas ya canceladas. (Útil)
 func (q *Queries) FindAccountByNickname(ctx context.Context, nickname string) (Account, error) {
 	row := q.db.QueryRowContext(ctx, `
 SELECT `+accountColumns+`
@@ -148,7 +148,7 @@ WHERE nickname = $1 AND deleted_at IS NULL
 
 // GetAccountByID lee la cuenta por id — la usa el middleware de auth en cada
 // request autenticado para revalidar token_version/status/role contra la
-// base, no solo contra lo que dice el JWT.
+// base, no solo contra lo que dice el JWT. (Útil)
 func (q *Queries) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error) {
 	row := q.db.QueryRowContext(ctx, `
 SELECT `+accountColumns+`
@@ -160,7 +160,7 @@ WHERE id = $1 AND deleted_at IS NULL
 
 // GetAccountAlias lee la vista account_aliases, que compone "Jaguar Azul 42"
 // sin que ninguna tabla almacene la cadena. El alias no es único: no debe
-// usarse jamás como clave de búsqueda, solo como saludo de UI.
+// usarse jamás como clave de búsqueda, solo como saludo de UI. (Útil)
 func (q *Queries) GetAccountAlias(ctx context.Context, userID uuid.UUID) (string, error) {
 	var alias string
 	err := q.db.QueryRowContext(ctx, `
@@ -174,7 +174,7 @@ SELECT display_alias FROM account_aliases WHERE id = $1
 // ella, accounts_inactive_players_idx (COALESCE(last_login_at, created_at))
 // mide inactividad desde la fecha de alta para siempre, sin importar cuánto
 // juegue la persona. F9 la añade porque es la primera fase que de verdad
-// implementa Login/Refresh contra esta tabla.
+// implementa Login/Refresh contra esta tabla. (Útil)
 func (q *Queries) TouchAccountLastLogin(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, `
 UPDATE accounts SET last_login_at = NOW() WHERE id = $1
@@ -183,7 +183,7 @@ UPDATE accounts SET last_login_at = NOW() WHERE id = $1
 }
 
 // IncrementAccountTokenVersion invalida todos los JWT vivos de la cuenta —
-// logout y reseteo de password la usan igual.
+// logout y reseteo de password la usan igual. (Útil)
 func (q *Queries) IncrementAccountTokenVersion(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, `
 UPDATE accounts SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1
@@ -193,7 +193,7 @@ UPDATE accounts SET token_version = token_version + 1, updated_at = NOW() WHERE 
 
 // IncrementAgeUpAttempts es el contador de intentos de transición a mayoría
 // de edad (Ley 251, máx. 3) — internal/auth.AgeUp lo revisa antes de aplicar
-// el cambio.
+// el cambio. (Útil)
 func (q *Queries) IncrementAgeUpAttempts(ctx context.Context, id uuid.UUID) (int16, error) {
 	var attempts int16
 	err := q.db.QueryRowContext(ctx, `

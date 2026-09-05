@@ -15,7 +15,7 @@
 //
 // Además, con el rediseño, la cancelación es autoservicio inmediato
 // (DELETE /auth/me, decisión 7 del rediseño) — ya no depende de que un admin
-// apruebe una solicitud ARCO de tipo cancelación primero.
+// apruebe una solicitud ARCO de tipo cancelación primero. (Útil)
 package privacy
 
 import (
@@ -30,7 +30,7 @@ import (
 
 // CancelAccountParams identifica la cuenta a cancelar y el motivo a
 // registrar. No lleva ningún secreto de cifrado: sin email no hay nada que
-// ofuscar con una clave (§1 del rediseño).
+// ofuscar con una clave (§1 del rediseño). (Útil)
 type CancelAccountParams struct {
 	AccountID uuid.UUID
 	Reason    string
@@ -49,7 +49,7 @@ type CancelAccountParams struct {
 //     status='deleted' y fuerza token_version+1 (dentro de DeactivateAccount).
 //
 // La fila de accounts NUNCA se borra — se conserva seudonimizada, para que
-// las bitácoras que la referencian sigan teniendo integridad referencial.
+// las bitácoras que la referencian sigan teniendo integridad referencial. (Útil)
 func CancelAccount(ctx context.Context, repo *repository.Queries, p CancelAccountParams) error {
 	randomNickname, err := randomNicknameFill()
 	if err != nil {
@@ -75,7 +75,7 @@ func CancelAccount(ctx context.Context, repo *repository.Queries, p CancelAccoun
 	if err := qtx.MarkUserDevicesForWipe(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("marking devices for wipe: %w", err)
 	}
-	if err := qtx.RevokeRefreshTokensForAccount(ctx, p.AccountID); err != nil {
+	if err := qtx.RevokeRefreshTokensForUser(ctx, p.AccountID); err != nil {
 		return fmt.Errorf("revoking refresh tokens: %w", err)
 	}
 	if err := qtx.DeactivateAccount(ctx, repository.DeactivateAccountParams{
@@ -99,7 +99,7 @@ const nicknameFillLength = 20
 // diferencia del nickname candidato que ve la persona usuaria en el
 // registro, este valor nunca se muestra ni se recuerda — solo tiene que
 // cumplir el CHECK y no colisionar, y no hay razón para no usar el generador
-// criptográfico por defecto del proyecto.
+// criptográfico por defecto del proyecto. (Útil)
 func randomNicknameFill() (string, error) {
 	b := make([]byte, nicknameFillLength)
 	if _, err := cryptorand.Read(b); err != nil {

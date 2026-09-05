@@ -1,5 +1,5 @@
-// Package httputil holds small, dependency-free HTTP helpers shared across
-// transport and business-logic packages.
+// Package httputil contiene pequeños helpers HTTP sin dependencias compartidos entre
+// los paquetes de transporte y lógica de negocio. (Relleno)
 package httputil
 
 import (
@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// ClientIP returns the socket peer address for r, without trusting any
-// client-supplied header. Callers that need to trust a reverse proxy's
-// forwarded-for headers should rely on the RealIP middleware being enabled
-// upstream (which rewrites r.RemoteAddr) rather than re-parsing headers here.
+// ClientIP devuelve la dirección peer del socket para r, sin confiar en ningún
+// encabezado provisto por el cliente. Los llamadores que necesiten confiar en los
+// encabezados forwarded-for de un proxy inverso deben depender de que el middleware RealIP esté habilitado
+// aguas arriba (el cual reescribe r.RemoteAddr) en lugar de volver a parsear encabezados aquí. (Útil)
 func ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

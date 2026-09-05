@@ -1,7 +1,7 @@
-// Package testdb provides isolated, real-Postgres test databases for
-// integration tests (audit finding B9, heredado de ../usbi). Existe para que
+// Package testdb provee bases de datos Postgres reales y aisladas para
+// pruebas de integración (hallazgo de auditoría B9, heredado de ../usbi). Existe para que
 // internal/auth, internal/maintenance y internal/privacy puedan probar sus
-// caminos transaccionales y de seguridad (cancelación, ARCO, auditoría)
+// caminos transaccionales y de seguridad (cancelación de cuenta, auditoría)
 // contra SQL real — nunca mockeado.
 //
 // F7 (rediseño de identidad, plan/04_Rediseno_identidad_gustos.md) devuelve
@@ -20,7 +20,7 @@
 //
 // TEST_DATABASE_URL es opt-in a propósito: si no está definida, Setup llama
 // a t.Skip para que `go test ./...` siga en verde en cualquier entorno sin
-// Postgres alcanzable (runners de CI, otras máquinas, etc).
+// Postgres alcanzable (runners de CI, otras máquinas, etc). (Útil)
 package testdb
 
 import (
@@ -41,7 +41,7 @@ import (
 
 // DB agrupa las Queries y la conexión cruda de la base de prueba. DB solo
 // hace falta para pruebas que necesiten aserciones SQL directas, ya que
-// repository.Queries no expone un método de consulta ad-hoc.
+// repository.Queries no expone un método de consulta ad-hoc. (Útil)
 type DB struct {
 	Repo *repository.Queries
 	DB   *sql.DB
@@ -49,7 +49,7 @@ type DB struct {
 
 // migrationsDir es la raíz backend/migrations, resuelta relativa a este
 // archivo fuente (no al directorio de trabajo del llamador), así que Setup
-// funciona igual sin importar qué paquete importe testdb.
+// funciona igual sin importar qué paquete importe testdb. (Útil)
 func migrationsDir() string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
@@ -58,7 +58,7 @@ func migrationsDir() string {
 // Setup crea un esquema aislado, aplica el baseline unificado, y devuelve
 // Queries + *sql.DB. El pool queda anclado al esquema vía el parámetro de
 // conexión `options=-c search_path=...`, así que es seguro bajo consultas
-// concurrentes dentro de una misma prueba, no solo con una única conexión.
+// concurrentes dentro de una misma prueba, no solo con una única conexión. (Útil)
 func Setup(t *testing.T) *DB {
 	t.Helper()
 
@@ -91,7 +91,7 @@ func Setup(t *testing.T) *DB {
 
 // setupSchema crea un esquema con prefijo+hex aleatorio, lo registra para
 // borrarse en t.Cleanup, abre un pool anclado a él vía search_path, y le
-// aplica las migraciones *.up.sql de backend/migrations/.
+// aplica las migraciones *.up.sql de backend/migrations/. (Útil)
 func setupSchema(t *testing.T, admin *sql.DB, kvDSN, schemaPrefix string) *sql.DB {
 	t.Helper()
 
@@ -146,10 +146,10 @@ func applyMigrations(t *testing.T, db *sql.DB, dir string) {
 	}
 }
 
-// upOnly strips a goose "-- +goose Down" section and everything after it.
+// upOnly elimina la sección "-- +goose Down" y todo lo que sigue.
 // Ninguna migración de USBI-Anon lleva anotaciones goose (nota histórica en
 // el propio baseline), así que hoy es un no-op — se conserva por si alguna
-// migración futura sí las trajera.
+// migración futura sí las trajera. (Útil)
 func upOnly(raw string) string {
 	if idx := strings.Index(raw, "-- +goose Down"); idx != -1 {
 		return raw[:idx]
@@ -157,8 +157,8 @@ func upOnly(raw string) string {
 	return raw
 }
 
-// toKeywordDSN normalises either a postgres:// URL or an already-keyword=value
-// DSN into keyword=value form, so callers can safely append ` options=...`.
+// toKeywordDSN normaliza ya sea una URL postgres:// o un DSN en formato
+// keyword=value a la forma keyword=value, para que los invocadores puedan añadir ` options=...`. (Relleno)
 func toKeywordDSN(dsn string) (string, error) {
 	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
 		return pq.ParseURL(dsn)

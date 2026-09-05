@@ -26,9 +26,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// RouterDependencies holds all handler and config dependencies. A nil handler
-// registers a 501 "not implemented" stub for its routes instead of panicking,
-// so partial wiring (e.g. in tests) is safe.
+// RouterDependencies contiene todas las dependencias de configuración y handlers. Un handler nil
+// registra un stub 501 "no implementado" para sus rutas en vez de hacer panic,
+// para que el cableado parcial (ej. en tests) sea seguro. (Útil)
 type RouterDependencies struct {
 	AuthHandler      *auth.Handler
 	QuizHandler      *quiz.Handler
@@ -40,18 +40,18 @@ type RouterDependencies struct {
 	TokenCfg         crypto.TokenConfig
 	// Repo valida token_version/status contra la ÚNICA base del sistema —
 	// con el rediseño de identidad ya no hace falta una base de identidad
-	// aparte (plan/04_Rediseno_identidad_gustos.md §1 y §2).
+	// aparte (plan/04_Rediseno_identidad_gustos.md §1 y §2). (Útil)
 	Repo *repository.Queries
-	// MaxBodyBytes caps incoming API request bodies. Defaults to 6 MiB.
+	// MaxBodyBytes limita el tamaño del cuerpo de la petición HTTP entrante. Por defecto 6 MiB. (Relleno)
 	MaxBodyBytes int64
-	// AllowedOrigin is a comma-separated CORS allowlist (or "*" to opt into
-	// allowing any origin). Defaults to "https://usbi.edu.mx" if empty.
+	// AllowedOrigin es una lista blanca separada por comas (o "*" para permitir
+	// cualquier origen) para CORS. Por defecto "https://usbi.edu.mx" si está vacío. (Relleno)
 	AllowedOrigin string
-	// TrustProxyHeaders enables chi's RealIP middleware, which rewrites
-	// r.RemoteAddr from True-Client-IP/X-Real-IP/X-Forwarded-For headers.
-	// MUST stay false unless a reverse proxy in front of this service is
-	// confirmed to strip/set those headers itself — otherwise any direct
-	// client can spoof its own IP for rate limiting and audit logging.
+	// TrustProxyHeaders activa el middleware RealIP de chi, que sobrescribe
+	// r.RemoteAddr con base en los headers True-Client-IP/X-Real-IP/X-Forwarded-For.
+	// DEBE mantenerse false a menos que el proxy inverso confirme limpiar/establecer
+	// esos headers; de otra forma un cliente podría suplantar su IP
+	// para burlar rate limits y auditorías. (Útil)
 	TrustProxyHeaders bool
 	// RequestTimeout bounds every request via middleware.Timeout. Defaults to 20s.
 	RequestTimeout time.Duration
@@ -70,10 +70,10 @@ func ClaimsFromContext(ctx context.Context) *domain.JWTClaims {
 	return nil
 }
 
-// SetupRoutes registers all HTTP routes with their middleware chain. It
-// returns a cleanup func that stops the rate limiters' background cleanup
-// goroutine — callers should defer it (or invoke it during graceful
-// shutdown); it is not required for the server to function correctly.
+// SetupRoutes registra todas las rutas HTTP con su cadena de middleware.
+// Devuelve una función de cleanup que detiene las goroutines de limpieza de rate limit
+// en background — quien llama debería usar defer (o invocarla en shutdown graceful);
+// no es estricamente necesario para que el servidor funcione. (Útil)
 func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 	rl := newRateLimiters()
 
@@ -132,9 +132,6 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Get("/auth/me", deps.AuthHandler.Me)
 				r.Post("/auth/age-up", deps.AuthHandler.AgeUp)
 				r.Delete("/auth/me", deps.AuthHandler.CancelSelf)
-				r.Post("/arco", deps.AuthHandler.Arco)
-				r.Get("/arco/pending", deps.AuthHandler.ListPendingArco)
-				r.Post("/arco/{request_id}/resolve", deps.AuthHandler.ResolveArco)
 
 				r.Post("/admin/accounts", deps.AuthHandler.CreateAdminAccount)
 				r.Delete("/admin/accounts/{account_id}", deps.AuthHandler.DeleteAdminAccount)
@@ -145,9 +142,6 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Get("/auth/me", notImplementedHandler("auth.me"))
 				r.Post("/auth/age-up", notImplementedHandler("auth.ageUp"))
 				r.Delete("/auth/me", notImplementedHandler("auth.cancelSelf"))
-				r.Post("/arco", notImplementedHandler("arco.submitRequest"))
-				r.Get("/arco/pending", notImplementedHandler("arco.listPending"))
-				r.Post("/arco/{request_id}/resolve", notImplementedHandler("arco.resolveRequest"))
 				r.Post("/admin/accounts", notImplementedHandler("admin.createAccount"))
 				r.Delete("/admin/accounts/{account_id}", notImplementedHandler("admin.deleteAccount"))
 				r.Get("/admin/accounts/{account_id}/quiz-answers", notImplementedHandler("admin.getAccountQuizAnswers"))
@@ -252,11 +246,10 @@ func maxBodyBytesMiddleware(maxBytes int64) func(http.Handler) http.Handler {
 	}
 }
 
-// requestLogger emits one structured slog record per request — method, path,
-// status, bytes, latency, request id and client IP (B4). It replaces chi's
-// text-only middleware.Logger so logs are machine-readable, and its status +
-// duration fields double as the minimal request metrics (rate-limit rejections
-// show up as status=429, HMAC failures as the /sync error status, etc.).
+// requestLogger emite un registro estructurado (slog) por cada petición: método, ruta,
+// estado, bytes, latencia, ID de petición e IP del cliente (B4). Reemplaza el middleware
+// Logger de texto de chi para que sea parseable por máquina, y sus campos de estado
+// y duración sirven como métricas base de peticiones. (Útil)
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -285,7 +278,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // plan/02_Backend.md §8: con dos bases independientes, "la base de datos no
 // responde" ya no es suficiente detalle para operar el servicio — hace falta
 // saber si es la principal o la de identidad). check (ver readyCheck en
-// main.go) ya se encarga de no filtrar el error crudo del driver.
+// main.go) ya se encarga de no filtrar el error crudo del driver. (Útil)
 func readyHandler(check func(context.Context) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if check == nil {

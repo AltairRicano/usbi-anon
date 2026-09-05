@@ -1,7 +1,7 @@
-// Package incidents implements the admin-facing security incident log required
-// by the Documento de Seguridad (audit finding A5). Before this package the
-// security_incidents table existed in the schema but had zero writers — the
-// mandated incident ledger was inert.
+// Package incidents implementa el registro de incidentes de seguridad para administradores requerido
+// por el Documento de Seguridad (hallazgo de auditoría A5). Antes de este paquete, la tabla
+// security_incidents existía en el esquema pero no tenía escritores — el
+// registro de incidentes obligatorio estaba inerte. (Útil)
 package incidents
 
 import (
@@ -24,12 +24,12 @@ var (
 	ErrValidation = errors.New("validation error")
 )
 
-// validSeverities is the accepted set; also enforced by a CHECK constraint.
+// validSeverities es el conjunto aceptado; también se hace cumplir con una restricción CHECK. (Relleno)
 var validSeverities = map[string]struct{}{
 	"low": {}, "medium": {}, "high": {}, "critical": {},
 }
 
-// CreateIncidentRequest is the admin-submitted body for POST /admin/security-incidents.
+// CreateIncidentRequest es el cuerpo enviado por el admin para POST /admin/security-incidents. (Relleno)
 type CreateIncidentRequest struct {
 	Severity           string `json:"severity"` // low|medium|high|critical
 	AffectedScope      string `json:"affected_scope"`
@@ -39,7 +39,7 @@ type CreateIncidentRequest struct {
 	ReportedToCutai    bool   `json:"reported_to_cutai,omitempty"`
 }
 
-// CreateIncidentResponse is returned on success.
+// CreateIncidentResponse se devuelve en caso de éxito. (Relleno)
 type CreateIncidentResponse struct {
 	ID       uuid.UUID `json:"id"`
 	Severity string    `json:"severity"`
@@ -58,8 +58,8 @@ func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 	return &Service{queries: q, hmacSecret: hmacSecret}
 }
 
-// CreateIncident records a security incident (admins only), sealing it
-// with an HMAC evidence hash for No-Repudio and writing an admin_audit_log entry.
+// CreateIncident registra un incidente de seguridad (solo admins), sellándolo
+// con un hash de evidencia HMAC para No-Repudio y escribiendo una entrada en admin_audit_log. (Útil)
 func (s *Service) CreateIncident(ctx context.Context, actor domain.JWTClaims, req CreateIncidentRequest, ip, userAgent string) (CreateIncidentResponse, error) {
 	if actor.Role != domain.RoleAdmin {
 		return CreateIncidentResponse{}, ErrForbidden

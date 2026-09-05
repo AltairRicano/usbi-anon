@@ -1,13 +1,9 @@
-// Package audit centralises writes to audit_log so every sensitive
-// operation records No-Repudio evidence through a single, consistent path.
-// audit_log es la fusión de admin_audit_log + identity_audit_log (F7, ver
-// plan/04_Rediseno_identidad_gustos.md §1) — antes de la fusión, las acciones
-// de identidad no podían pasar por este paquete porque escribían en la otra
-// base; ahora sí.
-//
-// Before this package the only caller was internal/levels; the most sensitive
-// actions of all — approving/rejecting an ARCO request, aging a minor up, and
-// bootstrapping the first admin — wrote nothing (audit finding A3).
+// Package audit centraliza las escrituras en audit_log para que toda operación
+// sensible registre evidencia de No-Repudio a través de una ruta única y consistente.
+// audit_log es la fusión de admin_audit_log + identity_audit_log (F7). Antes
+// de este paquete el único llamador era internal/levels; acciones tan
+// sensibles como envejecer a un menor o sembrar el primer admin no dejaban
+// rastro alguno. (Útil)
 package audit
 
 import (
@@ -19,9 +15,9 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
-// Entry is a single audit record. Before/After are marshalled to JSON; nil
-// becomes an empty object. IP/UserAgent default to placeholders for
-// backend-internal actions that have no HTTP request context.
+// Entry es un único registro de auditoría. Before/After se serializan a JSON; nil
+// se convierte en un objeto vacío. IP/UserAgent tienen valores por defecto para
+// acciones internas del backend que no tienen contexto de petición HTTP. (Útil)
 type Entry struct {
 	ActorID    uuid.UUID
 	Action     string
@@ -33,9 +29,9 @@ type Entry struct {
 	UserAgent  string
 }
 
-// Log appends an entry to audit_log using the given (possibly transactional)
-// repository. The append-only trigger on the table guarantees the row can
-// never be updated or deleted afterwards.
+// Log añade una entrada a audit_log usando el repositorio dado (posiblemente transaccional).
+// El trigger de solo-añadir en la tabla garantiza que la fila
+// nunca pueda ser actualizada o eliminada después. (Útil)
 func Log(ctx context.Context, repo *repository.Queries, e Entry) error {
 	before, err := marshalState(e.Before)
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 
 // DeviceKind debe ser uno de: movil, tablet, laptop, escritorio, otro — el
 // mismo vocabulario cerrado que el CHECK de devices.device_kind (ver
-// plan/01_Base_de_datos.md §3.4). No es texto libre.
+// plan/01_Base_de_datos.md §3.4). No es texto libre. (Útil)
 type RegisterDeviceRequest struct {
 	DeviceKind string `json:"device_kind"`
 	Platform   string `json:"platform"`

@@ -11,24 +11,24 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/httpproblem"
 )
 
-// Handler exposes the sync HTTP endpoint.
+// Handler expone el endpoint HTTP de sincronización. (Relleno)
 type Handler struct {
 	svc *Service
 }
 
-// NewHandler creates a sync.Handler.
+// NewHandler crea un sync.Handler. (Relleno)
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// SyncData handles POST /api/v1/sync.
+// SyncData maneja POST /api/v1/sync.
 //
-// Security contract:
-//   - The HMAC is verified over a canonical technical payload, not over raw JSON.
-//   - hmac_signature in the JSON body is base64-encoded bytes (standard encoding).
-//   - The user_id in the body MUST match the JWT claims (checked by middleware).
+// Contrato de seguridad:
+//   - El HMAC se verifica sobre un payload técnico canónico, no sobre el JSON en crudo.
+//   - hmac_signature en el cuerpo JSON son bytes codificados en base64 (codificación estándar).
+//   - El user_id en el cuerpo DEBE coincidir con las claims del JWT (verificado por middleware). (Útil)
 func (h *Handler) SyncData(w http.ResponseWriter, r *http.Request) {
-	// Read the body once. HMAC verification uses the decoded canonical payload.
+	// Leer el cuerpo una vez. La verificación HMAC usa el payload canónico decodificado. (Útil)
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError

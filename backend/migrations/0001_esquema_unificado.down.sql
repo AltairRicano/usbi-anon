@@ -14,7 +14,6 @@ DROP FUNCTION IF EXISTS enforce_append_only_ledgers();
 DROP TABLE IF EXISTS security_incidents;
 DROP TABLE IF EXISTS audit_log;
 DROP TABLE IF EXISTS experience_history;
-DROP TABLE IF EXISTS arco_requests;
 DROP TABLE IF EXISTS user_badges;
 DROP TABLE IF EXISTS badges;
 DROP TABLE IF EXISTS daily_streak;

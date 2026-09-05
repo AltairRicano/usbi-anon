@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserRole defines valid roles for users in the USBI system.
+// UserRole define los roles válidos para los usuarios en el sistema USBI. (Relleno)
 type UserRole string
 
 const (
@@ -14,7 +14,7 @@ const (
 	RoleAdmin  UserRole = "admin"
 )
 
-// UserStatus defines valid account lifecycle statuses.
+// UserStatus define los estados válidos del ciclo de vida de la cuenta. (Relleno)
 type UserStatus string
 
 const (
@@ -23,8 +23,8 @@ const (
 	StatusDeleted   UserStatus = "deleted"
 )
 
-// User is the decoupled public DTO. It NEVER includes password_hash,
-// email/phone ciphertext, HMAC keys, or any cryptographic material.
+// User es el DTO público desacoplado. NUNCA incluye password_hash,
+// texto cifrado de email/teléfono, claves HMAC ni ningún material criptográfico.
 //
 // FullName no existe: USBI-Anon no guarda nombre real en ningún lado del
 // sistema principal. Tampoco existe ningún dato de tutor ni de correo — el
@@ -34,7 +34,7 @@ const (
 // relacionado: un alias 100% aleatorio ("Jaguar Azul 42"), resuelto contra la
 // vista account_aliases. Ninguno de los dos debe usarse como clave de
 // búsqueda salvo Nickname, que sí lo es por diseño (UNIQUE, `WHERE nickname =
-// $1`).
+// $1`). (Útil)
 type User struct {
 	ID           uuid.UUID  `json:"id"`
 	Nickname     string     `json:"nickname"`
@@ -45,15 +45,15 @@ type User struct {
 	CreatedAt    time.Time  `json:"created_at"`
 }
 
-// JWTClaims carries the standard claims embedded in every USBI JWT.
-// TokenVersion is validated against DB on every authenticated request.
+// JWTClaims transporta los claims estándar integrados en cada JWT de USBI.
+// TokenVersion se valida contra la base de datos en cada petición autenticada. (Útil)
 type JWTClaims struct {
 	UserID       uuid.UUID `json:"user_id"`
 	Role         UserRole  `json:"role"`
 	TokenVersion int       `json:"token_version"`
 }
 
-// SyncSource defines valid origins for experience events.
+// SyncSource define los orígenes válidos para los eventos de experiencia. (Relleno)
 type SyncSource string
 
 const (
@@ -61,7 +61,7 @@ const (
 	SyncSourceOfflineSync SyncSource = "offline_sync"
 )
 
-// VerificationMethod defines how XP was verified.
+// VerificationMethod define cómo se verificó la XP. (Relleno)
 type VerificationMethod string
 
 const (
@@ -69,48 +69,48 @@ const (
 	VerificationHMACOffline  VerificationMethod = "hmac_offline"
 )
 
-// LevelAttemptItem represents a single level attempt from an offline sync payload.
-// NOTE: xp_awarded is provided by the client but MUST be recalculated by Go
-// backend using official level difficulty and transactional locking. Client value is untrusted.
+// LevelAttemptItem representa un intento de nivel individual desde un payload de sincronización offline.
+// NOTA: xp_awarded es provisto por el cliente pero DEBE ser recalculado por el
+// backend en Go usando la dificultad oficial del nivel y bloqueo transaccional. El valor del cliente no es confiable. (Útil)
 type LevelAttemptItem struct {
 	LevelID       uuid.UUID `json:"level_id"`
-	AttemptDate   string    `json:"attempt_date"` // ISO 8601 date: YYYY-MM-DD
+	AttemptDate   string    `json:"attempt_date"` // fecha ISO 8601: YYYY-MM-DD (Relleno)
 	AttemptNumber int       `json:"attempt_number"`
-	XPAwarded     int       `json:"xp_awarded"` // Untrusted. Backend recalculates.
-	// Score is the in-game score for this attempt (NOT XP). It feeds
-	// player_progress.best_score exactly like the online path; XP is always
-	// recalculated server-side and never derived from Score. Must be >= 0.
+	XPAwarded     int       `json:"xp_awarded"` // No confiable. El backend recalcula. (Útil)
+	// Score es la puntuación del juego para este intento (NO la XP). Alimenta a
+	// player_progress.best_score exactamente igual que la ruta online; la XP siempre
+	// se recalcula del lado del servidor y nunca se deriva del Score. Debe ser >= 0. (Útil)
 	Score     int  `json:"score"`
 	Completed bool `json:"completed"`
 }
 
-// SyncPayload is the strictly typed offline progress packet.
-// It MUST NOT contain name, email, phone, tutor data, or any PII.
+// SyncPayload es el paquete de progreso offline estrictamente tipado.
+// NO DEBE contener nombre, correo electrónico, teléfono, datos de tutor, ni ningún dato personal identificable (PII). (Útil)
 type SyncPayload struct {
 	LevelAttempts    []LevelAttemptItem `json:"level_attempts"`
-	DailyStreakDates []string           `json:"daily_streak_dates,omitempty"` // YYYY-MM-DD
+	DailyStreakDates []string           `json:"daily_streak_dates,omitempty"` // YYYY-MM-DD (Relleno)
 	BadgeIDsEarned   []uuid.UUID        `json:"badge_ids_earned,omitempty"`
 }
 
-// SyncEventRequest is the incoming body for POST /api/v1/sync.
+// SyncEventRequest es el cuerpo de entrada para POST /api/v1/sync. (Relleno)
 type SyncEventRequest struct {
-	SyncEventID      uuid.UUID   `json:"sync_event_id"` // Idempotency key
+	SyncEventID      uuid.UUID   `json:"sync_event_id"` // Clave de idempotencia (Útil)
 	UserID           uuid.UUID   `json:"user_id"`
 	DeviceID         uuid.UUID   `json:"device_id"`
 	CryptoKeyVersion int         `json:"crypto_key_version"`
 	Payload          SyncPayload `json:"payload"`
-	HMACSignature    []byte      `json:"hmac_signature"` // HMAC-SHA256, Base64
+	HMACSignature    []byte      `json:"hmac_signature"` // HMAC-SHA256, Base64 (Relleno)
 }
 
-// SyncEventResponse is returned by POST /api/v1/sync.
+// SyncEventResponse es devuelto por POST /api/v1/sync. (Relleno)
 type SyncEventResponse struct {
-	Status        string      `json:"status"`          // "synced" | "already_processed"
-	WipeLocalData bool        `json:"wipe_local_data"` // ARCO cancellation flag
-	ServerXPTotal int         `json:"server_xp_total"` // Post-merge total for client validation
+	Status        string      `json:"status"`          // "synced" | "already_processed" (Relleno)
+	WipeLocalData bool        `json:"wipe_local_data"` // establecido en la cancelación de cuenta (autoservicio) (Útil)
+	ServerXPTotal int         `json:"server_xp_total"` // Total post-fusión para la validación del cliente (Útil)
 	BadgesAwarded []uuid.UUID `json:"badges_awarded,omitempty"`
 }
 
-// ProblemDetails implements RFC 7807 for all error responses.
+// ProblemDetails implementa RFC 7807 para todas las respuestas de error. (Útil)
 type ProblemDetails struct {
 	Type     string `json:"type"`
 	Title    string `json:"title"`
@@ -119,25 +119,9 @@ type ProblemDetails struct {
 	Instance string `json:"instance,omitempty"`
 }
 
-// ArcoRequestType defines the valid ARCO right types.
-type ArcoRequestType string
-
-const (
-	ArcoAcceso        ArcoRequestType = "acceso"
-	ArcoRectificacion ArcoRequestType = "rectificacion"
-	ArcoCancelacion   ArcoRequestType = "cancelacion"
-	ArcoOposicion     ArcoRequestType = "oposicion"
-)
-
-// ArcoRequest is the body for POST /api/v1/arco.
-type ArcoRequest struct {
-	RequestType ArcoRequestType `json:"request_type"`
-	Details     string          `json:"details,omitempty"`
-}
-
-// ContextKey is an unexported type for context keys to avoid collisions
-// with other packages that use context.WithValue.
+// ContextKey es un tipo no exportado para las claves de contexto para evitar colisiones
+// con otros paquetes que usan context.WithValue. (Útil)
 type ContextKey string
 
-// ClaimsKey is the context key for storing JWT claims in the request context.
+// ClaimsKey es la clave de contexto para almacenar los claims JWT en el contexto de la petición. (Relleno)
 const ClaimsKey ContextKey = "jwt_claims"

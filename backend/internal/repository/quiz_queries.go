@@ -3,11 +3,11 @@
 // registration_settings). internal/quiz es el único consumidor — orquesta
 // aquí el guard de "mínimo 4 preguntas activas" dentro de una transacción,
 // tal como pide el comentario de registration_questions en
-// 0001_esquema_unificado.up.sql: la regla vive en Go, no en un CHECK/trigger.
+// 0001_esquema_unificado.up.sql: la regla vive en Go, no en un CHECK/trigger. (Útil)
 //
 // account_quiz_answers gana sus consultas en F9, que es quien primero las
 // necesita: se insertan en el registro (POST /auth/register/confirm) y se
-// leen desde el panel de admin (GET /admin/accounts/{id}/quiz-answers).
+// leen desde el panel de admin (GET /admin/accounts/{id}/quiz-answers). (Útil)
 package repository
 
 import (
@@ -35,7 +35,7 @@ func scanRegistrationQuestion(row scanner) (RegistrationQuestion, error) {
 const registrationQuestionColumns = `id, question_text, is_active, display_order, created_at, updated_at`
 
 // ListRegistrationQuestions trae TODAS las preguntas (activas e inactivas) —
-// la vista de administración del banco completo.
+// la vista de administración del banco completo. (Útil)
 func (q *Queries) ListRegistrationQuestions(ctx context.Context) ([]RegistrationQuestion, error) {
 	rows, err := q.db.QueryContext(ctx, `
 SELECT `+registrationQuestionColumns+`
@@ -60,7 +60,7 @@ ORDER BY display_order ASC, created_at ASC
 
 // ListActiveRegistrationQuestions alimenta el muestreo aleatorio del
 // registro (internal/quiz.SelectQuestionsForRegistration): solo mira las
-// activas, igual que el índice parcial registration_questions_active_idx.
+// activas, igual que el índice parcial registration_questions_active_idx. (Útil)
 func (q *Queries) ListActiveRegistrationQuestions(ctx context.Context) ([]RegistrationQuestion, error) {
 	rows, err := q.db.QueryContext(ctx, `
 SELECT `+registrationQuestionColumns+`
@@ -88,13 +88,13 @@ ORDER BY display_order ASC, created_at ASC
 // llama SIEMPRE dentro de la misma transacción que el UPDATE/DELETE que
 // podría bajar el conteo, con FOR UPDATE para que dos administradores
 // desactivando preguntas a la vez no pasen ambos el guard por una
-// condición de carrera.
+// condición de carrera. (Útil)
 func (q *Queries) CountActiveRegistrationQuestions(ctx context.Context) (int, error) {
 	var count int
 	// Postgres rechaza FOR UPDATE combinado directo con una función de
 	// agregación ("FOR UPDATE is not allowed with aggregate functions") — el
 	// lock de fila va en la subconsulta, el COUNT(*) en la externa, que ya no
-	// lleva FOR UPDATE.
+	// lleva FOR UPDATE. (Útil)
 	err := q.db.QueryRowContext(ctx, `
 SELECT COUNT(*) FROM (
     SELECT id FROM registration_questions WHERE is_active FOR UPDATE
@@ -139,7 +139,7 @@ RETURNING `+registrationQuestionColumns,
 // GetRegistrationQuestionForUpdate lee una pregunta bajo lock — la usa el
 // guard de DeleteRegistrationQuestion para saber si la fila a borrar está
 // activa (y por tanto cuenta contra el mínimo) sin una segunda consulta sin
-// lock que otro admin pudiera adelantar.
+// lock que otro admin pudiera adelantar. (Útil)
 func (q *Queries) GetRegistrationQuestionForUpdate(ctx context.Context, id uuid.UUID) (RegistrationQuestion, error) {
 	row := q.db.QueryRowContext(ctx, `
 SELECT `+registrationQuestionColumns+`
@@ -159,7 +159,7 @@ func (q *Queries) DeleteRegistrationQuestion(ctx context.Context, id uuid.UUID) 
 // de GetRegistrationQuestionForUpdate (guard de mínimo 4 en UPDATE/DELETE),
 // esta la usa el registro (POST /auth/register/answers) solo para validar
 // que question_id existe y está activa, y para congelar
-// question_text_snapshot.
+// question_text_snapshot. (Útil)
 func (q *Queries) GetRegistrationQuestionByID(ctx context.Context, id uuid.UUID) (RegistrationQuestion, error) {
 	row := q.db.QueryRowContext(ctx, `
 SELECT `+registrationQuestionColumns+`
@@ -195,10 +195,10 @@ RETURNING max_questions_shown, updated_at
 
 // AccountQuizAnswer es una respuesta ya congelada — question_text_snapshot
 // sobrevive aunque la pregunta original se edite o se borre (question_id
-// pasa a NULL vía SET NULL, ver 0001_esquema_unificado.up.sql).
+// pasa a NULL vía SET NULL, ver 0001_esquema_unificado.up.sql). (Útil)
 type AccountQuizAnswer struct {
 	ID                   uuid.UUID
-	AccountID            uuid.UUID
+	UserID               uuid.UUID
 	QuestionID           uuid.NullUUID
 	QuestionTextSnapshot string
 	AnswerText           string
@@ -207,7 +207,7 @@ type AccountQuizAnswer struct {
 
 type InsertAccountQuizAnswerParams struct {
 	ID                   uuid.UUID
-	AccountID            uuid.UUID
+	UserID               uuid.UUID
 	QuestionID           uuid.UUID
 	QuestionTextSnapshot string
 	AnswerText           string
@@ -216,24 +216,24 @@ type InsertAccountQuizAnswerParams struct {
 // InsertAccountQuizAnswer se llama una vez por respuesta dentro de la misma
 // transacción que CreateAccount (POST /auth/register/confirm) — nunca
 // suelta: una cuenta sin al menos sus respuestas persistidas no podría
-// recuperarse nunca (§1 decisión 4).
+// recuperarse nunca (§1 decisión 4). (Útil)
 func (q *Queries) InsertAccountQuizAnswer(ctx context.Context, arg InsertAccountQuizAnswerParams) error {
 	_, err := q.db.ExecContext(ctx, `
-INSERT INTO account_quiz_answers (id, account_id, question_id, question_text_snapshot, answer_text)
+INSERT INTO account_quiz_answers (id, user_id, question_id, question_text_snapshot, answer_text)
 VALUES ($1, $2, $3, $4, $5)
-`, arg.ID, arg.AccountID, arg.QuestionID, arg.QuestionTextSnapshot, arg.AnswerText)
+`, arg.ID, arg.UserID, arg.QuestionID, arg.QuestionTextSnapshot, arg.AnswerText)
 	return err
 }
 
 // ListAccountQuizAnswers alimenta GET /admin/accounts/{id}/quiz-answers — el
 // único endpoint que expone estas respuestas, protegido por rol admin y
 // auditado por el llamador (comentario de account_quiz_answers en el
-// esquema).
+// esquema). (Útil)
 func (q *Queries) ListAccountQuizAnswers(ctx context.Context, accountID uuid.UUID) ([]AccountQuizAnswer, error) {
 	rows, err := q.db.QueryContext(ctx, `
-SELECT id, account_id, question_id, question_text_snapshot, answer_text, created_at
+SELECT id, user_id, question_id, question_text_snapshot, answer_text, created_at
 FROM account_quiz_answers
-WHERE account_id = $1
+WHERE user_id = $1
 ORDER BY created_at ASC
 `, accountID)
 	if err != nil {
@@ -244,7 +244,7 @@ ORDER BY created_at ASC
 	var items []AccountQuizAnswer
 	for rows.Next() {
 		var a AccountQuizAnswer
-		if err := rows.Scan(&a.ID, &a.AccountID, &a.QuestionID, &a.QuestionTextSnapshot, &a.AnswerText, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.QuestionID, &a.QuestionTextSnapshot, &a.AnswerText, &a.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, a)

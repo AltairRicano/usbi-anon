@@ -7,7 +7,7 @@
 //     con su propio Handler HTTP para las rutas admin. Toca base de datos.
 //   - credentials.go: generación de nickname/password a partir de las
 //     respuestas. Sin HTTP, sin acceso al banco de preguntas — funciones
-//     puras que internal/auth orquesta durante el registro.
+//     puras que internal/auth orquesta durante el registro. (Útil)
 package quiz
 
 import (
@@ -41,7 +41,7 @@ var (
 // comentario de registration_questions — un CHECK/trigger no puede contar
 // filas de la misma tabla de forma segura bajo concurrencia sin el mismo
 // FOR UPDATE que ya hacen CountActiveRegistrationQuestions/
-// GetRegistrationQuestionForUpdate.
+// GetRegistrationQuestionForUpdate. (Útil)
 const (
 	minActiveQuestions   = 4
 	minMaxQuestionsShown = 4
@@ -92,7 +92,7 @@ type UpdateSettingsRequest struct {
 }
 
 // PublicQuestion es la proyección que ve quien se está registrando: sin
-// is_active ni display_order, que son detalles de administración.
+// is_active ni display_order, que son detalles de administración. (Útil)
 type PublicQuestion struct {
 	ID   uuid.UUID `json:"id"`
 	Text string    `json:"text"`
@@ -144,7 +144,7 @@ func (s *Service) CreateQuestion(ctx context.Context, adminID uuid.UUID, req Cre
 // Cuando la actualización DESACTIVA una pregunta que estaba activa, corre en
 // una transacción con el mismo guard de mínimo 4 que DeleteQuestion — el
 // comentario de registration_questions en el esquema exige el guard tanto en
-// UPDATE como en DELETE, no solo en DELETE.
+// UPDATE como en DELETE, no solo en DELETE. (Útil)
 func (s *Service) UpdateQuestion(ctx context.Context, adminID, id uuid.UUID, req UpdateQuestionRequest) (QuestionResponse, error) {
 	text := strings.TrimSpace(req.QuestionText)
 	if id == uuid.Nil || text == "" || len(text) > questionTextMaxLen {
@@ -241,7 +241,7 @@ func (s *Service) DeleteQuestion(ctx context.Context, adminID, id uuid.UUID) err
 // POST /auth/register/answers (internal/auth, F9) y devuelve el texto a
 // congelar en account_quiz_answers.question_text_snapshot. internal/auth
 // pasa por aquí en vez de tocar internal/repository directo — el banco de
-// preguntas es dominio de este paquete, no del repositorio genérico.
+// preguntas es dominio de este paquete, no del repositorio genérico. (Útil)
 func (s *Service) GetActiveQuestionByID(ctx context.Context, id uuid.UUID) (QuestionResponse, error) {
 	question, err := s.repo.GetRegistrationQuestionByID(ctx, id)
 	if err != nil {
@@ -292,7 +292,7 @@ func (s *Service) UpdateSettings(ctx context.Context, adminID uuid.UUID, req Upd
 // display_order— de las preguntas activas, hasta max_questions_shown. Con
 // más activas que el máximo configurado, el resto queda en reserva y rota
 // entre registros porque cada llamada vuelve a sortear desde cero (decisión
-// 8 del rediseño).
+// 8 del rediseño). (Útil)
 func (s *Service) SelectQuestionsForRegistration(ctx context.Context) (RegistrationQuestionsResponse, error) {
 	settings, err := s.repo.GetRegistrationSettings(ctx)
 	if err != nil {
@@ -317,7 +317,7 @@ func (s *Service) SelectQuestionsForRegistration(ctx context.Context) (Registrat
 // selectRandom hace el muestreo aleatorio puro que pide plan/04 §2: sin
 // ponderar por display_order ni nada más, un shuffle completo del pool y se
 // toman los primeros `max`. math/rand (no crypto/rand): esto no es un
-// secreto que proteger, es solo variar qué preguntas ve cada registro.
+// secreto que proteger, es solo variar qué preguntas ve cada registro. (Útil)
 func selectRandom(pool []repository.RegistrationQuestion, max int) []repository.RegistrationQuestion {
 	if max <= 0 || len(pool) == 0 {
 		return nil
@@ -354,7 +354,7 @@ func questionAuditPayload(q QuestionResponse) map[string]any {
 		"display_order": q.DisplayOrder,
 		// question_text se omite a propósito: no es dato personal, pero el
 		// texto de la pregunta no aporta nada al rastro de auditoría que
-		// is_active/display_order no den ya, y mantiene el payload chico.
+		// is_active/display_order no den ya, y mantiene el payload chico. (Útil)
 	}
 }
 
@@ -371,7 +371,7 @@ func logAudit(ctx context.Context, repo *repository.Queries, actorID uuid.UUID, 
 
 // ── Handler HTTP: solo las rutas admin del banco. El endpoint público
 // POST /auth/register/questions vive en internal/auth (F9), que llama a
-// Service.SelectQuestionsForRegistration directo — no pasa por este Handler.
+// Service.SelectQuestionsForRegistration directo — no pasa por este Handler. (Útil)
 
 type Handler struct {
 	svc *Service
@@ -384,7 +384,7 @@ func NewHandler(svc *Service) *Handler {
 // canManageQuizBank restringe el banco de preguntas a admin, no a
 // operator/director como el contenido de niveles (internal/levels): estas
 // preguntas determinan cómo se genera la credencial de login de cada cuenta
-// nueva, más sensible que un nivel o una sección.
+// (ver credentials.go). (Útil)
 func canManageQuizBank(role domain.UserRole) bool {
 	return role == domain.RoleAdmin
 }

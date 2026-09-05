@@ -2,7 +2,7 @@
 // cuestionario de registro. Sin HTTP, sin acceso al banco de preguntas —
 // funciones puras que internal/auth (F9) orquesta durante
 // POST /auth/register/answers y .../confirm (ver
-// plan/04_Rediseno_identidad_gustos.md §3 y §4).
+// plan/04_Rediseno_identidad_gustos.md §3 y §4). (Útil)
 //
 // Dos generadores aleatorios DISTINTOS a propósito, pedido explícito del
 // usuario (decisión 10 del rediseño):
@@ -10,7 +10,7 @@
 //     (time.Now().UnixNano()). Es solo un identificador público —el mismo
 //     tipo de aleatoriedad no-criptográfica que ya usa selectRandom en
 //     bank.go—, no un secreto.
-//   - Password: crypto/rand. Es el secreto real de la cuenta.
+//   - Password: crypto/rand. Es el secreto real de la cuenta. (Útil)
 package quiz
 
 import (
@@ -26,13 +26,13 @@ import (
 var (
 	// ErrInsufficientAnswers: hacen falta al menos dos respuestas con algún
 	// carácter [a-z0-9] tras normalizar (p. ej. "42" solo aporta dígitos,
-	// pero cuenta) para construir un nickname con dos fragmentos distintos.
+	// pero cuenta) para construir un nickname con dos fragmentos distintos. (Útil)
 	ErrInsufficientAnswers = errors.New("quiz: insufficient answers to derive credentials")
 	// ErrCandidateGenerationFailed: no fue posible generar un candidato sin
 	// colisión tras el número máximo de reintentos. Con nicknameFragmentMaxLen
 	// (4) × 4 dígitos aleatorios el espacio es grande, así que esto solo debería
 	// ocurrir si existsFn está mal implementada (siempre true) o el banco de
-	// nicknames está patológicamente lleno.
+	// nicknames está patológicamente lleno. (Útil)
 	ErrCandidateGenerationFailed = errors.New("quiz: could not generate a unique nickname candidate")
 )
 
@@ -50,7 +50,7 @@ const (
 
 // accentMap traduce vocales y ñ acentuadas a su forma sin acento. Manual en
 // vez de golang.org/x/text/unicode/norm: esa dependencia no está en go.mod y
-// no vale la pena sumarla solo para esto (ver plan/04 §4).
+// no vale la pena sumarla solo para esto (ver plan/04 §4). (Útil)
 var accentMap = map[rune]rune{
 	'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
 	'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'Ü': 'u', 'Ñ': 'n',
@@ -58,7 +58,7 @@ var accentMap = map[rune]rune{
 
 // normalizeFragment reduce una respuesta a minúsculas [a-z0-9] puro, recorta
 // a nicknameFragmentMaxLen runas. Es la misma normalización que exige el
-// CHECK de accounts.nickname, aplicada por fragmento antes de combinarlos.
+// CHECK de accounts.nickname, aplicada por fragmento antes de combinarlos. (Útil)
 func normalizeFragment(answer string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(answer) {
@@ -79,7 +79,7 @@ func normalizeFragment(answer string) string {
 // respuestas del cuestionario, verificando cada uno contra existsFn (una
 // consulta a accounts.nickname inyectada por el llamador, para no acoplar
 // este paquete a internal/repository) y regenerando SOLO el candidato que
-// choque — no el lote completo.
+// choque — no el lote completo. (Útil)
 func GenerateNicknameCandidates(answers []string, exists func(nickname string) (bool, error)) ([nicknameCandidateCount]string, error) {
 	var candidates [nicknameCandidateCount]string
 
@@ -126,7 +126,7 @@ func generateNicknameCandidate(rng *mathrand.Rand, fragments []string, exists fu
 		}
 		// Relleno de seguridad: dos fragmentos de 1 carácter (p. ej. dos
 		// respuestas numéricas) + 3 dígitos suman 5, por debajo del mínimo
-		// de 6 del CHECK. Se completa con más dígitos en vez de fallar.
+		// de 6 del CHECK. Se completa con más dígitos en vez de fallar. (Útil)
 		for len(candidate) < nicknameMinLen {
 			candidate += string(rune('0' + rng.Intn(10)))
 		}
@@ -148,7 +148,7 @@ func generateNicknameCandidate(rng *mathrand.Rand, fragments []string, exists fu
 // —no "fragmento + relleno" en bloque— para que el patrón no sea
 // trivialmente adivinable conociendo el algoritmo (ver plan/04 §4). Se
 // devuelve en texto plano UNA vez; el llamador (internal/auth) lo hashea con
-// crypto.HashPassword antes de guardar y nunca lo persiste en claro.
+// crypto.HashPassword antes de guardar y nunca lo persiste en claro. (Útil)
 func GeneratePassword(answers []string) (string, error) {
 	fragment, err := passwordFragment(answers)
 	if err != nil {
@@ -192,7 +192,7 @@ func GeneratePassword(answers []string) (string, error) {
 // sin acentos) y la recorta a un largo aleatorio entre passwordFragMinLen y
 // passwordFragMaxLen, capitalizando la primera letra. Si ninguna respuesta
 // alcanza el mínimo, usa la más larga disponible tal cual — degradación
-// razonable en vez de fallar el registro por una respuesta corta como "7".
+// razonable en vez de fallar el registro por una respuesta corta como "7". (Útil)
 func passwordFragment(answers []string) (string, error) {
 	best := ""
 	for _, a := range answers {
@@ -223,7 +223,7 @@ func passwordFragment(answers []string) (string, error) {
 
 // normalizeAlnumFull es como normalizeFragment pero SIN el recorte a
 // nicknameFragmentMaxLen: el password necesita hasta passwordFragMaxLen (5)
-// caracteres, más que los 4 del nickname.
+// caracteres, más que los 4 del nickname. (Útil)
 func normalizeAlnumFull(answer string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(answer) {

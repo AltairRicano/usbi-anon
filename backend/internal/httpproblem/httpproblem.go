@@ -1,7 +1,7 @@
-// Package httpproblem centralises the RFC 7807 error responses and JSON success
-// writer that were previously copy-pasted verbatim across auth, levels, devices,
-// sync and the router (audit finding B8). A single implementation guarantees the
-// error envelope can never drift between packages.
+// Package httpproblem centraliza las respuestas de error RFC 7807 y el escritor de JSON
+// de éxito que previamente estaban copiados tal cual entre auth, levels, devices,
+// sync y el router (hallazgo de auditoría B8). Una sola implementación garantiza que la
+// envoltura de error nunca varíe entre paquetes. (Útil)
 package httpproblem
 
 import (
@@ -12,8 +12,8 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/domain"
 )
 
-// WriteProblem emits an RFC 7807 application/problem+json response. slug becomes
-// the suffix of the type URI.
+// WriteProblem emite una respuesta RFC 7807 application/problem+json. slug se convierte
+// en el sufijo del URI type. (Relleno)
 func WriteProblem(w http.ResponseWriter, r *http.Request, status int, slug, title, detail string) {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(status)
@@ -26,15 +26,15 @@ func WriteProblem(w http.ResponseWriter, r *http.Request, status int, slug, titl
 	})
 }
 
-// WriteJSON serialises v as application/json with the given status.
+// WriteJSON serializa v como application/json con el estado dado. (Relleno)
 func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// WriteDecodeProblem maps a request-body decode error to the right problem
-// response: 413 when the body exceeded the size cap, 400 otherwise.
+// WriteDecodeProblem mapea un error de decodificación de cuerpo de petición a la respuesta
+// problem correcta: 413 cuando el cuerpo excede el límite de tamaño, 400 de lo contrario. (Útil)
 func WriteDecodeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	var maxBytesErr *http.MaxBytesError
 	if errors.As(err, &maxBytesErr) {

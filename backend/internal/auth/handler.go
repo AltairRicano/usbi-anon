@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/altair/usbi-anon-backend/internal/domain"
 	"github.com/altair/usbi-anon-backend/internal/httpjson"
@@ -14,19 +13,19 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler exposes auth HTTP endpoints.
+// Handler expone los endpoints HTTP de autenticación. (Relleno)
 type Handler struct {
 	svc *Service
 }
 
-// NewHandler creates an auth.Handler.
+// NewHandler crea un auth.Handler. (Relleno)
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// ── Registro en 3 pasos ──────────────────────────────────────────────────
+// ── Registro en 3 pasos ────────────────────────────────────────────────── (Útil)
 
-// RegisterQuestions handles POST /api/v1/auth/register/questions.
+// RegisterQuestions maneja POST /api/v1/auth/register/questions. (Relleno)
 func (h *Handler) RegisterQuestions(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.RegisterQuestions(r.Context())
 	if err != nil {
@@ -37,7 +36,7 @@ func (h *Handler) RegisterQuestions(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// RegisterAnswers handles POST /api/v1/auth/register/answers.
+// RegisterAnswers maneja POST /api/v1/auth/register/answers. (Relleno)
 func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
 	var req RegisterAnswersRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -64,7 +63,7 @@ func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// RegisterConfirm handles POST /api/v1/auth/register/confirm.
+// RegisterConfirm maneja POST /api/v1/auth/register/confirm. (Relleno)
 func (h *Handler) RegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	var req RegisterConfirmRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -100,9 +99,9 @@ func (h *Handler) RegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// ── Login / sesión ────────────────────────────────────────────────────────
+// ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
 
-// Login handles POST /api/v1/auth/login.
+// Login maneja POST /api/v1/auth/login. (Relleno)
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -117,7 +116,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
 				"Validation Error", err.Error())
 		case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrInvalidPassword):
-			// Use identical message for both to prevent nickname enumeration.
+			// Usa un mensaje idéntico para ambos para prevenir la enumeración de nicknames. (Útil)
 			httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 				"Authentication Failed", "Invalid nickname or password")
 		case errors.Is(err, ErrAccountSuspended):
@@ -136,7 +135,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// Refresh handles POST /api/v1/auth/refresh.
+// Refresh maneja POST /api/v1/auth/refresh. (Relleno)
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -162,7 +161,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// Logout handles POST /api/v1/auth/logout.
+// Logout maneja POST /api/v1/auth/logout. (Relleno)
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -179,7 +178,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Me handles GET /api/v1/auth/me.
+// Me maneja GET /api/v1/auth/me. (Relleno)
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -193,7 +192,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// AgeUp handles POST /api/v1/auth/age-up.
+// AgeUp maneja POST /api/v1/auth/age-up. (Relleno)
 func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -215,7 +214,7 @@ func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, map[string]string{"status": "success", "message": "User adult status updated"})
 }
 
-// CancelSelf handles DELETE /api/v1/auth/me.
+// CancelSelf maneja DELETE /api/v1/auth/me. (Relleno)
 func (h *Handler) CancelSelf(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -231,110 +230,9 @@ func (h *Handler) CancelSelf(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ── ARCO ──────────────────────────────────────────────────────────────────
+// ── Administración de cuentas ──────────────────────────────────────────── (Útil)
 
-// Arco handles POST /api/v1/arco.
-func (h *Handler) Arco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := claimsFromContext(r)
-	if !ok {
-		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
-			"Unauthorized", "Missing JWT claims in context")
-		return
-	}
-
-	var req ArcoRequestDTO
-	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
-		httpproblem.WriteDecodeProblem(w, r, err)
-		return
-	}
-
-	requestID, err := h.svc.SubmitArcoRequest(r.Context(), claims.UserID, req)
-	if err != nil {
-		if errors.Is(err, ErrValidation) {
-			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
-				"Validation Error", err.Error())
-		} else {
-			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
-				"Internal Server Error", "Could not submit ARCO request")
-		}
-		return
-	}
-	httpproblem.WriteJSON(w, http.StatusCreated, ArcoResponseDTO{
-		RequestID: requestID,
-		Status:    "pending",
-		Message:   "ARCO request submitted successfully",
-	})
-}
-
-func (h *Handler) ListPendingArco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := claimsFromContext(r)
-	if !ok {
-		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
-			"Unauthorized", "Missing JWT claims in context")
-		return
-	}
-
-	limit := int32(50)
-	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
-		parsed, err := strconv.Atoi(rawLimit)
-		if err != nil || parsed < 1 || parsed > 100 {
-			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request", "Bad Request", "limit must be between 1 and 100")
-			return
-		}
-		limit = int32(parsed)
-	}
-
-	resp, err := h.svc.ListPendingArcoRequests(r.Context(), *claims, limit)
-	if err != nil {
-		if errors.Is(err, ErrForbidden) {
-			httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins or directors can list ARCO requests")
-		} else {
-			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not list ARCO requests")
-		}
-		return
-	}
-	httpproblem.WriteJSON(w, http.StatusOK, resp)
-}
-
-func (h *Handler) ResolveArco(w http.ResponseWriter, r *http.Request) {
-	claims, ok := claimsFromContext(r)
-	if !ok {
-		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
-			"Unauthorized", "Missing JWT claims in context")
-		return
-	}
-
-	requestID, err := uuid.Parse(chi.URLParam(r, "request_id"))
-	if err != nil {
-		httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request", "Bad Request", "request_id must be a valid UUID")
-		return
-	}
-
-	var req ResolveArcoRequestDTO
-	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
-		httpproblem.WriteDecodeProblem(w, r, err)
-		return
-	}
-
-	if err := h.svc.ResolveArcoRequest(r.Context(), *claims, requestID, req, httputil.ClientIP(r), r.UserAgent()); err != nil {
-		switch {
-		case errors.Is(err, ErrForbidden):
-			httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins or directors can resolve ARCO requests")
-		case errors.Is(err, ErrNotFound):
-			httpproblem.WriteProblem(w, r, http.StatusNotFound, "not-found", "Not Found", "ARCO request not found")
-		case errors.Is(err, ErrValidation):
-			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error", "Validation Error", err.Error())
-		default:
-			httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not resolve ARCO request")
-		}
-		return
-	}
-	httpproblem.WriteJSON(w, http.StatusOK, map[string]string{"status": "resolved"})
-}
-
-// ── Administración de cuentas ────────────────────────────────────────────
-
-// CreateAdminAccount handles POST /api/v1/admin/accounts.
+// CreateAdminAccount maneja POST /api/v1/admin/accounts. (Relleno)
 func (h *Handler) CreateAdminAccount(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -355,7 +253,7 @@ func (h *Handler) CreateAdminAccount(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// DeleteAdminAccount handles DELETE /api/v1/admin/accounts/{account_id}.
+// DeleteAdminAccount maneja DELETE /api/v1/admin/accounts/{account_id}. (Relleno)
 func (h *Handler) DeleteAdminAccount(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -374,7 +272,7 @@ func (h *Handler) DeleteAdminAccount(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GetAccountQuizAnswers handles GET /api/v1/admin/accounts/{account_id}/quiz-answers.
+// GetAccountQuizAnswers maneja GET /api/v1/admin/accounts/{account_id}/quiz-answers. (Relleno)
 func (h *Handler) GetAccountQuizAnswers(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -394,7 +292,7 @@ func (h *Handler) GetAccountQuizAnswers(w http.ResponseWriter, r *http.Request) 
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// ResetAccountPassword handles POST /api/v1/admin/accounts/{account_id}/reset-password.
+// ResetAccountPassword maneja POST /api/v1/admin/accounts/{account_id}/reset-password. (Relleno)
 func (h *Handler) ResetAccountPassword(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -414,7 +312,7 @@ func (h *Handler) ResetAccountPassword(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────
+// ── Ayudantes internos ────────────────────────────────────────────────────── (Relleno)
 
 func claimsFromContext(r *http.Request) (*domain.JWTClaims, bool) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)

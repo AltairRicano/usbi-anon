@@ -17,14 +17,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// Sentinel errors — used by the handler for correct HTTP status mapping.
+// Errores centinela — usados por el handler para el mapeo correcto del estado HTTP. (Relleno)
 var (
 	ErrInvalidSignature = errors.New("invalid HMAC signature")
 	ErrInvalidPayload   = errors.New("invalid sync payload")
 )
 
-// XP award table per attempt number.
-// Base XP is 4*difficulty. Attempt 1 gets 100%, attempts 2-3 get 50%, 4+ gets 0%.
+// Tabla de premio XP por número de intento.
+// XP base es 4*dificultad. Intento 1 obtiene 100%, intentos 2-3 obtienen 50%, 4+ obtiene 0%. (Útil)
 func xpForAttempt(difficulty int32, attemptNumber int64, completed bool) int32 {
 	if !completed || difficulty <= 0 {
 		return 0
@@ -40,13 +40,13 @@ func xpForAttempt(difficulty int32, attemptNumber int64, completed bool) int32 {
 	}
 }
 
-// Service handles the offline-sync business logic.
+// Service maneja la lógica de negocio de la sincronización offline. (Relleno)
 type Service struct {
 	queries    *repository.Queries
 	hmacSecret []byte
 }
 
-// NewService creates a sync.Service.
+// NewService crea un sync.Service. (Relleno)
 func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 	if len(hmacSecret) == 0 {
 		panic("sync.Service: hmacSecret must not be empty")
@@ -54,11 +54,11 @@ func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 	return &Service{queries: q, hmacSecret: hmacSecret}
 }
 
-// ProcessSync validates the HMAC, records the sync event, and applies
-// the additive merge using server-side recalculation and transactional locks.
-// The XP is always recalculated server-side — client-provided xp_awarded is ignored.
+// ProcessSync valida el HMAC, registra el evento de sincronización, y aplica
+// la mezcla aditiva usando recálculo del lado del servidor y candados transaccionales.
+// Los XP siempre se recalculan en el servidor — el xp_awarded provisto por el cliente es ignorado.
 //
-// sig is the decoded HMAC-SHA256 signature bytes.
+// sig son los bytes decodificados de la firma HMAC-SHA256. (Útil)
 func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, sig []byte) (domain.SyncEventResponse, error) {
 	if err := validateSyncPayload(req); err != nil {
 		return domain.SyncEventResponse{}, fmt.Errorf("%w: %s", ErrInvalidPayload, err.Error())
@@ -89,7 +89,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		return domain.SyncEventResponse{}, err
 	}
 
-	// ── Record the sync event regardless of HMAC result (for audit trail) ────
+	// ── Registrar el evento de sincronización sin importar el resultado HMAC (para rastro de auditoría) ──── (Relleno)
 	payloadHash := crypto.GenerateHMAC(payloadJSON, s.hmacSecret)
 	err = qtx.InsertSyncEventWithPayload(ctx, repository.InsertSyncEventWithPayloadParams{
 		ID:               req.SyncEventID,
@@ -103,7 +103,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		Status:           "pending",
 	})
 	if err != nil {
-		// Duplicate sync_event_id → idempotent success (already processed).
+		// sync_event_id duplicado → éxito idempotente (ya procesado). (Útil)
 		if isDuplicateKey(err) {
 			return domain.SyncEventResponse{Status: "already_processed"}, nil
 		}
@@ -121,7 +121,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		return domain.SyncEventResponse{}, ErrInvalidPayload
 	}
 
-	// ── Process each level attempt with server-side XP calculation ────────────
+	// ── Procesar cada intento de nivel con recálculo de XP del lado del servidor ──────────── (Relleno)
 	for _, attempt := range attempts {
 		if err := qtx.LockLevelAttempt(ctx, repository.LockLevelAttemptParams{
 			UserID:      req.UserID,
@@ -140,7 +140,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 			return domain.SyncEventResponse{}, fmt.Errorf("locking level_attempts: %w", err)
 		}
 
-		// Server-side XP recalculation — client value is untrusted.
+		// Recálculo de XP en el servidor — el valor del cliente no es confiable. (Útil)
 		serverAttemptNumber := priorCount + 1
 		serverXP := xpForAttempt(attempt.Difficulty, serverAttemptNumber, attempt.Completed)
 
@@ -159,8 +159,8 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		if err := qtx.UpsertPlayerProgressForAttempt(ctx, repository.UpsertPlayerProgressForAttemptParams{
 			UserID:  req.UserID,
 			LevelID: attempt.LevelID,
-			// best_score is the in-game score (client-reported, validated >= 0),
-			// mirroring the online path. XP total stays server-recalculated.
+			// best_score es el puntaje en el juego (reportado por el cliente, validado >= 0),
+			// replicando el camino online. El total de XP se mantiene recalculado en el servidor. (Útil)
 			BestScore:       attempt.Score,
 			XpTotalForLevel: serverXP,
 			Completed:       attempt.Completed,
@@ -186,7 +186,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		}
 	}
 
-	// ── Daily streak entries ──────────────────────────────────────────────────
+	// ── Entradas de racha diaria ────────────────────────────────────────────────── (Relleno)
 	for _, date := range streakDates {
 		if err := qtx.UpsertDailyStreak(ctx, repository.UpsertDailyStreakParams{
 			UserID:       req.UserID,
@@ -338,7 +338,7 @@ func badgeIDs(rows []repository.BadgeWithEarnedAt) []uuid.UUID {
 	return ids
 }
 
-// isDuplicateKey checks for PostgreSQL unique constraint violation.
+// isDuplicateKey revisa violaciones a restricciones de unicidad de PostgreSQL. (Relleno)
 func isDuplicateKey(err error) bool {
 	return err != nil && (containsAny(err.Error(), "duplicate key", "23505"))
 }

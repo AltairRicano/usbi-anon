@@ -10,14 +10,14 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/httputil"
 )
 
-// Handler exposes the security-incident admin endpoint.
+// Handler expone el endpoint de administración de incidentes de seguridad. (Relleno)
 type Handler struct {
 	svc *Service
 }
 
 func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 
-// CreateIncident handles POST /api/v1/admin/security-incidents.
+// CreateIncident maneja POST /api/v1/admin/security-incidents. (Relleno)
 func (h *Handler) CreateIncident(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	if !ok {

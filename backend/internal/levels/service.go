@@ -245,13 +245,13 @@ func (s *Service) ArchiveLevel(ctx context.Context, adminID, levelID uuid.UUID) 
 
 // ErrNotArchived se devuelve cuando se intenta purgar o restaurar contenido
 // que no ha pasado primero por archivar — la purga irreversible solo opera
-// sobre lo ya archivado (plan/05_Contenido_maker_y_juego.md §6).
+// sobre lo ya archivado (plan/05_Contenido_maker_y_juego.md §6). (Útil)
 var ErrNotArchived = errors.New("content is not archived")
 
 // ErrSectionHasLevels se devuelve cuando se intenta purgar una sección que
 // todavía tiene niveles (archivados o no) referenciándola. levels.section_id
 // es ON DELETE RESTRICT a propósito: cada nivel se purga uno por uno, con sus
-// contadores acumulados, nunca en cascada silenciosa.
+// contadores acumulados, nunca en cascada silenciosa. (Útil)
 var ErrSectionHasLevels = errors.New("section still has levels")
 
 func (s *Service) UnarchiveLevel(ctx context.Context, adminID, levelID uuid.UUID) (LevelResponse, error) {
@@ -316,7 +316,7 @@ func (s *Service) ListArchivedLevels(ctx context.Context, sectionID uuid.UUID) (
 // sus contadores de progreso en account_retired_progress ANTES del DELETE
 // (dentro de la misma transacción, orden que importa) para que la XP y los
 // "niveles completados" de cada jugador sobrevivan a la rotación de
-// temporada — ver CLAUDE.md, "rotación de niveles por temporadas".
+// temporada — ver CLAUDE.md, "rotación de niveles por temporadas". (Útil)
 func (s *Service) PurgeLevel(ctx context.Context, adminID, levelID uuid.UUID) error {
 	if levelID == uuid.Nil {
 		return ErrValidation
@@ -414,7 +414,7 @@ func (s *Service) ListArchivedSections(ctx context.Context) (ArchivedSectionsRes
 // PurgeSection es irreversible. Solo opera sobre una sección ya archivada y
 // sin ningún nivel restante (archivado o no) referenciándola — levels.
 // section_id es RESTRICT a propósito, así que primero hay que purgar sus
-// niveles uno por uno.
+// niveles uno por uno. (Útil)
 func (s *Service) PurgeSection(ctx context.Context, adminID, sectionID uuid.UUID) error {
 	if sectionID == uuid.Nil {
 		return ErrValidation
@@ -1077,7 +1077,7 @@ func validatePuzzleContent(content json.RawMessage) error {
 		Seed   *int32 `json:"seed,omitempty"`
 	}
 	if err := decodeStrictContent(content, &payload); err != nil {
-		// Never log the raw content: it can be up to 5 MB and is attacker-influenced (B4).
+		// Nunca registrar el contenido crudo: puede ser de hasta 5 MB y está influenciado por el atacante (B4). (Útil)
 		log.Printf("validatePuzzleContent unmarshal error: %v", err)
 		return ErrValidation
 	}
@@ -1092,7 +1092,7 @@ func validatePuzzleContent(content json.RawMessage) error {
 	return nil
 }
 
-// maxCrosswordWords bounds the crossword builder's cubic-ish placement search.
+// maxCrosswordWords limita la búsqueda de colocación casi cúbica del constructor de crucigramas. (Útil)
 const maxCrosswordWords = 30
 
 func validateCrosswordContent(content json.RawMessage) error {
@@ -1103,9 +1103,9 @@ func validateCrosswordContent(content json.RawMessage) error {
 	var payload struct {
 		Words []word `json:"words"`
 	}
-	// Cap the word count: canBuildConnectedCrossword is ~O(N^3·L^2), so a payload
-	// of hundreds of short words (well under the 5 MB body cap) would peg the
-	// single vCPU synchronously inside the handler (audit finding B6).
+	// Limita el conteo de palabras: canBuildConnectedCrossword es ~O(N^3·L^2), así que un payload
+	// de cientos de palabras cortas (muy por debajo del límite de 5 MB de cuerpo) saturaría
+	// el único vCPU de forma síncrona dentro del handler (hallazgo de auditoría B6). (Útil)
 	if err := decodeStrictContent(content, &payload); err != nil || len(payload.Words) < 2 || len(payload.Words) > maxCrosswordWords {
 		return ErrValidation
 	}
@@ -1390,9 +1390,9 @@ func validateSnakesContent(content json.RawMessage) error {
 			}
 		}
 	}
-	// Snakes & ladders gates every dice roll behind a two-option question drawn
-	// from a queue (see frontend SnakeLadderGame); a minimum bank of 8 keeps
-	// that queue from cycling through the same handful of questions too fast.
+	// Serpientes y escaleras restringe cada tirada de dado detrás de una pregunta de dos opciones extraída
+	// de una cola (ver SnakeLadderGame en el frontend); un banco mínimo de 8 evita
+	// que esa cola cicle por el mismo puñado de preguntas demasiado rápido. (Útil)
 	if len(payload.Questions) < minSnakesQuestions {
 		return ErrValidation
 	}
@@ -1440,9 +1440,9 @@ type AuditParams struct {
 	AfterState  any
 }
 
-// logAdminAudit is a thin wrapper over the shared audit package, kept so the
-// 10 existing call sites in this file stay unchanged. Content admin actions have
-// no per-request IP/user-agent here, so audit.Log fills its placeholders.
+// logAdminAudit es un envoltorio ligero sobre el paquete de auditoría compartido, mantenido para que
+// los 10 lugares de llamada existentes en este archivo no cambien. Las acciones de administración de contenido no tienen
+// IP/user-agent por petición aquí, así que audit.Log rellena sus placeholders. (Relleno)
 func logAdminAudit(ctx context.Context, params AuditParams) error {
 	return audit.Log(ctx, params.Repo, audit.Entry{
 		ActorID:    params.ActorID,
