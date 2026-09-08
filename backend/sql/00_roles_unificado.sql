@@ -128,6 +128,16 @@ REVOKE INSERT, UPDATE, DELETE ON account_retired_progress FROM usbi_app;
 -- solo POST /admin/security-incidents (usbi_moderador, ver abajo).
 REVOKE ALL ON security_incidents FROM usbi_app;
 
+-- Enlaces de interés y sus categorías (sección "Más" del frontend, 2026-09-08):
+-- jugador es SOLO LECTURA. CRUD completo corre con usbi_moderador.
+REVOKE INSERT, UPDATE, DELETE ON interest_link_categories, interest_links FROM usbi_app;
+
+-- Buzón de sugerencias (2026-09-08): jugador SOLO INSERTA — es anónimo por
+-- diseño (sin account_id), así que ni siquiera tiene sentido que el propio
+-- autor pueda releer su fila después de mandarla. Leer y borrar es exclusivo
+-- de usbi_moderador; nadie tiene UPDATE, una sugerencia no se edita.
+REVOKE SELECT, UPDATE, DELETE ON suggestions FROM usbi_app;
+
 GRANT SELECT ON account_aliases TO usbi_app;
 
 -- ── usbi_moderador ───────────────────────────────────────────────────────
@@ -168,3 +178,12 @@ GRANT INSERT ON audit_log TO usbi_moderador;
 -- Sin SELECT todavía — mismo caso que audit_log, sin endpoint de lectura
 -- (decisión "déjalo" registrada en estado_proyecto.md).
 GRANT INSERT ON security_incidents TO usbi_moderador;
+
+-- Enlaces de interés y sus categorías (2026-09-08): CRUD completo — es
+-- contenido editorial igual que sections/levels/badges.
+GRANT SELECT, INSERT, UPDATE, DELETE ON interest_link_categories, interest_links TO usbi_moderador;
+
+-- Buzón de sugerencias (2026-09-08): SELECT y DELETE únicamente. Nunca
+-- INSERT (solo un jugador manda sugerencias, vía usbi_app) ni UPDATE (una
+-- sugerencia no se edita, se lee o se borra).
+GRANT SELECT, DELETE ON suggestions TO usbi_moderador;
