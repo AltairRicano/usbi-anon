@@ -110,7 +110,16 @@ REVOKE SELECT, UPDATE, DELETE ON account_quiz_answers FROM usbi_app;
 -- enforce_append_only_ledgers() ya lo impide, pero esto lo bloquea una capa
 -- antes, y un trigger puede desactivarse mientras que un permiso ausente deja
 -- rastro en la bitácora del servidor.
-REVOKE SELECT, DELETE ON audit_log FROM usbi_app;
+--
+-- Sin UPDATE tampoco (F3, 2026-09-09): el único UPDATE que usbi_app llegó a
+-- necesitar aquí (poner a NULL actor_account_id al cancelar cuenta) ahora
+-- pasa por la función SECURITY DEFINER null_user_in_pseudonymizable_ledgers
+-- (migración 0004), propiedad de usbi_moderador — usbi_app solo la ejecuta,
+-- nunca hace el UPDATE por su cuenta. Antes de esta revocación, usbi_app
+-- conservaba el UPDATE heredado del GRANT ALL inicial sin que ningún REVOKE
+-- lo cerrara; era un permiso de sobra, no usado por ningún camino de código,
+-- pero abierto igual.
+REVOKE SELECT, UPDATE, DELETE ON audit_log FROM usbi_app;
 
 -- Libro mayor de XP: sin DELETE, mismo razonamiento que audit_log.
 REVOKE DELETE ON experience_history FROM usbi_app;
@@ -161,7 +170,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON registration_settings TO usbi_moderador;
 
 -- Respuestas del cuestionario: solo lectura (GetAccountQuizAnswers). Nunca
 -- inserta — eso solo pasa durante el registro, bajo usbi_app.
-GRANT SELECT ON account_quiz_answers TO usbi_moderador;
+--
+-- DELETE (F3, 2026-09-09): agregado para purge_account_quiz_answers
+-- (migración 0004), la función SECURITY DEFINER que usbi_app ejecuta al
+-- cancelar una cuenta — la función corre con los privilegios de su dueño
+-- (usbi_moderador), así que el dueño necesita el permiso subyacente aunque
+-- solo se ejerza a través de la función, nunca por una sentencia DELETE
+-- suelta de usbi_moderador.
+GRANT SELECT, DELETE ON account_quiz_answers TO usbi_moderador;
 
 -- Contadores de niveles retirados: inserta/actualiza durante la purga
 -- (AccumulateRetiredProgressForLevel, upsert). Sin SELECT ni DELETE — leer
@@ -169,10 +185,23 @@ GRANT SELECT ON account_quiz_answers TO usbi_moderador;
 GRANT INSERT, UPDATE ON account_retired_progress TO usbi_moderador;
 
 -- Bitácora unificada: inserta las auditorías de contenido/incidentes
--- (internal/levels.logAdminAudit, internal/incidents). Sin SELECT todavía —
--- no existe endpoint de lectura de audit_log (ver hallazgo en
--- estado_proyecto.md 2026-09-02); se agrega el día que se construya.
+-- (internal/levels.logAdminAudit, internal/incidents). Sin SELECT de tabla
+-- completa todavía — no existe endpoint de lectura de audit_log (ver
+-- hallazgo en estado_proyecto.md 2026-09-02); se agrega el día que se
+-- construya.
 GRANT INSERT ON audit_log TO usbi_moderador;
+
+-- Column-level (F3, 2026-09-09), no tabla completa: null_user_in_pseudonymizable_ledgers
+-- (migración 0004) hace `UPDATE audit_log SET actor_account_id = NULL WHERE
+-- actor_account_id = $1` — necesita leer y escribir esa sola columna para
+-- filtrar y anular, sin que eso abra lectura del resto de la bitácora
+-- (before_state/after_state pueden llevar datos sensibles de auditoría).
+GRANT SELECT (actor_account_id), UPDATE (actor_account_id) ON audit_log TO usbi_moderador;
+
+-- Libro mayor de XP (F3, 2026-09-09): mismo caso que audit_log arriba —
+-- null_user_in_pseudonymizable_ledgers también anula experience_history.user_id.
+-- Column-level, sin abrir xp_gained/source/verification_method.
+GRANT SELECT (user_id), UPDATE (user_id) ON experience_history TO usbi_moderador;
 
 -- Incidentes de seguridad: solo inserta (POST /admin/security-incidents).
 -- Sin SELECT todavía — mismo caso que audit_log, sin endpoint de lectura

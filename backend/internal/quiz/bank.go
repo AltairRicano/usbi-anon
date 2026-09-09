@@ -121,7 +121,14 @@ func (s *Service) CreateQuestion(ctx context.Context, adminID uuid.UUID, req Cre
 		return QuestionResponse{}, ErrValidation
 	}
 
-	question, err := s.repo.CreateRegistrationQuestion(ctx, repository.CreateRegistrationQuestionParams{
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return QuestionResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	question, err := qtx.CreateRegistrationQuestion(ctx, repository.CreateRegistrationQuestionParams{
 		ID:           uuid.New(),
 		QuestionText: text,
 		IsActive:     req.IsActive,
@@ -132,7 +139,10 @@ func (s *Service) CreateQuestion(ctx context.Context, adminID uuid.UUID, req Cre
 	}
 	resp := questionToResponse(question)
 
-	if err := logAudit(ctx, s.repo, adminID, "quiz_question.create", "registration_question", question.ID, nil, questionAuditPayload(resp)); err != nil {
+	if err := logAudit(ctx, qtx, adminID, "quiz_question.create", "registration_question", question.ID, nil, questionAuditPayload(resp)); err != nil {
+		return QuestionResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return QuestionResponse{}, err
 	}
 	return resp, nil
@@ -269,19 +279,29 @@ func (s *Service) UpdateSettings(ctx context.Context, adminID uuid.UUID, req Upd
 		return SettingsResponse{}, ErrValidation
 	}
 
-	before, err := s.repo.GetRegistrationSettings(ctx)
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return SettingsResponse{}, err
 	}
-	after, err := s.repo.UpdateRegistrationSettings(ctx, req.MaxQuestionsShown)
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	before, err := qtx.GetRegistrationSettings(ctx)
+	if err != nil {
+		return SettingsResponse{}, err
+	}
+	after, err := qtx.UpdateRegistrationSettings(ctx, req.MaxQuestionsShown)
 	if err != nil {
 		return SettingsResponse{}, err
 	}
 	resp := settingsToResponse(after)
 
-	if err := logAudit(ctx, s.repo, adminID, "quiz_settings.update", "registration_settings", uuid.Nil,
+	if err := logAudit(ctx, qtx, adminID, "quiz_settings.update", "registration_settings", uuid.Nil,
 		map[string]any{"max_questions_shown": before.MaxQuestionsShown},
 		map[string]any{"max_questions_shown": after.MaxQuestionsShown}); err != nil {
+		return SettingsResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return SettingsResponse{}, err
 	}
 	return resp, nil

@@ -23,20 +23,16 @@ import (
 )
 
 // NullUserInPseudonymizableLedgers scrubs the user from the append-only ledgers
-// while preserving the rows for No-Repudio. Run as two separate statements: with
-// lib/pq's extended protocol a single parameterised query may contain only one
-// command, and each UPDATE matches exactly the SET-NULL pattern the append-only
-// trigger permits. (Útil)
+// while preserving the rows for No-Repudio. usbi_app (el rol que ejecuta la
+// cancelación de cuenta autoservicio) no tiene UPDATE directo en audit_log ni
+// experience_history vía este camino — llama a la función SECURITY DEFINER
+// null_user_in_pseudonymizable_ledgers (migración 0004), propiedad de
+// usbi_moderador, en vez de tocar esas tablas por su cuenta. Corre dentro de
+// la misma transacción de CancelAccount: no hace falta un segundo pool. (Útil)
 func (q *Queries) NullUserInPseudonymizableLedgers(ctx context.Context, userID uuid.UUID) error {
-	if _, err := q.db.ExecContext(ctx,
-		`UPDATE experience_history SET user_id = NULL WHERE user_id = $1`, userID); err != nil {
-		return err
-	}
-	if _, err := q.db.ExecContext(ctx,
-		`UPDATE audit_log SET actor_account_id = NULL WHERE actor_account_id = $1`, userID); err != nil {
-		return err
-	}
-	return nil
+	_, err := q.db.ExecContext(ctx,
+		`SELECT null_user_in_pseudonymizable_ledgers($1)`, userID)
+	return err
 }
 
 type DeactivateAccountParams struct {
@@ -71,10 +67,16 @@ WHERE id = $1 AND deleted_at IS NULL
 // respuestas y recuperar una cuenta viva (§1 decisión 4) — una vez cancelada
 // la cuenta esa recuperación ya no aplica, así que conservarlas sería
 // retener datos sin propósito. No es una bitácora append-only: a diferencia
-// de experience_history/audit_log, aquí sí toca DELETE, no SET NULL. (Útil)
+// de experience_history/audit_log, aquí sí toca DELETE, no SET NULL.
+//
+// usbi_app no tiene DELETE directo en account_quiz_answers — llama a la
+// función SECURITY DEFINER purge_account_quiz_answers (migración 0004),
+// propiedad de usbi_moderador, en vez de tocar la tabla por su cuenta. Corre
+// dentro de la misma transacción de CancelAccount: no hace falta un segundo
+// pool. (Útil)
 func (q *Queries) PurgeAccountQuizAnswers(ctx context.Context, accountID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx,
-		`DELETE FROM account_quiz_answers WHERE user_id = $1`, accountID)
+		`SELECT purge_account_quiz_answers($1)`, accountID)
 	return err
 }
 
