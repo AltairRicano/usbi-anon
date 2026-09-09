@@ -13,12 +13,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// Handler mantiene una referencia a cada uno de los dos Service partidos en
+// F3 (player_service.go, pool usbi_app; admin_service.go, pool
+// usbi_moderador). Para los endpoints exclusivos de un rol, el Handler solo
+// habla con su Service correspondiente; para ListLevels/GetLevel/ListSections
+// —que sirven a ambos perfiles— decide con cuál hablar usando la misma señal
+// de rol que ya existía antes del split (canManageContent). (Útil)
 type Handler struct {
-	svc *Service
+	player *PlayerService
+	admin  *AdminService
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(player *PlayerService, admin *AdminService) *Handler {
+	return &Handler{player: player, admin: admin}
 }
 
 func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +41,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.CreateLevel(r.Context(), claims.UserID, req)
+	resp, err := h.admin.CreateLevel(r.Context(), claims.UserID, req)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error", "Validation Error", err.Error())
@@ -47,6 +54,12 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// ListLevels sirve a ambos perfiles: quien pueda administrar contenido puede
+// pedir include_unpublished=true y ve el catálogo completo con el pool de
+// usbi_moderador; cualquier otra petición autenticada solo ve lo publicado,
+// con el pool de usbi_app. La decisión de qué Service invocar vive aquí (ya
+// existía antes del split); qué datos devuelve cada uno vive en su propio
+// Service — ver PlayerService.ListLevels / AdminService.ListLevels. (Útil)
 func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
@@ -81,9 +94,16 @@ func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 		sectionID = parsed
 	}
 
-	includeUnpublished := q.Get("include_unpublished") == "true" && claims != nil && canManageContent(claims.Role)
-
-	page, err := h.svc.ListLevels(r.Context(), cursor, sectionID, includeUnpublished, pageSize)
+	var (
+		page LevelsPage
+		err  error
+	)
+	if claims != nil && canManageContent(claims.Role) {
+		includeUnpublished := q.Get("include_unpublished") == "true"
+		page, err = h.admin.ListLevels(r.Context(), cursor, sectionID, includeUnpublished, pageSize)
+	} else {
+		page, err = h.player.ListLevels(r.Context(), cursor, sectionID, pageSize)
+	}
 	if err != nil {
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve levels")
 		return
@@ -92,6 +112,10 @@ func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, page)
 }
 
+// GetLevel: mismo criterio de despacho que ListLevels. A diferencia de
+// ListLevels, ni PlayerService ni AdminService exponen un parámetro
+// includeUnpublished — cada uno siempre se comporta según su rol (ver
+// comentarios en player_service.go / admin_service.go). (Útil)
 func (h *Handler) GetLevel(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	levelID, ok := parseURLUUID(w, r, "level_id")
@@ -99,8 +123,15 @@ func (h *Handler) GetLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	includeUnpublished := claims != nil && canManageContent(claims.Role)
-	resp, err := h.svc.GetLevel(r.Context(), levelID, includeUnpublished)
+	var (
+		resp LevelResponse
+		err  error
+	)
+	if claims != nil && canManageContent(claims.Role) {
+		resp, err = h.admin.GetLevel(r.Context(), levelID)
+	} else {
+		resp, err = h.player.GetLevel(r.Context(), levelID)
+	}
 	if err != nil {
 		writeServiceError(w, r, err, "Could not retrieve level")
 		return
@@ -126,7 +157,7 @@ func (h *Handler) UpdateLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UpdateLevel(r.Context(), claims.UserID, levelID, req)
+	resp, err := h.admin.UpdateLevel(r.Context(), claims.UserID, levelID, req)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not update level")
 		return
@@ -146,7 +177,7 @@ func (h *Handler) PublishLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.PublishLevel(r.Context(), claims.UserID, levelID)
+	resp, err := h.admin.PublishLevel(r.Context(), claims.UserID, levelID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not publish level")
 		return
@@ -166,7 +197,7 @@ func (h *Handler) UnpublishLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UnpublishLevel(r.Context(), claims.UserID, levelID)
+	resp, err := h.admin.UnpublishLevel(r.Context(), claims.UserID, levelID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not unpublish level")
 		return
@@ -186,7 +217,7 @@ func (h *Handler) ArchiveLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.ArchiveLevel(r.Context(), claims.UserID, levelID)
+	resp, err := h.admin.ArchiveLevel(r.Context(), claims.UserID, levelID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not archive level")
 		return
@@ -211,7 +242,7 @@ func (h *Handler) ListArchivedLevels(w http.ResponseWriter, r *http.Request) {
 		sectionID = parsed
 	}
 
-	resp, err := h.svc.ListArchivedLevels(r.Context(), sectionID)
+	resp, err := h.admin.ListArchivedLevels(r.Context(), sectionID)
 	if err != nil {
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve archived levels")
 		return
@@ -231,7 +262,7 @@ func (h *Handler) UnarchiveLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UnarchiveLevel(r.Context(), claims.UserID, levelID)
+	resp, err := h.admin.UnarchiveLevel(r.Context(), claims.UserID, levelID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not restore level")
 		return
@@ -251,7 +282,7 @@ func (h *Handler) PurgeLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.PurgeLevel(r.Context(), claims.UserID, levelID); err != nil {
+	if err := h.admin.PurgeLevel(r.Context(), claims.UserID, levelID); err != nil {
 		writeServiceError(w, r, err, "Could not purge level")
 		return
 	}
@@ -276,7 +307,7 @@ func (h *Handler) CompleteLevel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.CompleteLevel(r.Context(), claims.UserID, levelID, req)
+	resp, err := h.player.CompleteLevel(r.Context(), claims.UserID, levelID, req)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not complete level")
 		return
@@ -291,7 +322,7 @@ func (h *Handler) GetProfileProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.GetProfileProgress(r.Context(), claims.UserID)
+	resp, err := h.player.GetProfileProgress(r.Context(), claims.UserID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not retrieve progress")
 		return
@@ -312,7 +343,7 @@ func (h *Handler) CreateSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.CreateSection(r.Context(), claims.UserID, req)
+	resp, err := h.admin.CreateSection(r.Context(), claims.UserID, req)
 	if err != nil {
 		log.Printf("CreateSection error: %v", err)
 		writeServiceError(w, r, err, "Could not create section")
@@ -321,11 +352,20 @@ func (h *Handler) CreateSection(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// ListSections: mismo criterio de despacho que ListLevels/GetLevel. (Útil)
 func (h *Handler) ListSections(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
-	includeUnpublished := r.URL.Query().Get("include_unpublished") == "true" && claims != nil && canManageContent(claims.Role)
 
-	resp, err := h.svc.ListSections(r.Context(), includeUnpublished)
+	var (
+		resp SectionsResponse
+		err  error
+	)
+	if claims != nil && canManageContent(claims.Role) {
+		includeUnpublished := r.URL.Query().Get("include_unpublished") == "true"
+		resp, err = h.admin.ListSections(r.Context(), includeUnpublished)
+	} else {
+		resp, err = h.player.ListSections(r.Context())
+	}
 	if err != nil {
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve sections")
 		return
@@ -351,7 +391,7 @@ func (h *Handler) UpdateSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UpdateSection(r.Context(), claims.UserID, sectionID, req)
+	resp, err := h.admin.UpdateSection(r.Context(), claims.UserID, sectionID, req)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not update section")
 		return
@@ -371,7 +411,7 @@ func (h *Handler) PublishSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.PublishSection(r.Context(), claims.UserID, sectionID)
+	resp, err := h.admin.PublishSection(r.Context(), claims.UserID, sectionID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not publish section")
 		return
@@ -391,7 +431,7 @@ func (h *Handler) UnpublishSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UnpublishSection(r.Context(), claims.UserID, sectionID)
+	resp, err := h.admin.UnpublishSection(r.Context(), claims.UserID, sectionID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not unpublish section")
 		return
@@ -411,7 +451,7 @@ func (h *Handler) ArchiveSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.ArchiveSection(r.Context(), claims.UserID, sectionID)
+	resp, err := h.admin.ArchiveSection(r.Context(), claims.UserID, sectionID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not archive section")
 		return
@@ -426,7 +466,7 @@ func (h *Handler) ListArchivedSections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.ListArchivedSections(r.Context())
+	resp, err := h.admin.ListArchivedSections(r.Context())
 	if err != nil {
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not retrieve archived sections")
 		return
@@ -446,7 +486,7 @@ func (h *Handler) UnarchiveSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.UnarchiveSection(r.Context(), claims.UserID, sectionID)
+	resp, err := h.admin.UnarchiveSection(r.Context(), claims.UserID, sectionID)
 	if err != nil {
 		writeServiceError(w, r, err, "Could not restore section")
 		return
@@ -466,7 +506,7 @@ func (h *Handler) PurgeSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.PurgeSection(r.Context(), claims.UserID, sectionID); err != nil {
+	if err := h.admin.PurgeSection(r.Context(), claims.UserID, sectionID); err != nil {
 		writeServiceError(w, r, err, "Could not purge section")
 		return
 	}

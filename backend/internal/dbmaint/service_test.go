@@ -1,35 +1,34 @@
 package dbmaint
 
 import (
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestPartitionStatementsCoversBothTablesAndYearRange(t *testing.T) {
+func TestYearlyPartitionTargetsCoversBothTablesAndYearRange(t *testing.T) {
 	now := time.Date(2027, time.March, 15, 0, 0, 0, 0, time.UTC)
-	stmts := partitionStatements(now)
+	targets := yearlyPartitionTargets(now)
 
 	wantCount := len(partitionedTables) * (yearsAhead + 1)
-	if len(stmts) != wantCount {
-		t.Fatalf("partitionStatements() returned %d statements, want %d", len(stmts), wantCount)
+	if len(targets) != wantCount {
+		t.Fatalf("yearlyPartitionTargets() returned %d targets, want %d", len(targets), wantCount)
 	}
 
-	want := []string{
-		`CREATE TABLE IF NOT EXISTS level_attempts_2027 PARTITION OF level_attempts FOR VALUES FROM ('2027-01-01') TO ('2028-01-01')`,
-		`CREATE TABLE IF NOT EXISTS level_attempts_2029 PARTITION OF level_attempts FOR VALUES FROM ('2029-01-01') TO ('2030-01-01')`,
-		`CREATE TABLE IF NOT EXISTS daily_streak_2027 PARTITION OF daily_streak FOR VALUES FROM ('2027-01-01') TO ('2028-01-01')`,
+	want := []partitionTarget{
+		{Table: "level_attempts", Year: 2027},
+		{Table: "level_attempts", Year: 2029},
+		{Table: "daily_streak", Year: 2027},
 	}
 	for _, w := range want {
 		found := false
-		for _, s := range stmts {
-			if s == w {
+		for _, target := range targets {
+			if target == w {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Fatalf("partitionStatements() missing expected statement: %q\ngot: %s", w, strings.Join(stmts, "\n"))
+			t.Fatalf("yearlyPartitionTargets() missing expected target: %+v\ngot: %+v", w, targets)
 		}
 	}
 }

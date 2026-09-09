@@ -33,18 +33,21 @@ import (
 
 const testHMACSecret = "integration-test-hmac-secret-32-bytes-min!!"
 
-func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Service, *levels.Service) {
+func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Service, *levels.AdminService) {
 	t.Helper()
 	db := testdb.Setup(t)
 
-	quizSvc := quiz.NewService(db.Repo)
+	quizSvc := quiz.NewPlayerService(db.Repo)
 	authSvc := auth.NewService(db.Repo, quizSvc, auth.Config{
 		HMACSecret:  []byte(testHMACSecret),
 		TokenConfig: crypto.TokenConfig{Secret: []byte("integration-test-jwt-secret-32-bytes!!!"), AccessExpiry: time.Hour},
 	})
 	syncSvc := syncpkg.NewService(db.Repo, []byte(testHMACSecret))
 	devicesSvc := devices.NewService(db.Repo)
-	levelsSvc := levels.NewService(db.Repo)
+	// AdminService: el fixture crea/publica contenido (CreateSection,
+	// CreateLevel, PublishLevel), operaciones exclusivas de moderador — F3
+	// partió levels.Service en PlayerService/AdminService (2026-09-09). (Útil)
+	levelsSvc := levels.NewAdminService(db.Repo)
 	return syncSvc, authSvc, devicesSvc, levelsSvc
 }
 
@@ -53,7 +56,7 @@ func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Se
 // 5, por lo que intento 1 = 20 XP) — todo lo que ProcessSync necesita, todo a través de
 // los servicios reales (RegisterConfirm hace hashing real con Argon2id; nada aquí está
 // mockeado). (Útil)
-func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, devicesSvc *devices.Service, levelsSvc *levels.Service) (userID, deviceID, levelID uuid.UUID) {
+func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, devicesSvc *devices.Service, levelsSvc *levels.AdminService) (userID, deviceID, levelID uuid.UUID) {
 	t.Helper()
 
 	questions, err := authSvc.RegisterQuestions(ctx)

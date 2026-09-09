@@ -32,10 +32,10 @@ func LoadEnvironment() {
 	}
 }
 
-// DatabaseURL construye el DSN de Postgres para la única base del sistema
-// (identidad + progreso + contenido, ver plan/04_Rediseno_identidad_gustos.md)
-// desde DATABASE_URL si está configurado, o desde las variables DB_* individuales
-// (DB_USER/DB_PASSWORD/DB_HOST son obligatorias). (Útil)
+// DatabaseURL construye el DSN de Postgres del pool de jugador (rol usbi_app,
+// F3, 2026-09-09 — antes era "la única base del sistema", antes de partir en
+// dos pools) desde DATABASE_URL si está configurado, o desde las variables
+// DB_* individuales (DB_USER/DB_PASSWORD/DB_HOST son obligatorias). (Útil)
 func DatabaseURL() string {
 	return databaseURLFromEnv(dsnEnvNames{
 		urlVar:      "DATABASE_URL",
@@ -45,6 +45,38 @@ func DatabaseURL() string {
 		portVar:     "DB_PORT",
 		nameVar:     "DB_NAME",
 		sslModeVar:  "DB_SSLMODE",
+	})
+}
+
+// ModeratorDatabaseURL construye el DSN del pool de moderador (rol
+// usbi_moderador, F3): las operaciones que ya vivían detrás de un guard de
+// rol admin en Go (gestión de contenido, banco de preguntas, incidentes de
+// seguridad). Mismo patrón que DatabaseURL, variables independientes para no
+// mezclar credenciales entre pools. (Útil)
+func ModeratorDatabaseURL() string {
+	return databaseURLFromEnv(dsnEnvNames{
+		urlVar:      "DATABASE_MODERATOR_URL",
+		userVar:     "DB_MODERATOR_USER",
+		passwordVar: "DB_MODERATOR_PASSWORD",
+		hostVar:     "DB_MODERATOR_HOST",
+		portVar:     "DB_MODERATOR_PORT",
+		nameVar:     "DB_MODERATOR_NAME",
+		sslModeVar:  "DB_MODERATOR_SSLMODE",
+	})
+}
+
+// DBMaintDatabaseURL construye el DSN del pool de mantenimiento de
+// particiones (rol usbi_dbmaint, F3): sin ningún GRANT de tabla, solo EXECUTE
+// sobre ensure_yearly_partition (migración 0005) — ver internal/dbmaint. (Útil)
+func DBMaintDatabaseURL() string {
+	return databaseURLFromEnv(dsnEnvNames{
+		urlVar:      "DATABASE_DBMAINT_URL",
+		userVar:     "DB_DBMAINT_USER",
+		passwordVar: "DB_DBMAINT_PASSWORD",
+		hostVar:     "DB_DBMAINT_HOST",
+		portVar:     "DB_DBMAINT_PORT",
+		nameVar:     "DB_DBMAINT_NAME",
+		sslModeVar:  "DB_DBMAINT_SSLMODE",
 	})
 }
 

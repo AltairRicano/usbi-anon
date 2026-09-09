@@ -1,4 +1,3 @@
-// internal/quiz.Service para el registro en 3 pasos.
 package main
 
 import (
@@ -47,6 +46,8 @@ func main() {
 
 	// ── Required environment variables ────────────────
 	dbURL := config.DatabaseURL()
+	moderatorDBURL := config.ModeratorDatabaseURL()
+	dbmaintDBURL := config.DBMaintDatabaseURL()
 	jwtSecret := config.RequireSecret("JWT_SECRET")
 	// HMACSecret firma el token de registro (registration_token.go), el sello
 	// de aceptación del aviso de privacidad y los tokens de refresh — el único
@@ -63,33 +64,67 @@ func main() {
 		log.Fatalf("[FATAL] Invalid JWT_ACCESS_EXPIRY_MINUTES: %v", err)
 	}
 
-	// ── Database connection — UN solo pool ────────────────────────────────────
-	db := openPool(dbURL, "principal", "DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
+	// ── Database connections — TRES pools (F3, 2026-09-09) ────────────────────
+	// player (usbi_app): autoservicio de jugador — login, registro, progreso,
+	// dispositivos, cancelación de cuenta. moderator (usbi_moderador): todo lo
+	// que ya vivía detrás de un guard de rol admin en Go (gestión de
+	// contenido, banco de preguntas, incidentes de seguridad). dbmaint
+	// (usbi_dbmaint): sin ningún GRANT de tabla, solo EXECUTE sobre la función
+	// que mantiene las particiones anuales — ver internal/dbmaint.
+	playerDB := openPool(dbURL, "jugador (usbi_app)", "DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
 		"DB_CONN_MAX_LIFETIME", "DB_CONN_MAX_IDLE_TIME", 10, 2)
-	defer db.Close()
+	defer playerDB.Close()
+
+	moderatorDB := openPool(moderatorDBURL, "moderador (usbi_moderador)", "DB_MODERATOR_MAX_OPEN_CONNS", "DB_MODERATOR_MAX_IDLE_CONNS",
+		"DB_MODERATOR_CONN_MAX_LIFETIME", "DB_MODERATOR_CONN_MAX_IDLE_TIME", 5, 1)
+	defer moderatorDB.Close()
+
+	dbmaintDB := openPool(dbmaintDBURL, "mantenimiento de particiones (usbi_dbmaint)", "DB_DBMAINT_MAX_OPEN_CONNS", "DB_DBMAINT_MAX_IDLE_CONNS",
+		"DB_DBMAINT_CONN_MAX_LIFETIME", "DB_DBMAINT_CONN_MAX_IDLE_TIME", 2, 1)
+	defer dbmaintDB.Close()
 
 	// ── Repository & Services ─────────────────────────────────────────────────
-	queries := repository.New(db)
+	playerQueries := repository.New(playerDB)
+	moderatorQueries := repository.New(moderatorDB)
 
 	tokenCfg := crypto.TokenConfig{
 		Secret:       []byte(jwtSecret),
 		AccessExpiry: time.Duration(accessExpiryMinutes) * time.Minute,
 	}
 
-	quizSvc := quiz.NewService(queries)
-	authSvc := auth.NewService(queries, quizSvc, auth.Config{
+	// internal/auth mezcla autoservicio de jugador y administración de
+	// cuentas en un solo Service a propósito — accounts no tiene Row-Level
+	// Security, así que separar esas rutas por pool no añadía ninguna
+	// restricción real (decisión registrada en estado_proyecto.md
+	// 2026-09-02). Corre entero sobre el pool de jugador.
+	quizPlayerSvc := quiz.NewPlayerService(playerQueries)
+	quizAdminSvc := quiz.NewAdminService(moderatorQueries)
+	authSvc := auth.NewService(playerQueries, quizPlayerSvc, auth.Config{
 		HMACSecret:                  []byte(hmacSecret),
 		TokenConfig:                 tokenCfg,
 		MaxConcurrentPasswordHashes: int(config.GetInt32Env("MAX_CONCURRENT_PASSWORD_HASHES", 2)),
 		StaffPrivacyNoticeVersion:   config.GetEnv("STAFF_PRIVACY_NOTICE_VERSION", ""),
 	})
 
-	syncService := syncSvc.NewService(queries, []byte(hmacSecret))
-	levelsSvc := levels.NewService(queries)
-	devicesSvc := devices.NewService(queries)
-	incidentsSvc := incidents.NewService(queries, []byte(hmacSecret))
+	// sync y devices son autoservicio de jugador puro (sincronización offline
+	// de progreso propio) — nunca los dispara un admin, así que van enteros
+	// sobre el pool de jugador.
+	syncService := syncSvc.NewService(playerQueries, []byte(hmacSecret))
+	levelsPlayerSvc := levels.NewPlayerService(playerQueries)
+	levelsAdminSvc := levels.NewAdminService(moderatorQueries)
+	devicesSvc := devices.NewService(playerQueries)
+	// security_incidents no tiene ningún GRANT para usbi_app (REVOKE ALL,
+	// 00_roles_unificado.sql) — el endpoint es admin-only pese al comentario
+	// "/admin/" en la ruta, así que corre sobre el pool de moderador.
+	incidentsSvc := incidents.NewService(moderatorQueries, []byte(hmacSecret))
 	if config.GetBoolEnv("LEGAL_MAINTENANCE_ENABLED", false) {
-		maintenanceSvc := maintenance.NewService(queries, maintenance.Config{
+		// internal/maintenance no se evaluó en esta pasada de F3 (pedido
+		// explícito del usuario: "el maintenance no lo toco") — se deja sobre
+		// el pool de jugador sin verificar si eso es lo correcto. Está
+		// deshabilitado por defecto (LEGAL_MAINTENANCE_ENABLED=false), así
+		// que no es una superficie viva hoy, pero decidir su pool queda
+		// pendiente para cuando se retome.
+		maintenanceSvc := maintenance.NewService(playerQueries, maintenance.Config{
 			InactiveSuspendAfter: config.GetDurationEnv("INACTIVE_SUSPEND_AFTER", 365*24*time.Hour),
 			SuspendedCancelAfter: config.GetDurationEnv("SUSPENDED_CANCEL_AFTER", 30*24*time.Hour),
 			BatchSize:            config.GetInt32Env("LEGAL_MAINTENANCE_BATCH_SIZE", 100),
@@ -106,8 +141,10 @@ func main() {
 	// Structural DB concern, independent of legal/privacy retention above —
 	// keeps level_attempts/daily_streak supplied with future yearly
 	// partitions so inserts never hit the DEFAULT partition in practice.
+	// Pool propio (usbi_dbmaint): sin GRANT de tabla, solo EXECUTE sobre
+	// ensure_yearly_partition (migración 0005) — ver internal/dbmaint.
 	if config.GetBoolEnv("DB_PARTITION_MAINTENANCE_ENABLED", true) {
-		dbmaintSvc := dbmaint.NewService(db)
+		dbmaintSvc := dbmaint.NewService(dbmaintDB)
 		dbmaint.StartScheduler(
 			rootCtx,
 			dbmaintSvc,
@@ -121,14 +158,19 @@ func main() {
 	r := chi.NewRouter()
 	stopRateLimiters := transport.SetupRoutes(r, transport.RouterDependencies{
 		AuthHandler:      auth.NewHandler(authSvc),
-		QuizHandler:      quiz.NewHandler(quizSvc),
+		QuizHandler:      quiz.NewHandler(quizAdminSvc),
 		SyncHandler:      syncSvc.NewHandler(syncService),
-		LevelsHandler:    levels.NewHandler(levelsSvc),
+		LevelsHandler:    levels.NewHandler(levelsPlayerSvc, levelsAdminSvc),
 		DevicesHandler:   devices.NewHandler(devicesSvc),
 		IncidentsHandler: incidents.NewHandler(incidentsSvc),
-		ReadyCheck:       readyCheck(db),
+		ReadyCheck:       readyCheck(playerDB, moderatorDB),
 		TokenCfg:         tokenCfg,
-		Repo:             queries,
+		// jwtAuthMiddleware revalida token_version/status contra accounts en
+		// cada petición autenticada — debe ser el pool de jugador:
+		// usbi_moderador no tiene ningún GRANT sobre accounts
+		// (00_roles_unificado.sql nunca se lo concede), así que
+		// moderatorQueries ni siquiera podría ejecutar esta consulta.
+		Repo: playerQueries,
 		AllowedOrigin:    allowedOrigin,
 		MaxBodyBytes:     int64(config.GetInt32Env("API_MAX_BODY_BYTES", 6*1024*1024)),
 		// Only trust proxy-forwarded IP headers once a reverse proxy in front
@@ -221,13 +263,17 @@ func openPool(dsn, label, maxOpenVar, maxIdleVar, lifetimeVar, idleTimeVar strin
 	return db
 }
 
-// readyCheck hace ping a la única base del sistema. Con el rediseño de
-// identidad (F5) ya no hace falta distinguir "cuál de las dos bases falló":
-// solo hay una.
-func readyCheck(db *sql.DB) func(context.Context) error {
+// readyCheck hace ping a los pools de jugador y moderador (F3, 2026-09-09) —
+// dbmaint no se incluye aquí porque su ausencia no afecta la capacidad del
+// servidor de atender peticiones HTTP, solo el mantenimiento de particiones
+// en segundo plano.
+func readyCheck(playerDB, moderatorDB *sql.DB) func(context.Context) error {
 	return func(ctx context.Context) error {
-		if err := db.PingContext(ctx); err != nil {
-			return errors.New("base de datos inalcanzable")
+		if err := playerDB.PingContext(ctx); err != nil {
+			return errors.New("base de datos (jugador) inalcanzable")
+		}
+		if err := moderatorDB.PingContext(ctx); err != nil {
+			return errors.New("base de datos (moderador) inalcanzable")
 		}
 		return nil
 	}

@@ -26,7 +26,7 @@ func TestCreateLevel_Validation(t *testing.T) {
 	// Como el servicio depende de *repository.Queries que es un tipo concreto,
 	// solo probaremos los casos puros de validación. (Útil)
 
-	svc := NewService(nil) // Will panic if DB is called, but we expect validation to catch it first.
+	svc := NewAdminService(nil) // Will panic if DB is called, but we expect validation to catch it first.
 
 	ctx := context.Background()
 	adminID := uuid.New()

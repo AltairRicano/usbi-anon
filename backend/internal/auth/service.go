@@ -81,14 +81,19 @@ type Config struct {
 // directo, siempre a través de ese paquete. (Útil)
 type Service struct {
 	repo              *repository.Queries
-	quiz              *quiz.Service
+	quiz              *quiz.PlayerService
 	cfg               Config
 	passwordHashSlots chan struct{}
 }
 
 // NewService crea un auth.Service. Entra en pánico si cfg contiene valores cero
-// para secretos requeridos, previniendo malas configuraciones silenciosas al inicio. (Útil)
-func NewService(repo *repository.Queries, quizSvc *quiz.Service, cfg Config) *Service {
+// para secretos requeridos, previniendo malas configuraciones silenciosas al inicio.
+//
+// quizSvc es *quiz.PlayerService (F3, 2026-09-09), no el AdminService del
+// banco de preguntas: auth solo necesita muestrear preguntas activas durante
+// el registro (SelectQuestionsForRegistration/GetActiveQuestionByID), nunca
+// administrar el banco. (Útil)
+func NewService(repo *repository.Queries, quizSvc *quiz.PlayerService, cfg Config) *Service {
 	if len(cfg.HMACSecret) == 0 {
 		panic("auth.Config: HMACSecret must not be empty")
 	}

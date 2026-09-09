@@ -3,7 +3,15 @@
 // por año con mucha antelación, para que la partición DEFAULT añadida en la
 // migración 0008 se mantenga vacía en la práctica y nunca necesite absorber una ráfaga
 // de tráfico ordinario. Esto es un asunto estructural de la base de datos, independiente de
-// los trabajos de retención legal/privacidad en internal/maintenance. (Útil)
+// los trabajos de retención legal/privacidad en internal/maintenance.
+//
+// F3 (2026-09-09): antes ejecutaba el DDL crudo (CREATE TABLE ... PARTITION
+// OF) directamente sobre el pool compartido de la aplicación. Ni usbi_app ni
+// usbi_moderador pueden tener privilegios de DDL sin romper la separación
+// DML/DDL que 00_roles_unificado.sql documenta como deliberada, así que este
+// Service ahora habla con su propio pool, autenticado como usbi_dbmaint —un
+// rol sin ningún GRANT de tabla, solo EXECUTE sobre la función SECURITY
+// DEFINER ensure_yearly_partition (migración 0005). (Útil)
 package dbmaint
 
 import (
@@ -21,9 +29,9 @@ const yearsAhead = 2
 
 var partitionedTables = []string{"level_attempts", "daily_streak"}
 
-// Service asegura que existan particiones de rango anuales para las tablas particionadas.
-// Habla con el *sql.DB crudo (no las Queries generadas por sqlc) porque
-// CREATE TABLE ... PARTITION OF es un DDL de esquema, no una consulta que modele sqlc. (Útil)
+// Service asegura que existan particiones de rango anuales para las tablas
+// particionadas, llamando a ensure_yearly_partition en vez de ejecutar DDL
+// directo — db debe ser el pool de usbi_dbmaint, no el de la aplicación. (Útil)
 type Service struct {
 	db *sql.DB
 }
@@ -32,34 +40,37 @@ func NewService(db *sql.DB) *Service {
 	return &Service{db: db}
 }
 
+// partitionTarget identifica una (tabla, año) a asegurar. (Relleno)
+type partitionTarget struct {
+	Table string
+	Year  int
+}
+
+// yearlyPartitionTargets calcula qué particiones deben existir para `now`:
+// el año actual y cada uno de los yearsAhead siguientes, para cada tabla
+// particionada. Función pura (sin acceso a BD) para que el rango de años sea
+// verificable sin un Postgres real — la ejecución real vive en
+// EnsurePartitions, que llama a ensure_yearly_partition por cada target. (Útil)
+func yearlyPartitionTargets(now time.Time) []partitionTarget {
+	startYear := now.UTC().Year()
+	targets := make([]partitionTarget, 0, len(partitionedTables)*(yearsAhead+1))
+	for _, table := range partitionedTables {
+		for year := startYear; year <= startYear+yearsAhead; year++ {
+			targets = append(targets, partitionTarget{Table: table, Year: year})
+		}
+	}
+	return targets
+}
+
 // EnsurePartitions crea (de forma idempotente) una partición para el año de `now` y
 // cada uno de los años en yearsAhead, para cada tabla particionada. (Relleno)
 func (s *Service) EnsurePartitions(ctx context.Context, now time.Time) error {
-	for _, stmt := range partitionStatements(now) {
-		if _, err := s.db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("executing %q: %w", stmt, err)
+	for _, target := range yearlyPartitionTargets(now) {
+		if _, err := s.db.ExecContext(ctx, `SELECT ensure_yearly_partition($1, $2)`, target.Table, target.Year); err != nil {
+			return fmt.Errorf("ensuring partition %s_%d: %w", target.Table, target.Year, err)
 		}
 	}
 	return nil
-}
-
-// partitionStatements construye el DDL idempotente para cada tabla particionada
-// y cada año desde el año actual hasta el año actual + yearsAhead. Los nombres de
-// tablas y años se extraen de una lista/rango interno fijo, nunca de la
-// entrada del usuario, así que construir SQL con fmt.Sprintf es seguro aquí — de todas formas
-// no hay forma de vinculación de parámetros para identificadores/rangos DDL en database/sql. (Útil)
-func partitionStatements(now time.Time) []string {
-	startYear := now.UTC().Year()
-	stmts := make([]string, 0, len(partitionedTables)*(yearsAhead+1))
-	for _, table := range partitionedTables {
-		for year := startYear; year <= startYear+yearsAhead; year++ {
-			stmts = append(stmts, fmt.Sprintf(
-				`CREATE TABLE IF NOT EXISTS %s_%d PARTITION OF %s FOR VALUES FROM ('%d-01-01') TO ('%d-01-01')`,
-				table, year, table, year, year+1,
-			))
-		}
-	}
-	return stmts
 }
 
 // StartScheduler ejecuta EnsurePartitions una vez inmediatamente, luego en cada tick

@@ -54,6 +54,21 @@ CREATE ROLE usbi_moderador LOGIN PASSWORD :'moderador_password';
 -- Rol de migración: solo aplica migraciones. El backend NO lo usa.
 CREATE ROLE usbi_migrate LOGIN PASSWORD :'migrate_password';
 
+-- Rol de mantenimiento de particiones (F3, 2026-09-09): lo usa
+-- internal/dbmaint, el único componente del backend que hace DDL en tiempo
+-- de ejecución (CREATE TABLE ... PARTITION OF sobre level_attempts/
+-- daily_streak, ver plan/01_Base_de_datos.md). Ni usbi_app ni usbi_moderador
+-- pueden tener este permiso — DDL no es DML, y ninguno de los dos debe poder
+-- alterar el esquema aunque el binario que los usa esté comprometido. Este
+-- rol NO recibe ningún GRANT de tabla: su único permiso es EXECUTE sobre
+-- ensure_yearly_partition (migración 0005), una función SECURITY DEFINER
+-- propiedad de quien aplicó las migraciones (usbi_migrate en el diseño
+-- documentado; en el contenedor de stress-test usbi-anon, hoy es postgres,
+-- porque el entrypoint aplica migrations/*.up.sql como superusuario) — el
+-- mismo patrón de usbi_moderador ejecutando purge_account_quiz_answers sin
+-- tener DELETE directo (migración 0004).
+CREATE ROLE usbi_dbmaint LOGIN PASSWORD :'dbmaint_password';
+
 CREATE DATABASE usbi_anon_db OWNER usbi_migrate;
 
 \connect usbi_anon_db
@@ -61,6 +76,10 @@ CREATE DATABASE usbi_anon_db OWNER usbi_migrate;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT  USAGE ON SCHEMA public TO usbi_app;
 GRANT  USAGE ON SCHEMA public TO usbi_moderador;
+-- Sin GRANT SELECT/INSERT/UPDATE/DELETE en ninguna tabla: usbi_dbmaint solo
+-- necesita USAGE para poder ejecutar ensure_yearly_partition, cuyo cuerpo
+-- corre con los privilegios de su dueño, no los de quien la llama.
+GRANT  USAGE ON SCHEMA public TO usbi_dbmaint;
 
 -- ── usbi_app ─────────────────────────────────────────────────────────────
 
