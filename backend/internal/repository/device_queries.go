@@ -55,15 +55,6 @@ WHERE user_id = $1 AND revoked_at IS NULL
 	return err
 }
 
-func (q *Queries) ClearDeviceWipeFlag(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, `
-UPDATE devices
-SET wipe_local_data = false
-WHERE id = $1
-`, id)
-	return err
-}
-
 type ListDevicesParams struct {
 	UserID uuid.UUID
 }

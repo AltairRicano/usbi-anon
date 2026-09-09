@@ -8,8 +8,10 @@
 // ese paquete (CreateAccount/FindAccountByNickname en account_queries.go,
 // refresh tokens en auth_queries.go, DeactivateAccount/
 // PurgeAccountQuizAnswers en privacy_queries.go) y lo demás no volvió: el
-// flujo de tutor por correo se eliminó completo, y las consultas de ARCO las
-// añade F9 junto con internal/auth, que es quien las usa.
+// flujo de tutor por correo se eliminó completo, y con él las consultas de
+// ARCO (InsertArcoRequest, ListPendingArcoRequests, GetArcoRequestForUpdate,
+// ResolveArcoRequest) — F9 cerró la reescritura de internal/auth sin
+// necesitarlas, así que no llegaron a volver a este paquete.
 //
 // # Origen: partición de ../usbi/backend/internal/repository (F3)
 //
@@ -51,6 +53,6 @@
 // todo se vuelve a juntar aquí en internal/repository. (Útil)esh_tokens a este paquete (auth_queries.go) y
 // accounts ya vivía aquí desde F1 (account_queries.go). `tutor_consent*` no
 // vuelve — el flujo de tutor se eliminó por completo, no se fusionó.
-// `arco_requests` tampoco vuelve todavía: la trae F9 junto con
-// internal/auth, que es su único consumidor.
+// `arco_requests` tampoco vuelve: el flujo ARCO se abandonó junto con el
+// tutor por correo, y F9 (ya cerrada) reescribió internal/auth sin él.
 package repository

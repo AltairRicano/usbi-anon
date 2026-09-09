@@ -8,3 +8,9 @@ pruebas/
 
 # Core dumps generados dentro del contenedor (límite de 500 MB de RAM).
 core.*
+
+# Archivos de entorno y credenciales
+.env
+.env.*
+!.env.example
+

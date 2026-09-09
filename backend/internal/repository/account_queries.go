@@ -22,9 +22,9 @@ import (
 )
 
 // aliasVocabularySize es el número de palabras sembradas en alias_adjectives
-// y alias_nouns (ids 1..24, ver migrations/main/0001_esquema_principal.up.sql).
+// y alias_nouns (ids 1..24, ver migrations/0001_esquema_unificado.up.sql).
 // Vive aquí, no en una consulta, porque el rol de aplicación no tiene permiso
-// de escritura sobre esos vocabularios (backend/sql/00_roles_principal.sql):
+// de escritura sobre esos vocabularios (backend/sql/00_roles_unificado.sql):
 // Go sortea índices dentro de rangos conocidos, nunca los lee de la base.
 const aliasVocabularySize = 24
 

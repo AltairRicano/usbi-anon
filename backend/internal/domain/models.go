@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserRole define los roles válidos para los usuarios en el sistema USBI. (Relleno)
 type UserRole string
 
 const (
@@ -14,7 +13,6 @@ const (
 	RoleAdmin  UserRole = "admin"
 )
 
-// UserStatus define los estados válidos del ciclo de vida de la cuenta. (Relleno)
 type UserStatus string
 
 const (

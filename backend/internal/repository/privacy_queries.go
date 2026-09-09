@@ -11,8 +11,9 @@
 // el nickname — ver §1.1 punto 2). InsertTutorConsent, ActivateTutorConsentUser
 // y PseudonymizeTutorConsents no vuelven: el flujo de tutor se eliminó
 // completo. InsertArcoRequest/ListPendingArcoRequests/GetArcoRequestForUpdate/
-// ResolveArcoRequest tampoco vuelven aquí todavía — F9 los añade junto con
-// internal/auth.Arco/ListPendingArco/ResolveArco, que son quienes los usan. (Útil)
+// ResolveArcoRequest tampoco vuelven: el flujo ARCO se abandonó junto con el
+// tutor, y F9 (ya cerrada) reescribió internal/auth sin necesitarlos —
+// `arco_requests` no existe en ningún esquema vigente. (Útil)
 package repository
 
 import (
