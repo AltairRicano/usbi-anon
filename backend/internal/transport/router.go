@@ -18,9 +18,11 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/httpproblem"
 	"github.com/altair/usbi-anon-backend/internal/httputil"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
+	"github.com/altair/usbi-anon-backend/internal/interestlinks"
 	"github.com/altair/usbi-anon-backend/internal/levels"
 	"github.com/altair/usbi-anon-backend/internal/quiz"
 	"github.com/altair/usbi-anon-backend/internal/repository"
+	"github.com/altair/usbi-anon-backend/internal/suggestions"
 	syncHandler "github.com/altair/usbi-anon-backend/internal/sync"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -36,8 +38,13 @@ type RouterDependencies struct {
 	LevelsHandler    *levels.Handler
 	DevicesHandler   *devices.Handler
 	IncidentsHandler *incidents.Handler
-	ReadyCheck       func(context.Context) error
-	TokenCfg         crypto.TokenConfig
+	// InterestLinksHandler/SuggestionsHandler: F4 (estado_proyecto.md
+	// 2026-09-09) — las 3 tablas que F1 detectó sin ningún código Go
+	// (interest_link_categories, interest_links, suggestions).
+	InterestLinksHandler *interestlinks.Handler
+	SuggestionsHandler   *suggestions.Handler
+	ReadyCheck           func(context.Context) error
+	TokenCfg             crypto.TokenConfig
 	// Repo valida token_version/status contra la ÚNICA base del sistema —
 	// con el rediseño de identidad ya no hace falta una base de identidad
 	// aparte (plan/04_Rediseno_identidad_gustos.md §1 y §2). (Útil)
@@ -220,6 +227,42 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/levels", notImplementedHandler("levels.create"))
 				r.Get("/levels", notImplementedHandler("levels.list"))
 				r.Get("/profile/progress", notImplementedHandler("profile.progress"))
+			}
+
+			// Enlaces de interés (sección "Más") y buzón de sugerencias (F4,
+			// estado_proyecto.md 2026-09-09).
+			if deps.InterestLinksHandler != nil {
+				r.Get("/interest-links", deps.InterestLinksHandler.ListInterestLinks)
+
+				r.Get("/admin/interest-link-categories", deps.InterestLinksHandler.ListCategories)
+				r.Post("/admin/interest-link-categories", deps.InterestLinksHandler.CreateCategory)
+				r.Patch("/admin/interest-link-categories/{category_id}", deps.InterestLinksHandler.UpdateCategory)
+				r.Delete("/admin/interest-link-categories/{category_id}", deps.InterestLinksHandler.DeleteCategory)
+
+				r.Get("/admin/interest-links", deps.InterestLinksHandler.ListLinks)
+				r.Post("/admin/interest-links", deps.InterestLinksHandler.CreateLink)
+				r.Patch("/admin/interest-links/{link_id}", deps.InterestLinksHandler.UpdateLink)
+				r.Delete("/admin/interest-links/{link_id}", deps.InterestLinksHandler.DeleteLink)
+			} else {
+				r.Get("/interest-links", notImplementedHandler("interestLinks.list"))
+				r.Get("/admin/interest-link-categories", notImplementedHandler("admin.listInterestLinkCategories"))
+				r.Post("/admin/interest-link-categories", notImplementedHandler("admin.createInterestLinkCategory"))
+				r.Patch("/admin/interest-link-categories/{category_id}", notImplementedHandler("admin.updateInterestLinkCategory"))
+				r.Delete("/admin/interest-link-categories/{category_id}", notImplementedHandler("admin.deleteInterestLinkCategory"))
+				r.Get("/admin/interest-links", notImplementedHandler("admin.listInterestLinks"))
+				r.Post("/admin/interest-links", notImplementedHandler("admin.createInterestLink"))
+				r.Patch("/admin/interest-links/{link_id}", notImplementedHandler("admin.updateInterestLink"))
+				r.Delete("/admin/interest-links/{link_id}", notImplementedHandler("admin.deleteInterestLink"))
+			}
+
+			if deps.SuggestionsHandler != nil {
+				r.Post("/suggestions", deps.SuggestionsHandler.Submit)
+				r.Get("/admin/suggestions", deps.SuggestionsHandler.List)
+				r.Delete("/admin/suggestions/{suggestion_id}", deps.SuggestionsHandler.Delete)
+			} else {
+				r.Post("/suggestions", notImplementedHandler("suggestions.submit"))
+				r.Get("/admin/suggestions", notImplementedHandler("admin.listSuggestions"))
+				r.Delete("/admin/suggestions/{suggestion_id}", notImplementedHandler("admin.deleteSuggestion"))
 			}
 		})
 	})

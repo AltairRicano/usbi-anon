@@ -1,0 +1,328 @@
+package interestlinks
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"strings"
+
+	"github.com/altair/usbi-anon-backend/internal/audit"
+	"github.com/altair/usbi-anon-backend/internal/repository"
+	"github.com/google/uuid"
+	"github.com/lib/pq"
+)
+
+// AdminService corre sobre el pool de moderador (usbi_moderador), que tiene
+// CRUD completo en interest_link_categories/interest_links
+// (00_roles_unificado.sql: "es contenido editorial igual que
+// sections/levels/badges").
+type AdminService struct {
+	repo *repository.Queries
+}
+
+func NewAdminService(repo *repository.Queries) *AdminService {
+	return &AdminService{repo: repo}
+}
+
+func newID() uuid.UUID {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return uuid.New()
+	}
+	return id
+}
+
+func (s *AdminService) ListCategories(ctx context.Context) ([]CategoryResponse, error) {
+	categories, err := s.repo.ListInterestLinkCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]CategoryResponse, 0, len(categories))
+	for _, c := range categories {
+		resp = append(resp, categoryToResponse(c))
+	}
+	return resp, nil
+}
+
+func (s *AdminService) CreateCategory(ctx context.Context, adminID uuid.UUID, req CreateCategoryRequest) (CategoryResponse, error) {
+	name := strings.TrimSpace(req.Name)
+	if err := validateCategoryInput(name); err != nil {
+		return CategoryResponse{}, err
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return CategoryResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	category, err := qtx.CreateInterestLinkCategory(ctx, repository.CreateInterestLinkCategoryParams{
+		ID:           newID(),
+		Name:         name,
+		DisplayOrder: req.DisplayOrder,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return CategoryResponse{}, ErrValidation
+		}
+		return CategoryResponse{}, err
+	}
+	resp := categoryToResponse(category)
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link_category.create",
+		EntityType: "interest_link_category",
+		EntityID:   category.ID,
+		After:      categoryAuditPayload(resp),
+	}); err != nil {
+		return CategoryResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return CategoryResponse{}, err
+	}
+	return resp, nil
+}
+
+func (s *AdminService) UpdateCategory(ctx context.Context, adminID, categoryID uuid.UUID, req UpdateCategoryRequest) (CategoryResponse, error) {
+	name := strings.TrimSpace(req.Name)
+	if err := validateCategoryInput(name); err != nil {
+		return CategoryResponse{}, err
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return CategoryResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	category, err := qtx.UpdateInterestLinkCategory(ctx, repository.UpdateInterestLinkCategoryParams{
+		ID:           categoryID,
+		Name:         name,
+		DisplayOrder: req.DisplayOrder,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return CategoryResponse{}, ErrNotFound
+		}
+		if isUniqueViolation(err) {
+			return CategoryResponse{}, ErrValidation
+		}
+		return CategoryResponse{}, err
+	}
+	resp := categoryToResponse(category)
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link_category.update",
+		EntityType: "interest_link_category",
+		EntityID:   category.ID,
+		After:      categoryAuditPayload(resp),
+	}); err != nil {
+		return CategoryResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return CategoryResponse{}, err
+	}
+	return resp, nil
+}
+
+// DeleteCategory pregunta primero por enlaces vivos (mismo patrón que
+// levels.PurgeSection/CountLevelsBySection) en vez de dejar que el ON DELETE
+// RESTRICT de interest_links.category_id devuelva un error crudo de
+// Postgres: un admin que intenta borrar una categoría con tarjetas debe
+// vaciarla o reasignarlas primero (comentario de la migración 0003).
+func (s *AdminService) DeleteCategory(ctx context.Context, adminID, categoryID uuid.UUID) error {
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	count, err := qtx.CountInterestLinksByCategory(ctx, categoryID)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrCategoryHasLinks
+	}
+
+	rows, err := qtx.DeleteInterestLinkCategory(ctx, categoryID)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link_category.delete",
+		EntityType: "interest_link_category",
+		EntityID:   categoryID,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *AdminService) ListLinks(ctx context.Context) ([]LinkResponse, error) {
+	links, err := s.repo.ListInterestLinks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]LinkResponse, 0, len(links))
+	for _, l := range links {
+		resp = append(resp, linkToResponse(l))
+	}
+	return resp, nil
+}
+
+func (s *AdminService) CreateLink(ctx context.Context, adminID uuid.UUID, req CreateLinkRequest) (LinkResponse, error) {
+	title := strings.TrimSpace(req.Title)
+	description := strings.TrimSpace(req.Description)
+	if req.CategoryID == uuid.Nil {
+		return LinkResponse{}, ErrValidation
+	}
+	if err := validateLinkInput(title, description, req.Color, req.URL); err != nil {
+		return LinkResponse{}, err
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return LinkResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	link, err := qtx.CreateInterestLink(ctx, repository.CreateInterestLinkParams{
+		ID:          newID(),
+		CategoryID:  req.CategoryID,
+		Title:       title,
+		Description: description,
+		Color:       req.Color,
+		URL:         req.URL,
+	})
+	if err != nil {
+		if isForeignKeyViolation(err) {
+			return LinkResponse{}, ErrValidation
+		}
+		return LinkResponse{}, err
+	}
+	resp := linkToResponse(link)
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link.create",
+		EntityType: "interest_link",
+		EntityID:   link.ID,
+		After:      linkAuditPayload(resp),
+	}); err != nil {
+		return LinkResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return LinkResponse{}, err
+	}
+	return resp, nil
+}
+
+func (s *AdminService) UpdateLink(ctx context.Context, adminID, linkID uuid.UUID, req UpdateLinkRequest) (LinkResponse, error) {
+	title := strings.TrimSpace(req.Title)
+	description := strings.TrimSpace(req.Description)
+	if req.CategoryID == uuid.Nil {
+		return LinkResponse{}, ErrValidation
+	}
+	if err := validateLinkInput(title, description, req.Color, req.URL); err != nil {
+		return LinkResponse{}, err
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return LinkResponse{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	link, err := qtx.UpdateInterestLink(ctx, repository.UpdateInterestLinkParams{
+		ID:          linkID,
+		CategoryID:  req.CategoryID,
+		Title:       title,
+		Description: description,
+		Color:       req.Color,
+		URL:         req.URL,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return LinkResponse{}, ErrNotFound
+		}
+		if isForeignKeyViolation(err) {
+			return LinkResponse{}, ErrValidation
+		}
+		return LinkResponse{}, err
+	}
+	resp := linkToResponse(link)
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link.update",
+		EntityType: "interest_link",
+		EntityID:   link.ID,
+		After:      linkAuditPayload(resp),
+	}); err != nil {
+		return LinkResponse{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return LinkResponse{}, err
+	}
+	return resp, nil
+}
+
+func (s *AdminService) DeleteLink(ctx context.Context, adminID, linkID uuid.UUID) error {
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	rows, err := qtx.DeleteInterestLink(ctx, linkID)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    adminID,
+		Action:     "interest_link.delete",
+		EntityType: "interest_link",
+		EntityID:   linkID,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func categoryAuditPayload(c CategoryResponse) map[string]any {
+	return map[string]any{"id": c.ID, "name": c.Name, "display_order": c.DisplayOrder}
+}
+
+func linkAuditPayload(l LinkResponse) map[string]any {
+	return map[string]any{
+		"id": l.ID, "category_id": l.CategoryID, "title": l.Title, "url": l.URL,
+	}
+}
+
+// isUniqueViolation/isForeignKeyViolation traducen los códigos de error de
+// Postgres (mismo patrón que auth.Service para la colisión de nickname) en
+// vez de dejar pasar el error crudo del driver: el nombre de categoría es
+// UNIQUE, y category_id en interest_links es NOT NULL REFERENCES ... ON
+// DELETE RESTRICT — un category_id inexistente en un create/update debe
+// verse como un 422 de validación, no como un 500.
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23505"
+}
+
+func isForeignKeyViolation(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23503"
+}

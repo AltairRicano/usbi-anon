@@ -21,10 +21,12 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/dbmaint"
 	"github.com/altair/usbi-anon-backend/internal/devices"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
+	"github.com/altair/usbi-anon-backend/internal/interestlinks"
 	"github.com/altair/usbi-anon-backend/internal/levels"
 	"github.com/altair/usbi-anon-backend/internal/maintenance"
 	"github.com/altair/usbi-anon-backend/internal/quiz"
 	"github.com/altair/usbi-anon-backend/internal/repository"
+	"github.com/altair/usbi-anon-backend/internal/suggestions"
 	syncSvc "github.com/altair/usbi-anon-backend/internal/sync"
 	"github.com/altair/usbi-anon-backend/internal/transport"
 	"github.com/go-chi/chi/v5"
@@ -36,7 +38,7 @@ func main() {
 
 	logger := newLogger()
 	slog.SetDefault(logger)
-	
+
 	schedulerLogger := slog.NewLogLogger(logger.Handler(), slog.LevelInfo)
 
 	// Root context cancelled on SIGINT/SIGTERM so the server and the background
@@ -117,6 +119,15 @@ func main() {
 	// 00_roles_unificado.sql) — el endpoint es admin-only pese al comentario
 	// "/admin/" en la ruta, así que corre sobre el pool de moderador.
 	incidentsSvc := incidents.NewService(moderatorQueries, []byte(hmacSecret))
+	// F4 (estado_proyecto.md 2026-09-09): interest_link_categories/
+	// interest_links son solo lectura para usbi_app, CRUD completo para
+	// usbi_moderador; suggestions es solo INSERT para usbi_app, SELECT+DELETE
+	// para usbi_moderador (00_roles_unificado.sql) — mismo split
+	// PlayerService/AdminService que levels/quiz.
+	interestLinksPlayerSvc := interestlinks.NewPlayerService(playerQueries)
+	interestLinksAdminSvc := interestlinks.NewAdminService(moderatorQueries)
+	suggestionsPlayerSvc := suggestions.NewPlayerService(playerQueries)
+	suggestionsAdminSvc := suggestions.NewAdminService(moderatorQueries)
 	if config.GetBoolEnv("LEGAL_MAINTENANCE_ENABLED", false) {
 		// internal/maintenance no se evaluó en esta pasada de F3 (pedido
 		// explícito del usuario: "el maintenance no lo toco") — se deja sobre
@@ -157,22 +168,24 @@ func main() {
 	// ── Router wiring ─────────────────────────────────────────────────────────
 	r := chi.NewRouter()
 	stopRateLimiters := transport.SetupRoutes(r, transport.RouterDependencies{
-		AuthHandler:      auth.NewHandler(authSvc),
-		QuizHandler:      quiz.NewHandler(quizAdminSvc),
-		SyncHandler:      syncSvc.NewHandler(syncService),
-		LevelsHandler:    levels.NewHandler(levelsPlayerSvc, levelsAdminSvc),
-		DevicesHandler:   devices.NewHandler(devicesSvc),
-		IncidentsHandler: incidents.NewHandler(incidentsSvc),
-		ReadyCheck:       readyCheck(playerDB, moderatorDB),
-		TokenCfg:         tokenCfg,
+		AuthHandler:          auth.NewHandler(authSvc),
+		QuizHandler:          quiz.NewHandler(quizAdminSvc),
+		SyncHandler:          syncSvc.NewHandler(syncService),
+		LevelsHandler:        levels.NewHandler(levelsPlayerSvc, levelsAdminSvc),
+		DevicesHandler:       devices.NewHandler(devicesSvc),
+		IncidentsHandler:     incidents.NewHandler(incidentsSvc),
+		InterestLinksHandler: interestlinks.NewHandler(interestLinksPlayerSvc, interestLinksAdminSvc),
+		SuggestionsHandler:   suggestions.NewHandler(suggestionsPlayerSvc, suggestionsAdminSvc),
+		ReadyCheck:           readyCheck(playerDB, moderatorDB),
+		TokenCfg:             tokenCfg,
 		// jwtAuthMiddleware revalida token_version/status contra accounts en
 		// cada petición autenticada — debe ser el pool de jugador:
 		// usbi_moderador no tiene ningún GRANT sobre accounts
 		// (00_roles_unificado.sql nunca se lo concede), así que
 		// moderatorQueries ni siquiera podría ejecutar esta consulta.
-		Repo: playerQueries,
-		AllowedOrigin:    allowedOrigin,
-		MaxBodyBytes:     int64(config.GetInt32Env("API_MAX_BODY_BYTES", 6*1024*1024)),
+		Repo:          playerQueries,
+		AllowedOrigin: allowedOrigin,
+		MaxBodyBytes:  int64(config.GetInt32Env("API_MAX_BODY_BYTES", 6*1024*1024)),
 		// Only trust proxy-forwarded IP headers once a reverse proxy in front
 		// of this service is confirmed to strip/set them itself (see DEPLOYMENT.md).
 		TrustProxyHeaders: config.GetBoolEnv("TRUST_PROXY_HEADERS", false),
