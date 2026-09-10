@@ -3,6 +3,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { InterestLinksResponseSchema, type CategoryWithLinks } from './interestLinksSchemas';
+import { InterestLinkCarousel } from './InterestLinkCarousel';
 
 const SUGGESTION_MAX_LEN = 1000;
 
@@ -45,30 +46,16 @@ export function MoreTab() {
     <div className="space-y-6">
       {loadError && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{loadError}</p>}
 
-      {groups.map((group) => (
-        <section key={group.category.id} className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm">
-          <h2 className="mb-4 text-xl font-semibold">{group.category.name}</h2>
-          {group.links.length === 0 ? (
-            <p className="text-sm text-[--color-muted]">Sin enlaces por ahora.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {group.links.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg border border-[--color-border] p-4 flex flex-col gap-1 transition-transform hover:scale-[1.02]"
-                  style={{ borderLeftWidth: 6, borderLeftColor: link.color }}
-                >
-                  <h3 className="font-bold">{link.title}</h3>
-                  <p className="text-sm text-[--color-muted]">{link.description}</p>
-                </a>
-              ))}
-            </div>
-          )}
-        </section>
-      ))}
+      {groups.map((group) =>
+        group.links.length === 0 ? (
+          <section key={group.category.id} className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm">
+            <h2 className="mb-4 text-center text-2xl font-semibold">{group.category.name}</h2>
+            <p className="text-center text-sm text-[--color-muted]">Sin enlaces por ahora.</p>
+          </section>
+        ) : (
+          <InterestLinkCarousel key={group.category.id} group={group} />
+        )
+      )}
       {groups.length === 0 && !loadError && (
         <p className="rounded-lg border border-[--color-border] bg-[--color-card] p-5 text-[--color-muted]">
           No hay enlaces de interés publicados.
