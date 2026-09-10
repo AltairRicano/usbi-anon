@@ -206,9 +206,11 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 			if deps.DevicesHandler != nil {
 				r.Post("/devices", deps.DevicesHandler.RegisterDevice)
 				r.Get("/devices", deps.DevicesHandler.ListDevices)
+				r.Delete("/devices/{device_id}", deps.DevicesHandler.RevokeDevice)
 			} else {
 				r.Post("/devices", notImplementedHandler("devices.register"))
 				r.Get("/devices", notImplementedHandler("devices.list"))
+				r.Delete("/devices/{device_id}", notImplementedHandler("devices.revoke"))
 			}
 
 			// Level routes (Phase 4 — Maker module)

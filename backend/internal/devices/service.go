@@ -6,11 +6,15 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/altair/usbi-anon-backend/internal/audit"
 	"github.com/altair/usbi-anon-backend/internal/repository"
 	"github.com/google/uuid"
 )
 
-var ErrValidation = errors.New("validation error")
+var (
+	ErrValidation = errors.New("validation error")
+	ErrNotFound   = errors.New("not found")
+)
 
 // validDeviceKinds refleja el CHECK de devices.device_kind. Rechazar aquí,
 // antes del INSERT, da un 422 legible en vez de un error crudo de Postgres. (Útil)
@@ -71,6 +75,45 @@ func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req Regi
 		return DeviceResponse{}, false, err
 	}
 	return deviceToResponse(device), true, nil
+}
+
+// RevokeDevice maneja DELETE /devices/{device_id} (C2, estado_proyecto.md
+// 2026-09-10): revocación lógica, no un DELETE físico — ver el comentario
+// de repository.RevokeDevice para el porqué (la FK compuesta de
+// sync_events). Se audita (`device.revoke`) porque, a diferencia de
+// internal/suggestions, devices ya guarda user_id en claro — no hay
+// anonimato que proteger aquí — y el pool de jugador (usbi_app) conserva
+// INSERT sobre audit_log (00_roles_unificado.sql).
+func (s *Service) RevokeDevice(ctx context.Context, userID, deviceID uuid.UUID) error {
+	if userID == uuid.Nil || deviceID == uuid.Nil {
+		return ErrValidation
+	}
+
+	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	qtx := s.repo.WithTx(tx)
+
+	device, err := qtx.RevokeDevice(ctx, repository.GetActiveDeviceParams{ID: deviceID, UserID: userID})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	if err := audit.Log(ctx, qtx, audit.Entry{
+		ActorID:    userID,
+		Action:     "device.revoke",
+		EntityType: "device",
+		EntityID:   device.ID,
+		After:      map[string]any{"id": device.ID, "device_kind": device.DeviceKind, "platform": device.Platform},
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Service) ListDevices(ctx context.Context, userID uuid.UUID) (DevicesResponse, error) {
