@@ -94,14 +94,6 @@ html.dark {
     min-height: 100vh;
   }
 
-  .color-filter-defs {
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
   :focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 2px;
@@ -143,7 +135,7 @@ html.dark {
 
 /* ── Filtros de accesibilidad daltónica ──────────────────────
    Toggle en features/settings/SettingsPage.tsx (F10.5), vía
-   useSettingsStore / clases en <html>, igual que en ../usbi.
+   useSettingsStore / clases en <html>.
 
    El filtro se aplica en <html>, NUNCA en #root ni en ningún wrapper
    interno. `filter` distinto de `none` convierte al elemento que lo lleva
@@ -152,35 +144,38 @@ html.dark {
    dentro de <body>), todo elemento fixed de la app (el panel lateral del
    dashboard, sus modales de confirmación, etc.) deja de posicionarse
    respecto al viewport real y pasa a posicionarse respecto a la caja de
-   #root. El síntoma reproducido: con el filtro activo, un clic real de
-   mouse (no un .click() programático) sobre el botón de hamburguesa del
-   dashboard dejaba de abrir el panel lateral — Chromium calculaba mal el
-   hit-test de los elementos fixed superpuestos (el backdrop invisible +
-   el panel) al quedar ambos anclados a un containing block que no es el
-   viewport. <html> es el elemento raíz: su caja ya coincide con el
-   containing block inicial (el viewport), así que aplicar el filtro ahí
-   no genera un containing block nuevo/distinto y los `position: fixed`
-   siguen anclados al viewport como es debido. Ver estado_proyecto.md. */
+   #root. <html> es el elemento raíz: su caja ya coincide con el containing
+   block inicial (el viewport), así que aplicar el filtro ahí no genera un
+   containing block nuevo/distinto y los `position: fixed` siguen anclados
+   al viewport como es debido.
+
+   Deliberadamente SOLO funciones nativas de `filter` (contrast/saturate/
+   hue-rotate), sin `url(#id-de-un-<filter>-SVG)`. Versión anterior (heredada
+   de ../usbi) encadenaba un filtro SVG (matriz de corrección Daltonize) por
+   encima de esto, protegido por `@supports (filter: url(...))`. Esa
+   feature-query solo confirma que el navegador entiende la SINTAXIS
+   `url()` en `filter` — no que la referencia se resuelva. En Firefox la
+   sintaxis SÍ es soportada (la media query da true) pero la referencia al
+   <filter> del SVG no se resuelve en runtime, y por spec una referencia
+   `url()` inválida invalida la cadena de filtro COMPLETA (no solo ese
+   término) — el resultado observado era "activo el filtro y no cambia
+   nada" en Firefox, mientras Chrome/Opera sí renderizaban la matriz SVG
+   con normalidad. Que el filtro se note de forma **consistente en
+   cualquier navegador** vale más que la precisión extra de la matriz
+   Daltonize, así que se eliminó la rama SVG entera (y sus defs en
+   index.html) en vez de intentar parchear la detección — un solo mecanismo,
+   con soporte universal desde hace más de una década, sin dependencia
+   cruzada HTML→SVG que pueda volver a romperse en un tercer navegador.
+   Valores un poco más marcados que antes para que la corrección se
+   distinga con claridad usando solo estas funciones. Ver estado_proyecto.md. */
 html.deuteranopia {
-  filter: contrast(1.06) saturate(0.78) hue-rotate(-12deg);
+  filter: contrast(1.1) saturate(0.65) hue-rotate(-16deg);
 }
 html.protanopia {
-  filter: contrast(1.08) saturate(0.82) hue-rotate(8deg);
+  filter: contrast(1.12) saturate(0.7) hue-rotate(12deg);
 }
 html.tritanopia {
-  filter: contrast(1.06) saturate(0.85) hue-rotate(28deg);
-}
-
-@supports (filter: url("#deuteranopia-filter")) {
-  html.deuteranopia {
-    filter: url("#deuteranopia-filter") contrast(1.03);
-  }
-  html.protanopia {
-    filter: url("#protanopia-filter") contrast(1.03);
-  }
-  html.tritanopia {
-    filter: url("#tritanopia-filter") contrast(1.03);
-  }
+  filter: contrast(1.1) saturate(0.75) hue-rotate(32deg);
 }
 
 /* ── Reducir movimiento ─────────────────────────────────────────────────── */
