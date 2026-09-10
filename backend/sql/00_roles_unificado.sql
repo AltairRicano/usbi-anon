@@ -243,10 +243,14 @@ GRANT SELECT (actor_account_id), UPDATE (actor_account_id) ON audit_log TO usbi_
 -- Column-level, sin abrir xp_gained/source/verification_method.
 GRANT SELECT (user_id), UPDATE (user_id) ON experience_history TO usbi_moderador;
 
--- Incidentes de seguridad: solo inserta (POST /admin/security-incidents).
--- Sin SELECT todavía — mismo caso que audit_log, sin endpoint de lectura
--- (decisión "déjalo" registrada en estado_proyecto.md).
-GRANT INSERT ON security_incidents TO usbi_moderador;
+-- Incidentes de seguridad (B2, estado_proyecto.md 2026-09-09): INSERT
+-- (POST /admin/security-incidents) + SELECT/UPDATE de tabla completa
+-- (GET/PATCH) — decisión D1: el PATCH puede corregir también la narrativa
+-- sellada, resellando evidence_hash, así que el UPDATE es de tabla completa
+-- y no column-level como en audit_log/experience_history. NUNCA DELETE:
+-- ningún rol lo tiene, y la migración 0006 además lo prohíbe con un trigger
+-- BEFORE DELETE — tres capas independientes.
+GRANT SELECT, INSERT, UPDATE ON security_incidents TO usbi_moderador;
 
 -- Enlaces de interés y sus categorías (2026-09-08): CRUD completo — es
 -- contenido editorial igual que sections/levels/badges.

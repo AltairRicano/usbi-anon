@@ -188,8 +188,17 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 			if deps.IncidentsHandler != nil {
 				r.Post("/admin/security-incidents", deps.IncidentsHandler.CreateIncident)
+				// B2 (estado_proyecto.md 2026-09-09): leer y editar, nunca
+				// borrar — sin ruta DELETE, la app no expone forma alguna de
+				// destruir un incidente de seguridad.
+				r.Get("/admin/security-incidents", deps.IncidentsHandler.List)
+				r.Get("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Get)
+				r.Patch("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Update)
 			} else {
 				r.Post("/admin/security-incidents", notImplementedHandler("admin.createSecurityIncident"))
+				r.Get("/admin/security-incidents", notImplementedHandler("admin.listSecurityIncidents"))
+				r.Get("/admin/security-incidents/{incident_id}", notImplementedHandler("admin.getSecurityIncident"))
+				r.Patch("/admin/security-incidents/{incident_id}", notImplementedHandler("admin.updateSecurityIncident"))
 			}
 
 			if deps.DevicesHandler != nil {
