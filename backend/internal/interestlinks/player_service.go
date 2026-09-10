@@ -24,17 +24,17 @@ func NewPlayerService(repo *repository.Queries) *PlayerService {
 // editorial curado a mano por un admin, no datos de usuario) y así se evita
 // tener que deduplicar filas de categoría en Go para el caso JOIN de una
 // categoría con muchas tarjetas.
-func (s *PlayerService) ListGrouped(ctx context.Context) ([]CategoryWithLinks, error) {
+func (s *PlayerService) ListGrouped(ctx context.Context) (InterestLinksResponse, error) {
 	categories, err := s.repo.ListInterestLinkCategories(ctx)
 	if err != nil {
-		return nil, err
+		return InterestLinksResponse{}, err
 	}
 
 	groups := make([]CategoryWithLinks, 0, len(categories))
 	for _, category := range categories {
 		links, err := s.repo.ListInterestLinksByCategory(ctx, category.ID)
 		if err != nil {
-			return nil, err
+			return InterestLinksResponse{}, err
 		}
 		linkResponses := make([]LinkResponse, 0, len(links))
 		for _, link := range links {
@@ -45,5 +45,5 @@ func (s *PlayerService) ListGrouped(ctx context.Context) ([]CategoryWithLinks, e
 			Links:    linkResponses,
 		})
 	}
-	return groups, nil
+	return InterestLinksResponse{Items: groups}, nil
 }

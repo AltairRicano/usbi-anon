@@ -30,16 +30,16 @@ func newID() uuid.UUID {
 	return id
 }
 
-func (s *AdminService) List(ctx context.Context) ([]BadgeResponse, error) {
+func (s *AdminService) List(ctx context.Context) (BadgesResponse, error) {
 	items, err := s.repo.ListBadges(ctx)
 	if err != nil {
-		return nil, err
+		return BadgesResponse{}, err
 	}
 	resp := make([]BadgeResponse, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, toResponse(item))
 	}
-	return resp, nil
+	return BadgesResponse{Items: resp}, nil
 }
 
 func (s *AdminService) Create(ctx context.Context, adminID uuid.UUID, req CreateBadgeRequest) (BadgeResponse, error) {

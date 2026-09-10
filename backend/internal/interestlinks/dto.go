@@ -39,6 +39,23 @@ type CategoryWithLinks struct {
 	Links    []LinkResponse   `json:"links"`
 }
 
+// InterestLinksResponse/CategoriesResponse/LinksResponse envuelven a sus
+// respectivos listados en `{"items": [...]}` (C4, estado_proyecto.md
+// 2026-09-10) — antes de esta uniformización estos tres endpoints eran los
+// únicos, junto con GET /admin/badges, que devolvían un arreglo JSON crudo
+// en vez del sobre `items` que ya usan levels/auditlog/suggestions/devices.
+type InterestLinksResponse struct {
+	Items []CategoryWithLinks `json:"items"`
+}
+
+type CategoriesResponse struct {
+	Items []CategoryResponse `json:"items"`
+}
+
+type LinksResponse struct {
+	Items []LinkResponse `json:"items"`
+}
+
 // CreateCategoryRequest/UpdateCategoryRequest son el cuerpo de
 // POST/PATCH /admin/interest-link-categories. (Relleno)
 type CreateCategoryRequest struct {

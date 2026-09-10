@@ -32,16 +32,16 @@ func newID() uuid.UUID {
 	return id
 }
 
-func (s *AdminService) ListCategories(ctx context.Context) ([]CategoryResponse, error) {
+func (s *AdminService) ListCategories(ctx context.Context) (CategoriesResponse, error) {
 	categories, err := s.repo.ListInterestLinkCategories(ctx)
 	if err != nil {
-		return nil, err
+		return CategoriesResponse{}, err
 	}
 	resp := make([]CategoryResponse, 0, len(categories))
 	for _, c := range categories {
 		resp = append(resp, categoryToResponse(c))
 	}
-	return resp, nil
+	return CategoriesResponse{Items: resp}, nil
 }
 
 func (s *AdminService) CreateCategory(ctx context.Context, adminID uuid.UUID, req CreateCategoryRequest) (CategoryResponse, error) {
@@ -166,16 +166,16 @@ func (s *AdminService) DeleteCategory(ctx context.Context, adminID, categoryID u
 	return tx.Commit()
 }
 
-func (s *AdminService) ListLinks(ctx context.Context) ([]LinkResponse, error) {
+func (s *AdminService) ListLinks(ctx context.Context) (LinksResponse, error) {
 	links, err := s.repo.ListInterestLinks(ctx)
 	if err != nil {
-		return nil, err
+		return LinksResponse{}, err
 	}
 	resp := make([]LinkResponse, 0, len(links))
 	for _, l := range links {
 		resp = append(resp, linkToResponse(l))
 	}
-	return resp, nil
+	return LinksResponse{Items: resp}, nil
 }
 
 func (s *AdminService) CreateLink(ctx context.Context, adminID uuid.UUID, req CreateLinkRequest) (LinkResponse, error) {

@@ -27,6 +27,13 @@ type UpdateBadgeRequest struct {
 	IconKey     string `json:"icon_key"`
 }
 
+// BadgesResponse envuelve el listado en `{"items": [...]}` (C4,
+// estado_proyecto.md 2026-09-10) — mismo sobre que ya usan
+// devices/levels/auditlog/suggestions/interestlinks.
+type BadgesResponse struct {
+	Items []BadgeResponse `json:"items"`
+}
+
 func toResponse(b repository.Badge) BadgeResponse {
 	return BadgeResponse{
 		ID:          b.ID,
