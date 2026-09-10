@@ -314,6 +314,23 @@ func (h *Handler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GetSettings maneja GET /admin/registration-settings (C3,
+// estado_proyecto.md 2026-09-10). AdminService.GetSettings ya existía desde
+// F8 sin ningún handler ni ruta que lo llamara — código muerto hasta ahora.
+func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	claims, ok := claimsFromContext(r)
+	if !ok || !canManageQuizBank(claims.Role) {
+		httpproblem.WriteProblem(w, r, http.StatusForbidden, "forbidden", "Forbidden", "Only admins can view the registration settings")
+		return
+	}
+	resp, err := h.svc.GetSettings(r.Context())
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not get registration settings")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
 func (h *Handler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok || !canManageQuizBank(claims.Role) {

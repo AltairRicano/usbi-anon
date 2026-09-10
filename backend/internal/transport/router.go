@@ -166,12 +166,14 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/admin/registration-questions", deps.QuizHandler.CreateQuestion)
 				r.Patch("/admin/registration-questions/{id}", deps.QuizHandler.UpdateQuestion)
 				r.Delete("/admin/registration-questions/{id}", deps.QuizHandler.DeleteQuestion)
+				r.Get("/admin/registration-settings", deps.QuizHandler.GetSettings)
 				r.Put("/admin/registration-settings", deps.QuizHandler.UpdateSettings)
 			} else {
 				r.Get("/admin/registration-questions", notImplementedHandler("admin.listRegistrationQuestions"))
 				r.Post("/admin/registration-questions", notImplementedHandler("admin.createRegistrationQuestion"))
 				r.Patch("/admin/registration-questions/{id}", notImplementedHandler("admin.updateRegistrationQuestion"))
 				r.Delete("/admin/registration-questions/{id}", notImplementedHandler("admin.deleteRegistrationQuestion"))
+				r.Get("/admin/registration-settings", notImplementedHandler("admin.getRegistrationSettings"))
 				r.Put("/admin/registration-settings", notImplementedHandler("admin.updateRegistrationSettings"))
 			}
 
