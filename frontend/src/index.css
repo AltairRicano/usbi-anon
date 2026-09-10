@@ -143,25 +143,42 @@ html.dark {
 
 /* ── Filtros de accesibilidad daltónica ──────────────────────
    Toggle en features/settings/SettingsPage.tsx (F10.5), vía
-   useSettingsStore / clases en <html>, igual que en ../usbi. */
-html.deuteranopia #root {
+   useSettingsStore / clases en <html>, igual que en ../usbi.
+
+   El filtro se aplica en <html>, NUNCA en #root ni en ningún wrapper
+   interno. `filter` distinto de `none` convierte al elemento que lo lleva
+   en containing block de sus descendientes `position: fixed`/`absolute`
+   (spec de CSS Filter Effects) — si el filtro se pone en #root (un <div>
+   dentro de <body>), todo elemento fixed de la app (el panel lateral del
+   dashboard, sus modales de confirmación, etc.) deja de posicionarse
+   respecto al viewport real y pasa a posicionarse respecto a la caja de
+   #root. El síntoma reproducido: con el filtro activo, un clic real de
+   mouse (no un .click() programático) sobre el botón de hamburguesa del
+   dashboard dejaba de abrir el panel lateral — Chromium calculaba mal el
+   hit-test de los elementos fixed superpuestos (el backdrop invisible +
+   el panel) al quedar ambos anclados a un containing block que no es el
+   viewport. <html> es el elemento raíz: su caja ya coincide con el
+   containing block inicial (el viewport), así que aplicar el filtro ahí
+   no genera un containing block nuevo/distinto y los `position: fixed`
+   siguen anclados al viewport como es debido. Ver estado_proyecto.md. */
+html.deuteranopia {
   filter: contrast(1.06) saturate(0.78) hue-rotate(-12deg);
 }
-html.protanopia #root {
+html.protanopia {
   filter: contrast(1.08) saturate(0.82) hue-rotate(8deg);
 }
-html.tritanopia #root {
+html.tritanopia {
   filter: contrast(1.06) saturate(0.85) hue-rotate(28deg);
 }
 
 @supports (filter: url("#deuteranopia-filter")) {
-  html.deuteranopia #root {
+  html.deuteranopia {
     filter: url("#deuteranopia-filter") contrast(1.03);
   }
-  html.protanopia #root {
+  html.protanopia {
     filter: url("#protanopia-filter") contrast(1.03);
   }
-  html.tritanopia #root {
+  html.tritanopia {
     filter: url("#tritanopia-filter") contrast(1.03);
   }
 }
