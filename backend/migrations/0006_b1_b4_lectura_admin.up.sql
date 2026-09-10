@@ -10,3 +10,11 @@
 -- panel serían un descuido de datos, no una situación válida (decisión D2,
 -- estado_proyecto.md 2026-09-09).
 ALTER TABLE badges ADD CONSTRAINT badges_name_key UNIQUE (name);
+
+-- ── B4: historial de sincronización del jugador ─────────────────────────
+-- Los índices existentes son (user_id, status) y (device_id) — ninguno
+-- sirve para "mis últimas sincronizaciones" ordenado por received_at.
+-- Sin este índice, la tabla que más crece del sistema se ordenaría con un
+-- scan completo por usuario en GET /sync/events.
+CREATE INDEX sync_events_user_received_idx
+    ON sync_events (user_id, received_at DESC, id DESC);

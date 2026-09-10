@@ -175,8 +175,13 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 			if deps.SyncHandler != nil {
 				r.Post("/sync", deps.SyncHandler.SyncData)
+				// Historial de sync del propio jugador (B4, estado_proyecto.md
+				// 2026-09-09): sin variante de admin — sync.ListMyHistory
+				// siempre filtra por claims.UserID.
+				r.Get("/sync/events", deps.SyncHandler.ListMyHistory)
 			} else {
 				r.Post("/sync", notImplementedHandler("sync.offlineProgress"))
+				r.Get("/sync/events", notImplementedHandler("sync.listMyHistory"))
 			}
 
 			if deps.IncidentsHandler != nil {

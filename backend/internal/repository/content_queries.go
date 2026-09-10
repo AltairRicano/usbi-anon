@@ -705,3 +705,67 @@ func scanLevel(row scanner) (Level, error) {
 	)
 	return level, err
 }
+
+// ── Historial de sincronización del jugador (B4, estado_proyecto.md
+// 2026-09-09) ────────────────────────────────────────────────────────────
+// Corre exclusivamente sobre el pool de jugador: usbi_moderador no tiene
+// ningún GRANT sobre sync_events, y no lo necesita — "cada quien ve solo lo
+// suyo, un admin también" ya lo impone la base, no un filtro en Go. Sin
+// SELECT del payload JSONB (decisión D3): es el delta completo de progreso
+// y crece sin techo; si algún día hace falta depurar un evento concreto, se
+// agrega un endpoint de detalle por ID, no se infla este listado.
+
+type SyncEventSummary struct {
+	ID              uuid.UUID
+	DeviceID        uuid.UUID
+	Status          string
+	HmacValid       bool
+	ReceivedAt      time.Time
+	ProcessedAt     sql.NullTime
+	RejectionReason sql.NullString
+}
+
+func scanSyncEventSummary(row scanner) (SyncEventSummary, error) {
+	var e SyncEventSummary
+	err := row.Scan(&e.ID, &e.DeviceID, &e.Status, &e.HmacValid, &e.ReceivedAt, &e.ProcessedAt, &e.RejectionReason)
+	return e, err
+}
+
+const syncEventSummaryColumns = `id, device_id, status, hmac_valid, received_at, processed_at, rejection_reason`
+
+type ListSyncEventsForUserParams struct {
+	UserID   uuid.UUID
+	DeviceID uuid.NullUUID
+	Cursor   sql.NullTime // received_at del último elemento ya visto; NULL pide la primera página
+	PageSize int32
+}
+
+// ListSyncEventsForUser pagina por received_at DESC — el orden en que un
+// jugador esperaría ver "mis últimas sincronizaciones" — apoyado en
+// sync_events_user_received_idx (migración 0006). El filtro por device_id
+// es opcional.
+func (q *Queries) ListSyncEventsForUser(ctx context.Context, arg ListSyncEventsForUserParams) ([]SyncEventSummary, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT `+syncEventSummaryColumns+`
+FROM sync_events
+WHERE user_id = $1
+  AND ($2::uuid IS NULL OR device_id = $2)
+  AND ($3::timestamptz IS NULL OR received_at < $3)
+ORDER BY received_at DESC, id DESC
+LIMIT $4
+`, arg.UserID, arg.DeviceID, arg.Cursor, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []SyncEventSummary
+	for rows.Next() {
+		item, err := scanSyncEventSummary(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}

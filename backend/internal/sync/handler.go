@@ -5,10 +5,13 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/altair/usbi-anon-backend/internal/domain"
 	"github.com/altair/usbi-anon-backend/internal/httpjson"
 	"github.com/altair/usbi-anon-backend/internal/httpproblem"
+	"github.com/google/uuid"
 )
 
 // Handler expone el endpoint HTTP de sincronización. (Relleno)
@@ -72,4 +75,66 @@ func (h *Handler) SyncData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ListMyHistory maneja GET /api/v1/sync/events: el historial de
+// sincronización offline del propio jugador autenticado, sin variante de
+// admin (B4, estado_proyecto.md 2026-09-09) — un admin que jugó offline ve
+// aquí sus propios eventos, como cualquier jugador, nunca los de otra
+// cuenta.
+func (h *Handler) ListMyHistory(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
+	if !ok {
+		httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+			"Unauthorized", "Missing JWT claims in context")
+		return
+	}
+
+	q := r.URL.Query()
+
+	deviceID := uuid.Nil
+	if d := q.Get("device_id"); d != "" {
+		parsed, err := uuid.Parse(d)
+		if err != nil {
+			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request",
+				"Bad Request", "device_id must be a valid UUID")
+			return
+		}
+		deviceID = parsed
+	}
+
+	var cursor time.Time
+	if c := q.Get("cursor"); c != "" {
+		parsed, err := time.Parse(time.RFC3339Nano, c)
+		if err != nil {
+			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request",
+				"Bad Request", "cursor must be a valid RFC3339 timestamp")
+			return
+		}
+		cursor = parsed
+	}
+
+	pageSize := int32(defaultHistoryPageSize)
+	if ps := q.Get("page_size"); ps != "" {
+		n, err := strconv.Atoi(ps)
+		if err != nil || n < 1 || n > maxHistoryPageSize {
+			httpproblem.WriteProblem(w, r, http.StatusBadRequest, "bad-request",
+				"Bad Request", "page_size must be between 1 and 50")
+			return
+		}
+		pageSize = int32(n)
+	}
+
+	page, err := h.svc.ListMySyncEvents(r.Context(), claims.UserID, deviceID, cursor, pageSize)
+	if err != nil {
+		if errors.Is(err, ErrValidation) {
+			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
+				"Validation Error", "Invalid sync history query")
+			return
+		}
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
+			"Internal Server Error", "Could not retrieve sync history")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, page)
 }
