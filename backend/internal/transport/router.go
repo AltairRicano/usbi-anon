@@ -12,6 +12,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/altair/usbi-anon-backend/internal/auth"
+	"github.com/altair/usbi-anon-backend/internal/badges"
 	"github.com/altair/usbi-anon-backend/internal/crypto"
 	"github.com/altair/usbi-anon-backend/internal/devices"
 	"github.com/altair/usbi-anon-backend/internal/domain"
@@ -33,6 +34,7 @@ import (
 // para que el cableado parcial (ej. en tests) sea seguro. (Útil)
 type RouterDependencies struct {
 	AuthHandler      *auth.Handler
+	BadgesHandler    *badges.Handler
 	QuizHandler      *quiz.Handler
 	SyncHandler      *syncHandler.Handler
 	LevelsHandler    *levels.Handler
@@ -263,6 +265,21 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/suggestions", notImplementedHandler("suggestions.submit"))
 				r.Get("/admin/suggestions", notImplementedHandler("admin.listSuggestions"))
 				r.Delete("/admin/suggestions/{suggestion_id}", notImplementedHandler("admin.deleteSuggestion"))
+			}
+
+			// Catálogo de insignias (B3, estado_proyecto.md 2026-09-09): CRUD
+			// de admin sobre el pool de moderador. La lectura del jugador no
+			// pasa por aquí — sigue en GET /profile/progress (internal/levels).
+			if deps.BadgesHandler != nil {
+				r.Get("/admin/badges", deps.BadgesHandler.List)
+				r.Post("/admin/badges", deps.BadgesHandler.Create)
+				r.Patch("/admin/badges/{badge_id}", deps.BadgesHandler.Update)
+				r.Delete("/admin/badges/{badge_id}", deps.BadgesHandler.Delete)
+			} else {
+				r.Get("/admin/badges", notImplementedHandler("admin.listBadges"))
+				r.Post("/admin/badges", notImplementedHandler("admin.createBadge"))
+				r.Patch("/admin/badges/{badge_id}", notImplementedHandler("admin.updateBadge"))
+				r.Delete("/admin/badges/{badge_id}", notImplementedHandler("admin.deleteBadge"))
 			}
 		})
 	})

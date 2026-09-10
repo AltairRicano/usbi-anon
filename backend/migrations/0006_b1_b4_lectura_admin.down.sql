@@ -1,0 +1,1 @@
+ALTER TABLE badges DROP CONSTRAINT IF EXISTS badges_name_key;

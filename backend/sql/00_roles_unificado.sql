@@ -179,8 +179,16 @@ GRANT SELECT ON account_aliases TO usbi_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sections, levels TO usbi_moderador;
 
 -- Catálogo de insignias: CRUD completo (ver nota junto al REVOKE de usbi_app
--- arriba — pendiente aún el endpoint Go).
+-- arriba — endpoint Go construido en B3, estado_proyecto.md 2026-09-09).
 GRANT SELECT, INSERT, UPDATE, DELETE ON badges TO usbi_moderador;
+
+-- Solo lectura sobre las filas de titulares (B3): DeleteBadge pregunta
+-- primero cuántos jugadores tienen una insignia antes de borrarla —mismo
+-- guard que CountInterestLinksByCategory— y sin este GRANT ni siquiera
+-- puede hacer esa pregunta. Sin INSERT/UPDATE/DELETE: conceder o revocar una
+-- insignia ganada sigue siendo exclusivo de usbi_app
+-- (repository.AwardEligibleBadges), nunca del panel de administración.
+GRANT SELECT ON user_badges TO usbi_moderador;
 
 -- Banco de preguntas de registro y su configuración: CRUD completo
 -- (internal/quiz, canManageQuizBank).

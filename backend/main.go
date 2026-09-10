@@ -20,6 +20,7 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/crypto"
 	"github.com/altair/usbi-anon-backend/internal/dbmaint"
 	"github.com/altair/usbi-anon-backend/internal/devices"
+	"github.com/altair/usbi-anon-backend/internal/badges"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
 	"github.com/altair/usbi-anon-backend/internal/interestlinks"
 	"github.com/altair/usbi-anon-backend/internal/levels"
@@ -119,6 +120,7 @@ func main() {
 	// 00_roles_unificado.sql) — el endpoint es admin-only pese al comentario
 	// "/admin/" en la ruta, así que corre sobre el pool de moderador.
 	incidentsSvc := incidents.NewService(moderatorQueries, []byte(hmacSecret))
+	badgesAdminSvc := badges.NewAdminService(moderatorQueries)
 	// F4 (estado_proyecto.md 2026-09-09): interest_link_categories/
 	// interest_links son solo lectura para usbi_app, CRUD completo para
 	// usbi_moderador; suggestions es solo INSERT para usbi_app, SELECT+DELETE
@@ -174,6 +176,7 @@ func main() {
 		LevelsHandler:        levels.NewHandler(levelsPlayerSvc, levelsAdminSvc),
 		DevicesHandler:       devices.NewHandler(devicesSvc),
 		IncidentsHandler:     incidents.NewHandler(incidentsSvc),
+		BadgesHandler:        badges.NewHandler(badgesAdminSvc),
 		InterestLinksHandler: interestlinks.NewHandler(interestLinksPlayerSvc, interestLinksAdminSvc),
 		SuggestionsHandler:   suggestions.NewHandler(suggestionsPlayerSvc, suggestionsAdminSvc),
 		ReadyCheck:           readyCheck(playerDB, moderatorDB),
