@@ -2,6 +2,7 @@ package devices
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -25,15 +26,41 @@ func NewService(repo *repository.Queries) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) (DeviceResponse, error) {
+// RegisterDevice es un upsert (C1, estado_proyecto.md 2026-09-10): el
+// frontend lo llama después de cada login exitoso, no detrás de un botón
+// manual. Si req.DeviceID viene y sigue siendo tuyo y activo, solo se
+// actualiza last_seen_at; si no —dispositivo nuevo, ajeno, o revocado—, se
+// crea uno con un id generado por el servidor. Así un mismo dispositivo no
+// acumula una fila nueva por cada inicio de sesión, y el cliente nunca
+// puede reclamar el dispositivo de otra cuenta.
+//
+// El segundo valor de retorno indica si se creó una fila nueva (para que el
+// handler devuelva 201 solo en ese caso, y 200 cuando fue un touch).
+func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) (DeviceResponse, bool, error) {
 	deviceKind := strings.TrimSpace(req.DeviceKind)
 	if userID == uuid.Nil || !validDeviceKinds[deviceKind] {
-		return DeviceResponse{}, ErrValidation
+		return DeviceResponse{}, false, ErrValidation
 	}
 	platform := strings.TrimSpace(req.Platform)
 	if platform != "web" && platform != "tauri" {
-		return DeviceResponse{}, ErrValidation
+		return DeviceResponse{}, false, ErrValidation
 	}
+
+	if req.DeviceID != nil {
+		device, err := s.repo.TouchDeviceReturning(ctx, repository.GetActiveDeviceParams{
+			ID:     *req.DeviceID,
+			UserID: userID,
+		})
+		switch {
+		case err == nil:
+			return deviceToResponse(device), false, nil
+		case errors.Is(err, sql.ErrNoRows):
+			// No es tuyo, no existe, o está revocado: cae a crear uno nuevo.
+		default:
+			return DeviceResponse{}, false, err
+		}
+	}
+
 	device, err := s.repo.CreateDevice(ctx, repository.CreateDeviceParams{
 		ID:         uuid.New(),
 		UserID:     userID,
@@ -41,9 +68,9 @@ func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req Regi
 		Platform:   platform,
 	})
 	if err != nil {
-		return DeviceResponse{}, err
+		return DeviceResponse{}, false, err
 	}
-	return deviceToResponse(device), nil
+	return deviceToResponse(device), true, nil
 }
 
 func (s *Service) ListDevices(ctx context.Context, userID uuid.UUID) (DevicesResponse, error) {

@@ -30,7 +30,7 @@ func (h *Handler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.RegisterDevice(r.Context(), claims.UserID, req)
+	resp, created, err := h.svc.RegisterDevice(r.Context(), claims.UserID, req)
 	if err != nil {
 		if errors.Is(err, ErrValidation) {
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error", "Validation Error", err.Error())
@@ -39,7 +39,11 @@ func (h *Handler) RegisterDevice(w http.ResponseWriter, r *http.Request) {
 		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error", "Internal Server Error", "Could not register device")
 		return
 	}
-	httpproblem.WriteJSON(w, http.StatusCreated, resp)
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+	httpproblem.WriteJSON(w, status, resp)
 }
 
 func (h *Handler) ListDevices(w http.ResponseWriter, r *http.Request) {

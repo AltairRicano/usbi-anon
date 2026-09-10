@@ -46,6 +46,23 @@ WHERE id = $1 AND revoked_at IS NULL
 	return err
 }
 
+// TouchDeviceReturning es la mitad "actualizar" del upsert de C1
+// (devices.Service.RegisterDevice): mismo WHERE que GetActiveDevice —
+// (id, user_id) coincide y no está revocado — pero como UPDATE ...
+// RETURNING en una sola consulta, para no depender de un GetActiveDevice +
+// TouchDevice separados con una fila potencialmente cambiando entre medio.
+// sql.ErrNoRows significa "no es tuyo, no existe, o está revocado" — el
+// llamador decide crear un dispositivo nuevo en ese caso.
+func (q *Queries) TouchDeviceReturning(ctx context.Context, arg GetActiveDeviceParams) (Device, error) {
+	row := q.db.QueryRowContext(ctx, `
+UPDATE devices
+SET last_seen_at = NOW()
+WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+RETURNING id, user_id, device_kind, platform, registered_at, last_seen_at, wipe_local_data, revoked_at
+`, arg.ID, arg.UserID)
+	return scanDevice(row)
+}
+
 func (q *Queries) MarkUserDevicesForWipe(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, `
 UPDATE devices

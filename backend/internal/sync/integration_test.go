@@ -102,7 +102,7 @@ func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, dev
 		t.Fatalf("Login() error = %v", err)
 	}
 
-	dev, err := devicesSvc.RegisterDevice(ctx, confirm.AccountID, devices.RegisterDeviceRequest{
+	dev, _, err := devicesSvc.RegisterDevice(ctx, confirm.AccountID, devices.RegisterDeviceRequest{
 		DeviceKind: "movil", Platform: "web",
 	})
 	if err != nil {
