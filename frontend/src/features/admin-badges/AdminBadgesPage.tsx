@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
 import { Input } from '../../shared/components/ui/Input';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
@@ -99,9 +99,7 @@ export default function AdminBadgesPage() {
             <h1 className="text-3xl font-bold">Catálogo de insignias</h1>
             <p className="text-sm text-[--color-muted]">{badges.length} insignia{badges.length === 1 ? '' : 's'} definida{badges.length === 1 ? '' : 's'}.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {error && (

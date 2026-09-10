@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { Input } from '../../shared/components/ui/Input';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
@@ -167,9 +168,10 @@ export default function AdminQuizBankPage() {
               {activeCount} pregunta{activeCount === 1 ? '' : 's'} activa{activeCount === 1 ? '' : 's'} (mínimo 4).
             </p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/admin/accounts">Administrar cuentas</Link>
-          </Button>
+          <div className="flex gap-2">
+            <HomeButton />
+            <LinkButton to="/admin/accounts">Administrar cuentas</LinkButton>
+          </div>
         </header>
 
         {error && (

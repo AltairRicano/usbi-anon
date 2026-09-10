@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Button } from '../../shared/components/ui/Button';
+import { useParams } from 'react-router-dom';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
 import type { LevelDTO } from './types';
 import {
   normalizeCrosswordContent,
@@ -117,9 +117,7 @@ export function LocalLevelPage() {
       <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
         <div className="mx-auto max-w-3xl rounded-lg bg-[--color-card] p-5">
           <p className="text-[--color-error]">No se pudo cargar el nivel local.</p>
-          <Button variant="outline" size="sm" className="mt-4">
-            <Link to="/dashboard">Volver</Link>
-          </Button>
+          <HomeButton className="mt-4" />
         </div>
       </main>
     );
@@ -137,9 +135,7 @@ export function LocalLevelPage() {
             <h1 className="text-3xl font-bold">{level.title}</h1>
             <p className="text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {result && (
@@ -151,9 +147,7 @@ export function LocalLevelPage() {
             <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
               Nota: Los niveles locales (Maker) no otorgan puntos de experiencia ni medallas en tu progreso oficial.
             </p>
-            <Button variant="outline" size="sm" className="mt-4">
-              <Link to="/dashboard">Volver al Dashboard</Link>
-            </Button>
+            <HomeButton className="mt-4" />
           </section>
         )}
 

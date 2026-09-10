@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, type ChangeEvent, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { Input } from '../../shared/components/ui/Input';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
@@ -316,12 +317,8 @@ export function AdminContentPage() {
             <p className="text-sm text-[--color-muted]">Secciones y niveles oficiales.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Link to="/">Inicio</Link>
-            </Button>
-            <Button variant="outline" size="sm">
-              <Link to="/maker">Maker local</Link>
-            </Button>
+            <HomeButton />
+            <LinkButton to="/maker">Maker local</LinkButton>
           </div>
         </header>
 
@@ -463,9 +460,9 @@ export function AdminContentPage() {
                                   Exportar
                                 </Button>
                                 {level.is_published && (
-                                  <Button size="sm" variant="outline" className="h-8 px-2 text-xs">
-                                    <Link to={`/levels/${level.id}/play`}>Previsualizar</Link>
-                                  </Button>
+                                  <LinkButton to={`/levels/${level.id}/play`} size="sm" className="h-8 px-2 text-xs">
+                                    Previsualizar
+                                  </LinkButton>
                                 )}
                                 {!level.is_published && <Button size="sm" className="h-8 px-2 text-xs" onClick={() => void publishLevel(level.id)}>Publicar</Button>}
                                 {level.is_published && <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => void unpublishLevel(level.id)}>Ocultar</Button>}

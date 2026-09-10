@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { DevicesResponseSchema, SyncHistoryPageSchema, type Device, type SyncEvent } from './schemas';
@@ -113,9 +113,7 @@ export default function OfflineProcessesPage() {
             <h1 className="text-3xl font-bold">Procesos Offline</h1>
             <p className="text-sm text-[--color-muted]">Tus dispositivos y el historial de sincronización de cada uno.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {devicesError && (

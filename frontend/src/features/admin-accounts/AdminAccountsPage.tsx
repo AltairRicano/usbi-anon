@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { z } from 'zod';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { Input } from '../../shared/components/ui/Input';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
@@ -137,9 +138,10 @@ export default function AdminAccountsPage() {
             <h1 className="text-3xl font-bold">Administración de cuentas</h1>
             <p className="text-sm text-[--color-muted]">Alta de staff, borrado, respuestas del cuestionario y reseteo de contraseña.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/admin/registration-questions">Banco de preguntas</Link>
-          </Button>
+          <div className="flex gap-2">
+            <HomeButton />
+            <LinkButton to="/admin/registration-questions">Banco de preguntas</LinkButton>
+          </div>
         </header>
 
         <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">

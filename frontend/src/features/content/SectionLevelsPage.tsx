@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Button } from '../../shared/components/ui/Button';
+import { useParams } from 'react-router-dom';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import type { LevelSummaryDTO, SectionDTO } from './types';
@@ -43,9 +44,7 @@ export function SectionLevelsPage() {
             <h1 className="text-3xl font-bold">{section?.title ?? 'Sección'}</h1>
             <p className="text-sm text-[--color-muted]">Niveles oficiales publicados.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {error && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{error}</p>}
@@ -56,9 +55,7 @@ export function SectionLevelsPage() {
               <div className="mb-4 h-2 rounded" style={{ backgroundColor: level.color }} />
               <h2 className="text-xl font-semibold">{level.title}</h2>
               <p className="mb-4 text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
-              <Button size="sm">
-                <Link to={`/levels/${level.id}/play`}>Jugar</Link>
-              </Button>
+              <LinkButton to={`/levels/${level.id}/play`} variant="primary" size="sm">Jugar</LinkButton>
             </article>
           ))}
           {levels.length === 0 && <p className="rounded-lg bg-[--color-card] p-5 text-[--color-muted]">No hay niveles publicados en esta sección.</p>}

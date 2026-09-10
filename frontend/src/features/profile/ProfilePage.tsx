@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { useAuthStore } from '../auth/useAuthStore';
@@ -96,9 +98,7 @@ export default function ProfilePage() {
             <h1 className="text-3xl font-bold">Perfil y Progreso</h1>
             <p className="text-sm text-[--color-muted]">Avance oficial calculado por el backend.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {error && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{error}</p>}
@@ -163,9 +163,7 @@ export default function ProfilePage() {
                         {templateTypeLabel(level.template_type)} · XP {level.xp_total_for_level} · intentos {level.attempts_count}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
-                      <Link to={`/levels/${level.level_id}/play`}>Jugar de nuevo</Link>
-                    </Button>
+                    <LinkButton to={`/levels/${level.level_id}/play`}>Jugar de nuevo</LinkButton>
                   </div>
                 ))}
                 {progress.levels.length === 0 && <p className="py-4 text-sm text-[--color-muted]">Aún no hay progreso oficial.</p>}

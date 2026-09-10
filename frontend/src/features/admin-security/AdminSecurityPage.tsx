@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
 import { Input } from '../../shared/components/ui/Input';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
@@ -150,9 +150,7 @@ export default function AdminSecurityPage() {
             <h1 className="text-3xl font-bold">Seguridad y bitácora</h1>
             <p className="text-sm text-[--color-muted]">Registro de auditoría y bitácora de incidentes de seguridad.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         <div className="flex bg-[--color-card] rounded-full p-1 border border-[--color-border] w-max shadow-inner">

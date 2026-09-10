@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Button } from '../../shared/components/ui/Button';
+import { useParams } from 'react-router-dom';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { LinkButton } from '../../shared/components/ui/LinkButton';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { CompleteLevelResponseSchema, LevelDTOSchema } from './schemas';
@@ -110,9 +111,7 @@ export function OfficialLevelPage() {
       <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
         <div className="mx-auto max-w-3xl rounded-lg bg-[--color-card] p-5">
           <p className="text-[--color-error]">No se pudo cargar el nivel.</p>
-          <Button variant="outline" size="sm" className="mt-4">
-            <Link to="/dashboard">Volver</Link>
-          </Button>
+          <HomeButton className="mt-4" />
         </div>
       </main>
     );
@@ -130,9 +129,7 @@ export function OfficialLevelPage() {
             <h1 className="text-3xl font-bold">{level.title}</h1>
             <p className="text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         {result && (
@@ -150,9 +147,7 @@ export function OfficialLevelPage() {
                 ))}
               </div>
             )}
-            <Button variant="outline" size="sm" className="mt-4">
-              <Link to="/perfil">Ver progreso</Link>
-            </Button>
+            <LinkButton to="/perfil" className="mt-4">Ver progreso</LinkButton>
           </section>
         )}
 

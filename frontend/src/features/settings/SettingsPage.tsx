@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { Button } from '../../shared/components/ui/Button';
+import { HomeButton } from '../../shared/components/ui/HomeButton';
 import {
   useSettingsStore,
   type ColorBlindFilter,
@@ -33,9 +32,7 @@ export default function SettingsPage() {
             <h1 className="text-3xl font-bold">Configuración</h1>
             <p className="text-sm text-[--color-muted]">Ajusta la apariencia y accesibilidad de la aplicación.</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Link to="/">Volver</Link>
-          </Button>
+          <HomeButton />
         </header>
 
         <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
