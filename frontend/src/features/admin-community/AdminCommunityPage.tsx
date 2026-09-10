@@ -280,7 +280,7 @@ export default function AdminCommunityPage() {
                     ))}
                   </select>
                 </div>
-                <Input id="new-link-color" label="Color (#RRGGBB)" value={newLink.color} onChange={(e) => setNewLink({ ...newLink, color: e.currentTarget.value })} required />
+                <Input id="new-link-color" type="color" label="Color" value={newLink.color} onChange={(e) => setNewLink({ ...newLink, color: e.currentTarget.value })} required className="h-11 p-1" />
                 <Input id="new-link-title" label="Título" value={newLink.title} onChange={(e) => setNewLink({ ...newLink, title: e.currentTarget.value })} required maxLength={50} className="md:col-span-2" />
                 <Input id="new-link-description" label="Descripción" value={newLink.description} onChange={(e) => setNewLink({ ...newLink, description: e.currentTarget.value })} required maxLength={100} className="md:col-span-2" />
                 <Input id="new-link-url" label="URL (https://…)" value={newLink.url} onChange={(e) => setNewLink({ ...newLink, url: e.currentTarget.value })} required className="md:col-span-2" />
@@ -303,7 +303,7 @@ export default function AdminCommunityPage() {
                       ))}
                     </select>
                   </div>
-                  <Input id="edit-link-color" label="Color" value={editingLink.color} onChange={(e) => setEditingLink({ ...editingLink, color: e.currentTarget.value })} required />
+                  <Input id="edit-link-color" type="color" label="Color" value={editingLink.color} onChange={(e) => setEditingLink({ ...editingLink, color: e.currentTarget.value })} required className="h-11 p-1" />
                   <Input id="edit-link-title" label="Título" value={editingLink.title} onChange={(e) => setEditingLink({ ...editingLink, title: e.currentTarget.value })} required className="md:col-span-2" />
                   <Input id="edit-link-description" label="Descripción" value={editingLink.description} onChange={(e) => setEditingLink({ ...editingLink, description: e.currentTarget.value })} required className="md:col-span-2" />
                   <Input id="edit-link-url" label="URL" value={editingLink.url} onChange={(e) => setEditingLink({ ...editingLink, url: e.currentTarget.value })} required className="md:col-span-2" />
