@@ -8,6 +8,7 @@ import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import type { SectionDTO, LevelsPageDTO, TemplateType } from '../content/types';
 import { templateTypeLabel } from '../content/types';
 import { SectionsResponseSchema, LevelsPageDTOSchema } from '../content/schemas';
+import { MoreTab } from './MoreTab';
 
 interface StoredLocalLevel {
   metadata: {
@@ -309,7 +310,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
 
-  const [activeTab, setActiveTab] = useState<'public' | 'local'>('public');
+  const [activeTab, setActiveTab] = useState<'public' | 'local' | 'more'>('public');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [sections, setSections] = useState<SectionDTO[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -389,6 +390,9 @@ export default function DashboardPage() {
                   <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/maker'); }} className="justify-start w-full text-lg py-6">
                     Maker
                   </Button>
+                  <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/procesos-offline'); }} className="justify-start w-full text-lg py-6">
+                    Procesos Offline
+                  </Button>
                   <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/settings'); }} className="justify-start w-full text-lg py-6">
                     Configuración
                   </Button>
@@ -403,6 +407,15 @@ export default function DashboardPage() {
                       </Button>
                       <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/admin/registration-questions'); }} className="justify-start w-full text-lg py-6">
                         Banco de preguntas
+                      </Button>
+                      <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/admin/insignias'); }} className="justify-start w-full text-lg py-6">
+                        Insignias
+                      </Button>
+                      <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/admin/seguridad'); }} className="justify-start w-full text-lg py-6">
+                        Seguridad y bitácora
+                      </Button>
+                      <Button variant="outline" onClick={() => { setIsMenuOpen(false); navigate('/admin/comunidad'); }} className="justify-start w-full text-lg py-6">
+                        Comunidad
                       </Button>
                     </>
                   )}
@@ -446,9 +459,21 @@ export default function DashboardPage() {
           >
             Míos
           </button>
+          <button
+            onClick={() => setActiveTab('more')}
+            className={`px-8 py-2 rounded-full font-bold transition-all duration-200 ${
+              activeTab === 'more'
+                ? 'bg-[--color-primary] text-[--color-primary-foreground] shadow-md'
+                : 'text-[--color-muted] hover:text-[--color-foreground]'
+            }`}
+          >
+            Más
+          </button>
         </div>
 
-        {activeTab === 'public' ? (
+        {activeTab === 'more' ? (
+          <MoreTab />
+        ) : activeTab === 'public' ? (
           <section className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm" aria-label="Secciones oficiales">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Secciones oficiales</h2>

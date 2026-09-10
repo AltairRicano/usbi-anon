@@ -18,6 +18,12 @@ const OfficialLevelPage = lazy(() => import('./features/content/OfficialLevelPag
 const LocalLevelPage = lazy(() => import('./features/content/LocalLevelPage').then((mod) => ({ default: mod.LocalLevelPage })));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 
+// Bloque C / auditoría frontend↔backend (estado_proyecto.md 2026-09-10)
+const AdminBadgesPage = lazy(() => import('./features/admin-badges/AdminBadgesPage'));
+const AdminSecurityPage = lazy(() => import('./features/admin-security/AdminSecurityPage'));
+const AdminCommunityPage = lazy(() => import('./features/admin-community/AdminCommunityPage'));
+const OfflineProcessesPage = lazy(() => import('./features/offline-processes/OfflineProcessesPage'));
+
 export default function App() {
   const { theme, colorBlindFilter, reduceMotion, textScale } = useSettingsStore();
 
@@ -118,6 +124,42 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminContentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/insignias"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminBadgesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/seguridad"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminSecurityPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/comunidad"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminCommunityPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Sin restricción de rol a propósito (D5, estado_proyecto.md
+              2026-09-10): un admin que jugó sin conexión ve sus propios
+              dispositivos igual que un jugador. */}
+          <Route
+            path="/procesos-offline"
+            element={
+              <ProtectedRoute>
+                <OfflineProcessesPage />
               </ProtectedRoute>
             }
           />

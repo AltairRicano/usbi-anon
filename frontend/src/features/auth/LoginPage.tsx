@@ -8,6 +8,7 @@ import { useAuthStore } from './useAuthStore';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { AuthResponseSchema } from '../../shared/schemas';
+import { registerCurrentDevice } from '../offline-processes/deviceIdentity';
 import { ZodError } from 'zod';
 
 const EyeIcon = () => (
@@ -48,6 +49,7 @@ export default function LoginPage() {
       const response = await apiClient.post('/auth/login', { nickname, password });
       const data = AuthResponseSchema.parse(response.data);
       login(data.user, data.access_token, data.refresh_token);
+      void registerCurrentDevice();
       navigate(from, { replace: true });
     } catch (err: unknown) {
       if (err instanceof ZodError) {

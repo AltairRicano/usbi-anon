@@ -11,6 +11,7 @@ import { ProfileProgressResponseSchema } from '../content/schemas';
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
+  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
   const [progress, setProgress] = useState<ProfileProgressResponse | null>(null);
@@ -19,6 +20,10 @@ export default function ProfilePage() {
   const [ageUpMessage, setAgeUpMessage] = useState<string | null>(null);
   const [ageUpError, setAgeUpError] = useState<string | null>(null);
   const [ageUpLoading, setAgeUpLoading] = useState(false);
+
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,8 +56,40 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleCancelAccount() {
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      await apiClient.delete('/auth/me');
+      logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      setCancelError(errorMessage(err, 'No se pudo eliminar la cuenta.'));
+      setCancelLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
+      {confirmingCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="max-w-md rounded-2xl bg-[--color-card] p-6 shadow-2xl border border-[--color-border] space-y-4">
+            <h2 className="text-xl font-bold" style={{ color: 'var(--color-error)' }}>¿Eliminar tu cuenta?</h2>
+            <p className="text-sm">
+              Esta acción es inmediata e irreversible: se cancela tu cuenta y se cierra tu sesión en todos
+              los dispositivos. No hace falta aprobación de nadie más.
+            </p>
+            {cancelError && <p className="text-sm" style={{ color: 'var(--color-error)' }}>{cancelError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmingCancel(false)} disabled={cancelLoading}>Cancelar</Button>
+              <Button variant="danger" onClick={() => void handleCancelAccount()} disabled={cancelLoading}>
+                {cancelLoading ? 'Eliminando…' : 'Eliminar mi cuenta'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -93,8 +130,14 @@ export default function ProfilePage() {
               <h2 className="mb-4 text-xl font-semibold">Insignias</h2>
               <div className="mb-6 flex flex-wrap gap-2">
                 {(progress.badges ?? []).map((badge) => (
-                  <span key={badge.id} className="rounded-full border border-[--color-border] px-3 py-1 text-sm">
+                  <span
+                    key={badge.id}
+                    className="flex items-center gap-2 rounded-full border border-[--color-border] px-3 py-1 text-sm"
+                    title={`Ganada el ${new Date(badge.earned_at).toLocaleDateString()}`}
+                  >
+                    <span aria-hidden="true">{badge.icon_key}</span>
                     {badge.name}
+                    <span className="text-xs text-[--color-muted]">{badge.xp_threshold} XP</span>
                   </span>
                 ))}
                 {(progress.badges ?? []).length === 0 && <p className="text-sm text-[--color-muted]">Aún no hay insignias.</p>}
@@ -130,6 +173,16 @@ export default function ProfilePage() {
             </section>
           </>
         )}
+
+        <section className="rounded-lg border p-5 shadow-sm" style={{ borderColor: 'var(--color-error)' }}>
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--color-error)' }}>Zona de peligro</h2>
+          <p className="mt-2 text-sm text-[--color-muted]">
+            Eliminar tu cuenta es inmediato e irreversible: no requiere aprobación de nadie más.
+          </p>
+          <Button variant="danger" className="mt-4" onClick={() => setConfirmingCancel(true)}>
+            Eliminar mi cuenta
+          </Button>
+        </section>
       </div>
     </main>
   );
