@@ -28,14 +28,21 @@ function readableTextColor(hex: string): string {
 export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
   const { links } = group;
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const count = links.length;
 
   const prevLink = links[(index - 1 + count) % count];
   const current = links[index];
   const nextLink = links[(index + 1) % count];
 
-  const goPrev = () => setIndex((i) => (i - 1 + count) % count);
-  const goNext = () => setIndex((i) => (i + 1) % count);
+  const goPrev = () => {
+    setDirection('prev');
+    setIndex((i) => (i - 1 + count) % count);
+  };
+  const goNext = () => {
+    setDirection('next');
+    setIndex((i) => (i + 1) % count);
+  };
 
   return (
     <section className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm">
@@ -67,7 +74,9 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
             href={current.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative z-10 flex min-h-[10rem] w-64 sm:w-72 flex-col items-center justify-center gap-2 rounded-2xl p-6 text-center no-underline shadow-md transition-transform hover:scale-[1.03]"
+            className={`relative z-10 flex min-h-[10rem] w-64 sm:w-72 flex-col items-center justify-center gap-2 rounded-2xl p-6 text-center no-underline shadow-md transition-transform hover:scale-[1.03] ${
+              direction === 'next' ? 'interest-card-enter-next' : 'interest-card-enter-prev'
+            }`}
             style={{ backgroundColor: current.color }}
           >
             {/* Los <h1>-<h6> tienen color: var(--color-primary) en el

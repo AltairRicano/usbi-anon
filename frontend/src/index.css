@@ -194,6 +194,29 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   scroll-behavior: auto !important;
 }
 
+/* ── Animación del carrusel de "Enlaces de interés" (MoreTab) ───────────
+   Direccional: la tarjeta entra desde la derecha al avanzar (›) y desde la
+   izquierda al retroceder (‹), simulando pasar una ficha. Usa `animation`
+   (no `transition`) porque la tarjeta se remonta por `key` en cada cambio
+   de índice — no hace falta condicionar por reduce-motion aquí: las reglas
+   de arriba ya fuerzan `animation-duration: 0.01ms !important` sobre todo
+   elemento cuando ese modo está activo, así que la animación se vuelve
+   instantánea sin código adicional. */
+@keyframes interest-card-enter-next {
+  from { transform: translateX(28px) scale(0.97); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes interest-card-enter-prev {
+  from { transform: translateX(-28px) scale(0.97); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+.interest-card-enter-next {
+  animation: interest-card-enter-next 220ms ease-out;
+}
+.interest-card-enter-prev {
+  animation: interest-card-enter-prev 220ms ease-out;
+}
+
 /* ── Tamaño de texto ajustable ────────────────────────────────────────── */
 html.text-scale-large {
   font-size: 18px;
