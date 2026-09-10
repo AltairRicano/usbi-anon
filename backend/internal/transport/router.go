@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/altair/usbi-anon-backend/internal/auditlog"
 	"github.com/altair/usbi-anon-backend/internal/auth"
 	"github.com/altair/usbi-anon-backend/internal/badges"
 	"github.com/altair/usbi-anon-backend/internal/crypto"
@@ -33,6 +34,7 @@ import (
 // registra un stub 501 "no implementado" para sus rutas en vez de hacer panic,
 // para que el cableado parcial (ej. en tests) sea seguro. (Útil)
 type RouterDependencies struct {
+	AuditLogHandler  *auditlog.Handler
 	AuthHandler      *auth.Handler
 	BadgesHandler    *badges.Handler
 	QuizHandler      *quiz.Handler
@@ -285,6 +287,16 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/admin/badges", notImplementedHandler("admin.createBadge"))
 				r.Patch("/admin/badges/{badge_id}", notImplementedHandler("admin.updateBadge"))
 				r.Delete("/admin/badges/{badge_id}", notImplementedHandler("admin.deleteBadge"))
+			}
+
+			// Lectura de audit_log (B1, estado_proyecto.md 2026-09-09): hueco
+			// de producto abierto desde 2026-09-02 ("un admin puede escribir
+			// pero no releer sin acceso directo a Postgres"). Cada consulta se
+			// audita a sí misma (decisión D4) dentro del propio AdminService.
+			if deps.AuditLogHandler != nil {
+				r.Get("/admin/audit-log", deps.AuditLogHandler.List)
+			} else {
+				r.Get("/admin/audit-log", notImplementedHandler("admin.listAuditLog"))
 			}
 		})
 	})

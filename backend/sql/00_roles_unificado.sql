@@ -28,11 +28,18 @@
 -- en la configuración del sistema aunque el chequeo de rol en Go falle —
 -- la base de datos ya no se lo permite, no solo el código.
 --
--- No cubre `accounts`, `account_quiz_answers` (lectura) ni `audit_log`
--- (lectura): mover esas operaciones de administración de cuentas a
--- usbi_moderador no añadía ninguna restricción real (accounts no tiene
--- Row-Level Security, así que ambas credenciales podrían tocar cualquier
--- fila igual) — decisión explícita, ver estado_proyecto.md 2026-09-02.
+-- No cubre `accounts` ni `account_quiz_answers` (lectura): mover esas
+-- operaciones de administración de cuentas a usbi_moderador no añadía
+-- ninguna restricción real (accounts no tiene Row-Level Security, así que
+-- ambas credenciales podrían tocar cualquier fila igual) — decisión
+-- explícita, ver estado_proyecto.md 2026-09-02.
+--
+-- `audit_log` (lectura) SÍ es distinto: en 2026-09-02 no existía ningún
+-- endpoint de lectura (hueco de producto conocido); B1 (2026-09-09) lo
+-- construyó sobre usbi_moderador —no usbi_app, que sigue sin ningún SELECT
+-- aquí— porque, a diferencia de `accounts`, aislar la lectura de la
+-- bitácora en la credencial no-privilegiada sí es una restricción real: si
+-- `usbi_app` se compromete, no puede releer la evidencia forense.
 --
 -- Sustituir las contraseñas por valores reales tomados del gestor de secretos.
 -- Nunca dejarlas escritas en este archivo ni en el control de versiones.
@@ -212,11 +219,17 @@ GRANT SELECT, DELETE ON account_quiz_answers TO usbi_moderador;
 GRANT INSERT, UPDATE ON account_retired_progress TO usbi_moderador;
 
 -- Bitácora unificada: inserta las auditorías de contenido/incidentes
--- (internal/levels.logAdminAudit, internal/incidents). Sin SELECT de tabla
--- completa todavía — no existe endpoint de lectura de audit_log (ver
--- hallazgo en estado_proyecto.md 2026-09-02); se agrega el día que se
--- construya.
+-- (internal/levels.logAdminAudit, internal/incidents).
 GRANT INSERT ON audit_log TO usbi_moderador;
+
+-- SELECT de tabla completa (B1, estado_proyecto.md 2026-09-09): endpoint de
+-- lectura construido — GET /admin/audit-log (internal/auditlog). Cierra el
+-- hallazgo de producto abierto desde 2026-09-02 ("un admin puede escribir
+-- pero no releer sin acceso directo a Postgres"). Cada lectura exitosa
+-- vuelve a insertar en audit_log (audit_log.read, con los filtros usados,
+-- nunca los resultados — decisión D4), así que este mismo GRANT es también
+-- lo que le permite auditarse a sí misma.
+GRANT SELECT ON audit_log TO usbi_moderador;
 
 -- Column-level (F3, 2026-09-09), no tabla completa: null_user_in_pseudonymizable_ledgers
 -- (migración 0004) hace `UPDATE audit_log SET actor_account_id = NULL WHERE

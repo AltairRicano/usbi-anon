@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 var ErrTransactionsUnsupported = errors.New("repository: configured DBTX does not support transactions")
@@ -762,6 +763,84 @@ LIMIT $4
 	var items []SyncEventSummary
 	for rows.Next() {
 		item, err := scanSyncEventSummary(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+// ── Lectura de audit_log (B1, estado_proyecto.md 2026-09-09) ───────────────
+// Corre exclusivamente sobre el pool de moderador — usbi_app tiene REVOKE
+// SELECT sobre audit_log desde el 2026-09-02 (solo INSERT). Requiere el
+// GRANT SELECT nuevo documentado en 00_roles_unificado.sql.
+
+type AuditLogEntry struct {
+	ID             uuid.UUID
+	ActorAccountID uuid.NullUUID
+	Action         string
+	EntityType     string
+	EntityID       uuid.NullUUID
+	BeforeState    pqtype.NullRawMessage
+	AfterState     pqtype.NullRawMessage
+	IPAddress      string
+	UserAgent      string
+	CreatedAt      time.Time
+}
+
+func scanAuditLogEntry(row scanner) (AuditLogEntry, error) {
+	var e AuditLogEntry
+	err := row.Scan(&e.ID, &e.ActorAccountID, &e.Action, &e.EntityType, &e.EntityID,
+		&e.BeforeState, &e.AfterState, &e.IPAddress, &e.UserAgent, &e.CreatedAt)
+	return e, err
+}
+
+const auditLogColumns = `id, actor_account_id, action, entity_type, entity_id, before_state, after_state, ip_address, user_agent, created_at`
+
+// ListAuditLogParams filtra por rango de fechas, actor, action y
+// entity_type. Todos los filtros son opcionales (NULL = sin filtrar).
+//
+// Cursor compuesto (created_at, id), NO cursor por id como suggestions: los
+// ID de audit_log los genera audit.Log con uuid.New() (v4 aleatorio), no
+// UUIDv7 — ORDER BY id DESC no aproxima ningún orden temporal aquí.
+type ListAuditLogParams struct {
+	ActorAccountID uuid.NullUUID
+	Action         sql.NullString
+	EntityType     sql.NullString
+	From           sql.NullTime
+	To             sql.NullTime
+	CursorTime     sql.NullTime
+	CursorID       uuid.NullUUID
+	PageSize       int32
+}
+
+func (q *Queries) ListAuditLog(ctx context.Context, arg ListAuditLogParams) ([]AuditLogEntry, error) {
+	rows, err := q.db.QueryContext(ctx, `
+SELECT `+auditLogColumns+`
+FROM audit_log
+WHERE ($1::uuid IS NULL OR actor_account_id = $1)
+  AND ($2::text IS NULL OR action = $2)
+  AND ($3::text IS NULL OR entity_type = $3)
+  AND ($4::timestamptz IS NULL OR created_at >= $4)
+  AND ($5::timestamptz IS NULL OR created_at <= $5)
+  AND (
+    $6::timestamptz IS NULL
+    OR created_at < $6
+    OR (created_at = $6 AND id < $7)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $8
+`, arg.ActorAccountID, arg.Action, arg.EntityType, arg.From, arg.To,
+		arg.CursorTime, arg.CursorID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []AuditLogEntry
+	for rows.Next() {
+		item, err := scanAuditLogEntry(rows)
 		if err != nil {
 			return nil, err
 		}
