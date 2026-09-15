@@ -18,31 +18,27 @@ Licencia: Apache 2.0. Consulta [LICENSE](LICENSE).
 
 ## Estado actual
 
-El backend (Go) implementa el esquema de base de datos unificado, el registro
-en tres pasos, login/sesión, solicitudes ARCO y los paneles de administración
-de cuentas y del banco de preguntas de registro. El frontend (React + TypeScript
-+ Vite) cubre esos mismos flujos: registro, inicio de sesión y los dos paneles
-de administración. El resto de la experiencia de juego (progreso, niveles,
-minijuegos) todavía no se ha portado a este proyecto.
+El proyecto cuenta con paridad funcional de la plataforma educativa gamificada bajo la arquitectura de anonimato por UUID y base de datos única:
+
+- **Backend (Go + PostgreSQL 15)**: esquema unificado de 26+ tablas (migraciones `0001` a `0006`), registro en 3 pasos mediante cuestionario de gustos no sensibles, login sin correo, generación determinista de nickname y password de 12 caracteres, roles reducidos estrictamente a `player` y `admin`, catálogo de contenido educativo (secciones y niveles) con validación estricta en servidor de 7 plantillas, rotación de temporadas con purga real de espacio preservando la XP ganada, lectura de auditoría con auto-auditoría, incidentes de seguridad, CRUD de insignias, enlaces de interés comunitarios, buzón de sugerencias, y registro y revocación de dispositivos.
+- **Frontend (React 18 + TypeScript + Vite + npm workspaces)**:
+  - Experiencia del jugador completa: Dashboard interactivo, catálogo de secciones, reproducción de niveles con 7 minijuegos interactivos (Trivia, Memorama, Fake News, Sopa de letras, Rompecabezas, Crucigrama, Serpientes y Escaleras) con integración de escenas Phaser, racha diaria, insignias y progreso persistente en perfil.
+  - Maker local (`/maker`) para diseñar, probar y exportar/importar niveles en formato JSON sin privilegios de administrador.
+  - Paneles administrativos: gestión de staff, banco de preguntas de registro, administración de contenido educativo (con previsualización, archivo y purga irreversible con doble confirmación), insignias, seguridad/auditoría y comunidad.
+  - Personalización y accesibilidad (`/settings` pública): temas claro/oscuro, escala tipográfica, filtros CSS de daltonismo compatibles entre navegadores (Chrome/Firefox) y reducción de movimiento.
+  - Navegación estandarizada (`HomeButton` y `LinkButton`) y carrusel comunitario animado con verificación de contraste WCAG 2.2.
+- **En curso**: fase de maduración hacia producción, descrita en [`plan/00_Plan_de_maduracion.md`](plan/00_Plan_de_maduracion.md). Cubre la validación real del resultado de cada nivel (criterio de victoria por plantilla y verificación en servidor), la redacción e integración del aviso de privacidad, el despliegue reproducible en servidor propio, y la documentación técnica y legal del sistema.
+- **Deuda conocida**: paginación en catálogos extensos de contenido, pulido del formulario de administración de comunidad, y borrado duro directo de la cuenta de jugador.
 
 ## Arquitectura de datos
 
-A diferencia de un sistema tradicional, **una sola base de datos** contiene
-tanto las credenciales de acceso como el progreso y contenido educativo,
-indexados exclusivamente por UUID. Ninguna tabla contiene nombre, correo,
-teléfono ni cualquier otro dato de contacto: el nickname que identifica a
-cada cuenta se genera a partir de fragmentos de las respuestas al
-cuestionario de registro, no de un dato personal.
+A diferencia de un sistema tradicional, **una sola base de datos** contiene tanto las credenciales de acceso como el progreso y contenido educativo, indexados exclusivamente por UUID. Ninguna tabla contiene nombre, correo, teléfono ni cualquier otro dato de contacto: el nickname que identifica a cada cuenta se genera a partir de fragmentos de las respuestas al cuestionario de registro, no de un dato personal.
 
-Retirar contenido educativo entre temporadas (rotación de niveles) preserva
-siempre la experiencia (XP) y los contadores de progreso ya ganados por cada
-jugador, aunque el nivel original se elimine para liberar espacio.
+Retirar contenido educativo entre temporadas (rotación de niveles) preserva siempre la experiencia (XP) y los contadores de progreso ya ganados por cada jugador (`account_retired_progress` y `experience_history.level_id SET NULL`), aunque el nivel original se purgue físicamente para liberar almacenamiento en el servidor (~20 GB).
 
 ## Identidad visual
 
-El proyecto se presenta como producto de la Universidad Veracruzana / USBI y
-sigue las convenciones institucionales de color, contraste y accesibilidad
-documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_UV.md).
+El proyecto se presenta como producto de la Universidad Veracruzana / USBI y sigue las convenciones institucionales de color, contraste y accesibilidad documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_UV.md).
 
 ## Estructura del proyecto
 
@@ -52,47 +48,54 @@ documentadas en [`plan/Convenciones_de_color_UV.md`](plan/Convenciones_de_color_
 │   ├── cmd/
 │   │   └── hash_password/              # binario standalone para el bootstrap del primer admin
 │   ├── internal/
-│   │   ├── audit/                      # bitácora unificada de auditoría
-│   │   ├── auth/                       # registro en 3 pasos, login, ARCO, admin de cuentas
-│   │   ├── config/                     # carga de variables de entorno
+│   │   ├── audit/                      # utilidades de registro de auditoría
+│   │   ├── auditlog/                   # lectura de bitácora de auditoría y auto-auditoría
+│   │   ├── auth/                       # registro en 3 pasos, login, gestión de credenciales y staff
+│   │   ├── badges/                     # CRUD de insignias y asignación
+│   │   ├── config/                     # carga y validación de variables de entorno
 │   │   ├── crypto/                     # Argon2id, HMAC, JWT
 │   │   ├── dbmaint/                    # mantenimiento de particiones de tablas
-│   │   ├── devices/                    # registro de dispositivos para sync
-│   │   ├── domain/                     # tipos de dominio compartidos (User, roles, estados)
+│   │   ├── devices/                    # alta automática y revocación de dispositivos
+│   │   ├── domain/                     # tipos de dominio compartidos (User, roles 'player' y 'admin')
 │   │   ├── httpjson/ httpproblem/ httputil/  # utilidades HTTP (RFC 7807, decodificación estricta)
-│   │   ├── incidents/                  # incidentes de seguridad reportados por el cliente
-│   │   ├── levels/                     # secciones y niveles de contenido educativo
-│   │   ├── maintenance/                # retención automática (inactividad, cancelación)
-│   │   ├── privacy/                    # cancelación de cuenta (ARCO) en una sola transacción
-│   │   ├── quiz/                       # banco de preguntas de registro y generación de credenciales
-│   │   ├── repository/                 # acceso a datos de la base única
-│   │   ├── sync/                       # sincronización de progreso offline
+│   │   ├── incidents/                  # incidentes de seguridad reportados y gestión
+│   │   ├── interestlinks/              # enlaces de interés comunitarios
+│   │   ├── levels/                     # secciones y niveles, validadores de 7 plantillas, purga real
+│   │   ├── maintenance/                # retención automática y limpieza periódica
+│   │   ├── privacy/                    # cancelación de cuentas en transacción atómica
+│   │   ├── quiz/                       # banco de preguntas de registro y derivación de nickname/password
+│   │   ├── repository/                 # capa de acceso a datos sobre la base unificada
+│   │   ├── suggestions/                # buzón y gestión de sugerencias
+│   │   ├── sync/                       # sincronización e historial offline
 │   │   ├── testdb/                     # esquema Postgres desechable para pruebas de integración
-│   │   └── transport/                  # rutas HTTP, middleware, límites de tasa
-│   ├── migrations/                     # esquema SQL versionado (golang-migrate)
-│   ├── sql/                            # scripts de administración: roles, permisos, seed del primer admin
-│   └── main.go                         # punto de entrada del servidor
+│   │   └── transport/                  # enrutador Chi, middlewares de seguridad, límites de tasa
+│   ├── migrations/                     # esquema SQL versionado (0001 a 0006)
+│   ├── sql/                            # scripts de roles (00_roles_unificado.sql) y seed del admin
+│   └── main.go                         # punto de entrada del servidor Go
 ├── frontend/                           # SPA en React + TypeScript + Vite
 │   ├── packages/                       # paquetes locales del workspace npm
-│   │   ├── engine/                     # lógica pura de los minijuegos (trivia, memorama, sopa de letras, etc.)
-│   │   └── schema/                     # esquemas de validación del contenido educativo de cada plantilla
+│   │   ├── engine/                     # lógica pura de los 7 minijuegos (sin DOM/React)
+│   │   └── schema/                     # esquemas Zod de validación de contenido por plantilla
 │   └── src/
 │       ├── features/
-│       │   ├── auth/                   # registro (wizard de 3 pasos) y login
-│       │   ├── admin-accounts/         # alta de staff, borrado, reseteo de contraseña
-│       │   ├── admin-quiz-bank/        # CRUD del banco de preguntas de registro
-│       │   ├── content/                # panel de admin de secciones/niveles, editor por plantilla, archivo y purga
-│       │   ├── home/                   # landing mínima tras el login
-│       │   ├── maker/                  # maker local: crear niveles de prueba sin necesidad de admin
-│       │   └── settings/               # tema, tamaño de texto, filtros de daltonismo, movimiento
-│       └── shared/                     # cliente HTTP, componentes de interfaz, esquemas comunes
+│       │   ├── admin-accounts/         # alta y administración de cuentas staff, reseteo de contraseñas
+│       │   ├── admin-badges/           # administración y catálogo de insignias
+│       │   ├── admin-community/        # gestión de tarjetas del carrusel y sugerencias
+│       │   ├── admin-quiz-bank/        # CRUD del banco de preguntas de registro (guard mínimo 4)
+│       │   ├── admin-security/         # visualización de auditoría e incidentes de seguridad
+│       │   ├── auth/                   # wizard de registro en 3 pasos y login
+│       │   ├── content/                # panel admin de contenido, editor por plantilla, archivo y purga
+│       │   ├── dashboard/              # catálogo de secciones, racha, XP, carrusel de enlaces de interés
+│       │   ├── games/                  # vistas y componentes interactivos de minijuegos (Phaser)
+│       │   ├── maker/                  # maker local: diseño de niveles en localStorage y exportación JSON
+│       │   ├── offline-processes/      # monitoreo de dispositivos y registros de sincronización
+│       │   ├── profile/                # perfil de jugador, insignias obtenidas, XP y diálogo de baja
+│       │   └── settings/               # personalización, temas, escala de texto, daltonismo cross-browser
+│       └── shared/                     # cliente API, botones de navegación estandarizados, UI base
 ├── plan/                               # documentos de diseño y planeación técnica
-│   ├── 00_Plan_maestro.md              # índice del plan de migración, fases y decisiones abiertas
-│   ├── 01_Base_de_datos.md             # esquema de la base de datos
-│   ├── 02_Backend.md                   # reparto de paquetes Go
-│   ├── 03_Frontend.md                  # historia de los cambios de interfaz (diseño descartado, ver 04)
-│   ├── 04_Rediseno_identidad_gustos.md # diseño vigente: cuestionario de gustos, esquema unificado
-│   └── Convenciones_de_color_UV.md     # identidad visual institucional (colores, contraste, tipografía)
+│   ├── 00_Plan_de_maduracion.md        # plan vigente: veracidad de resultados, avisos de
+│   │                                   #   privacidad, despliegue y documentación
+│   └── Convenciones_de_color_UV.md     # guía de diseño institucional UV
 ├── LICENSE                             # licencia del proyecto (Apache 2.0)
 └── README.md                           # este archivo
 ```

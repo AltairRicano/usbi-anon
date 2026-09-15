@@ -6,6 +6,10 @@ estado_proyecto.md
 # no artefactos del producto. Se comparten fuera de git (copia local → Word).
 pruebas/
 
+# Planes anteriores al Plan de maduración (2026-09-14) y bitácora pre-purga.
+# Se conservan en disco como respaldo consultable, no como referencia activa.
+plan/_historico/
+
 # Core dumps generados dentro del contenedor (límite de 500 MB de RAM).
 core.*
 
