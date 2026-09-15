@@ -19,6 +19,25 @@ function readableTextColor(hex: string): string {
   return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }
 
+// Borde oscuro semitransparente para tarjetas claras, borde claro
+// semitransparente para tarjetas oscuras — la misma luminancia relativa que
+// decide el color del texto decide el color del borde, así siempre hay
+// contraste contra el fondo de color libre elegido por el admin.
+function contrastBorderColor(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 'rgba(0, 0, 0, 0.35)';
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const toLinear = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return luminance > 0.5 ? 'rgba(0, 0, 0, 0.35)' : 'rgba(255, 255, 255, 0.45)';
+}
+
 // Carrusel "infinito" de tarjetas por categoría: una tarjeta central grande
 // (fondo = color elegido por el admin, título+descripción centrados, tarjeta
 // completa como hipervínculo sin subrayar) con flechas a los lados y un
@@ -64,7 +83,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
           {count > 1 && (
             <div
               aria-hidden="true"
-              className="hidden h-32 w-4 shrink-0 rounded-l-xl sm:block"
+              className="hidden h-48 w-4 shrink-0 rounded-l-xl sm:block sm:h-64"
               style={{ backgroundColor: prevLink.color }}
             />
           )}
@@ -74,18 +93,18 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
             href={current.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`relative z-10 flex min-h-[10rem] w-64 sm:w-72 flex-col items-center justify-center gap-2 rounded-2xl p-6 text-center no-underline shadow-md transition-transform hover:scale-[1.03] ${
+            className={`relative z-10 flex min-h-[14rem] w-80 sm:min-h-[18rem] sm:w-[26rem] flex-col items-center justify-center gap-3 rounded-2xl border-2 p-8 text-center no-underline shadow-lg transition-transform hover:scale-[1.03] ${
               direction === 'next' ? 'interest-card-enter-next' : 'interest-card-enter-prev'
             }`}
-            style={{ backgroundColor: current.color }}
+            style={{ backgroundColor: current.color, borderColor: contrastBorderColor(current.color) }}
           >
             {/* Los <h1>-<h6> tienen color: var(--color-primary) en el
                 layer base global, que gana sobre el color heredado del
                 <a> padre — hay que fijar el color aquí explícitamente. */}
-            <h3 className="text-lg font-bold" style={{ color: readableTextColor(current.color) }}>
+            <h3 className="text-2xl font-bold" style={{ color: readableTextColor(current.color) }}>
               {current.title}
             </h3>
-            <p className="text-sm" style={{ color: readableTextColor(current.color) }}>
+            <p className="text-base" style={{ color: readableTextColor(current.color) }}>
               {current.description}
             </p>
           </a>
@@ -93,7 +112,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
           {count > 1 && (
             <div
               aria-hidden="true"
-              className="hidden h-32 w-4 shrink-0 rounded-r-xl sm:block"
+              className="hidden h-48 w-4 shrink-0 rounded-r-xl sm:block sm:h-64"
               style={{ backgroundColor: nextLink.color }}
             />
           )}
