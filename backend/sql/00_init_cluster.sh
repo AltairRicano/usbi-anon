@@ -17,9 +17,16 @@ set -euo pipefail
 : "${DB_MIGRATE_PASSWORD:?falta DB_MIGRATE_PASSWORD}"
 : "${DB_DBMAINT_PASSWORD:?falta DB_DBMAINT_PASSWORD}"
 
+# SIN comillas adicionales alrededor del valor: 00_roles_unificado.sql usa
+# la sintaxis de psql `:'variable'` (quote-literal), que ya envuelve el
+# valor en comillas SQL y escapa las internas. Agregarlas aquí también
+# produce comillas literales DENTRO de la contraseña real (bug real,
+# encontrado al ensayar este script por primera vez, M3.10) — con
+# app_password="'${DB_APP_PASSWORD}'" el rol termina creado con una
+# contraseña que empieza y termina en el carácter ' literal.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
-  -v app_password="'${DB_APP_PASSWORD}'" \
-  -v moderador_password="'${DB_MODERADOR_PASSWORD}'" \
-  -v migrate_password="'${DB_MIGRATE_PASSWORD}'" \
-  -v dbmaint_password="'${DB_DBMAINT_PASSWORD}'" \
+  -v app_password="${DB_APP_PASSWORD}" \
+  -v moderador_password="${DB_MODERADOR_PASSWORD}" \
+  -v migrate_password="${DB_MIGRATE_PASSWORD}" \
+  -v dbmaint_password="${DB_DBMAINT_PASSWORD}" \
   -f /docker-entrypoint-initdb.d/00_roles_unificado.sql.src

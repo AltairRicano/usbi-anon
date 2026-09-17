@@ -45,9 +45,13 @@
 -- (usbictl secrets init las genera). Nunca dejarlas escritas en este archivo
 -- ni en el control de versiones.
 --
--- Uso:
---   psql -U postgres -v app_password="'…'" -v migrate_password="'…'" \
---        -v moderador_password="'…'" -v dbmaint_password="'…'" \
+-- Uso: el valor de cada -v va SIN comillas propias — este archivo usa la
+-- sintaxis de psql :'variable' (quote-literal) más abajo, que ya envuelve el
+-- valor en comillas SQL y escapa las internas. Agregar comillas aquí además
+-- las deja como caracteres literales dentro de la contraseña real (bug
+-- real, encontrado al ensayar backend/sql/00_init_cluster.sh, M3.10).
+--   psql -U postgres -v app_password=… -v migrate_password=… \
+--        -v moderador_password=… -v dbmaint_password=… \
 --        -f 00_roles_unificado.sql
 --
 -- M3.3: la matriz de GRANT/REVOKE tabla por tabla que antes vivía en este
