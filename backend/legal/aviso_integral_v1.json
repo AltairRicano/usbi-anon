@@ -1,0 +1,54 @@
+{
+  "sections": [
+    {
+      "heading": "Aviso de privacidad integral — TEXTO PROVISIONAL",
+      "paragraphs": [
+        "Este documento es un marcador de posición estructural, no el aviso legal definitivo. Sigue la estructura recomendada en el insumo de selección de plantilla de la Universidad Veracruzana (LG-03), pero su contenido real se redacta hasta el bloque M4.3 del plan de maduración, una vez cerradas las decisiones institucionales pendientes."
+      ]
+    },
+    {
+      "heading": "Responsable del tratamiento",
+      "paragraphs": [
+        "PENDIENTE. Bloqueado por la decisión institucional sobre qué área de la Universidad Veracruzana figura como responsable, y por el nombre y dominio definitivos del producto."
+      ]
+    },
+    {
+      "heading": "Datos personales tratados",
+      "paragraphs": [
+        "Identificador de cuenta (UUID), nickname derivado de respuestas reales al cuestionario de registro, las respuestas mismas, edad autorreportada, progreso e historial de juego, y dirección IP en bitácoras de auditoría y seguridad.",
+        "Estos datos son personales seudonimizados: mientras exista una posibilidad razonable de reidentificación, la normativa de protección de datos aplica igual que a cualquier otro dato personal. Lo que cambia frente a un sistema convencional es el volumen y el riesgo, no la obligación."
+      ]
+    },
+    {
+      "heading": "Finalidades del tratamiento",
+      "paragraphs": [
+        "Autenticación y operación de la cuenta de jugador; generación de progreso, insignias y estadísticas de uso educativo; seguridad e integridad del servicio (bitácoras de auditoría e incidentes); atención de solicitudes de ejercicio de derechos."
+      ]
+    },
+    {
+      "heading": "Encargado del tratamiento y transferencias",
+      "paragraphs": [
+        "El alojamiento del sistema corre sobre infraestructura de un proveedor externo (Hostinger, decisión D-01 del plan de maduración), lo que constituye un encargo de tratamiento a un tercero. Si el centro de datos del proveedor está fuera de México, aplica además una cláusula de transferencia internacional de datos.",
+        "PENDIENTE: texto final del convenio de encargo y, en su caso, de la cláusula de transferencia — depende de confirmar la ubicación real del centro de datos contratado."
+      ]
+    },
+    {
+      "heading": "Derechos ARCO (acceso, rectificación, cancelación, oposición)",
+      "paragraphs": [
+        "El sistema no usa correo electrónico como canal de contacto, así que el ejercicio de derechos ARCO no puede resolverse por esa vía. El procedimiento (presencial, en la sede de la USBI correspondiente) y la forma de acreditar identidad sobre una cuenta identificada solo por UUID están pendientes de documentar en el bloque M4.3."
+      ]
+    },
+    {
+      "heading": "Menores de edad",
+      "paragraphs": [
+        "El registro permite autorreportar la edad sin gate de aprobación de un tutor por correo electrónico, dado que el sistema no recopila datos de contacto de ningún tutor. La justificación completa de este diseño se documenta en el bloque M4.3."
+      ]
+    },
+    {
+      "heading": "Cambios a este aviso",
+      "paragraphs": [
+        "Los cambios de versión del aviso se notifican de forma informativa dentro de la aplicación (decisión D-06) y no bloquean el uso del servicio."
+      ]
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/badges"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
 	"github.com/altair/usbi-anon-backend/internal/interestlinks"
+	"github.com/altair/usbi-anon-backend/internal/legal"
 	"github.com/altair/usbi-anon-backend/internal/levels"
 	"github.com/altair/usbi-anon-backend/internal/maintenance"
 	"github.com/altair/usbi-anon-backend/internal/quiz"
@@ -132,6 +133,10 @@ func main() {
 	interestLinksAdminSvc := interestlinks.NewAdminService(moderatorQueries)
 	suggestionsPlayerSvc := suggestions.NewPlayerService(playerQueries)
 	suggestionsAdminSvc := suggestions.NewAdminService(moderatorQueries)
+	// M2 (plan de maduración): sirve el aviso de privacidad vigente y sella
+	// su aceptación. Corre sobre el pool de jugador — accounts no tiene
+	// Row-Level Security, mismo criterio que auth.Service.
+	legalSvc := legal.NewService(playerQueries, []byte(hmacSecret))
 	if config.GetBoolEnv("LEGAL_MAINTENANCE_ENABLED", false) {
 		// internal/maintenance no se evaluó en esta pasada de F3 (pedido
 		// explícito del usuario: "el maintenance no lo toco") — se deja sobre
@@ -182,6 +187,7 @@ func main() {
 		AuditLogHandler:      auditlog.NewHandler(auditLogAdminSvc),
 		InterestLinksHandler: interestlinks.NewHandler(interestLinksPlayerSvc, interestLinksAdminSvc),
 		SuggestionsHandler:   suggestions.NewHandler(suggestionsPlayerSvc, suggestionsAdminSvc),
+		LegalHandler:         legal.NewHandler(legalSvc),
 		ReadyCheck:           readyCheck(playerDB, moderatorDB),
 		TokenCfg:             tokenCfg,
 		// jwtAuthMiddleware revalida token_version/status contra accounts en

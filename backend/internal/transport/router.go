@@ -21,6 +21,7 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/httputil"
 	"github.com/altair/usbi-anon-backend/internal/incidents"
 	"github.com/altair/usbi-anon-backend/internal/interestlinks"
+	"github.com/altair/usbi-anon-backend/internal/legal"
 	"github.com/altair/usbi-anon-backend/internal/levels"
 	"github.com/altair/usbi-anon-backend/internal/quiz"
 	"github.com/altair/usbi-anon-backend/internal/repository"
@@ -47,7 +48,11 @@ type RouterDependencies struct {
 	// (interest_link_categories, interest_links, suggestions).
 	InterestLinksHandler *interestlinks.Handler
 	SuggestionsHandler   *suggestions.Handler
-	ReadyCheck           func(context.Context) error
+	// LegalHandler sirve el aviso de privacidad vigente (M2 del plan de
+	// maduración) — GetPrivacyNotice es pública (igual criterio que
+	// /settings: debe leerse antes de tener cuenta), Accept requiere sesión.
+	LegalHandler *legal.Handler
+	ReadyCheck   func(context.Context) error
 	TokenCfg             crypto.TokenConfig
 	// Repo valida token_version/status contra la ÚNICA base del sistema —
 	// con el rediseño de identidad ya no hace falta una base de identidad
@@ -130,6 +135,20 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/auth/register/confirm", notImplementedHandler("auth.registerConfirm"))
 				r.Post("/auth/login", notImplementedHandler("auth.login"))
 				r.Post("/auth/refresh", notImplementedHandler("auth.refresh"))
+			}
+		})
+
+		// El aviso de privacidad debe poder leerse antes de tener cuenta
+		// (M2.4 punto 2, mismo criterio que ya aplica a /settings) — grupo
+		// público propio, sin jwtAuthMiddleware, pero con el limitador
+		// general por IP (no el estricto de auth: se lee en cada carga de
+		// /privacidad y del formulario de registro, no solo al autenticar).
+		r.Group(func(r chi.Router) {
+			r.Use(rl.generalMiddleware)
+			if deps.LegalHandler != nil {
+				r.Get("/legal/privacy-notice", deps.LegalHandler.GetPrivacyNotice)
+			} else {
+				r.Get("/legal/privacy-notice", notImplementedHandler("legal.getPrivacyNotice"))
 			}
 		})
 
@@ -285,6 +304,14 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/suggestions", notImplementedHandler("suggestions.submit"))
 				r.Get("/admin/suggestions", notImplementedHandler("admin.listSuggestions"))
 				r.Delete("/admin/suggestions/{suggestion_id}", notImplementedHandler("admin.deleteSuggestion"))
+			}
+
+			// Banner de cambio de versión del aviso de privacidad (D-06,
+			// M2.5): informativo, no bloquea — el jugador ya tiene sesión.
+			if deps.LegalHandler != nil {
+				r.Post("/legal/accept", deps.LegalHandler.Accept)
+			} else {
+				r.Post("/legal/accept", notImplementedHandler("legal.accept"))
 			}
 
 			// Catálogo de insignias (B3, estado_proyecto.md 2026-09-09): CRUD

@@ -1,0 +1,23 @@
+{
+  "sections": [
+    {
+      "heading": "Aviso de privacidad simplificado — TEXTO PROVISIONAL",
+      "paragraphs": [
+        "Este es un marcador de posición, no el aviso definitivo. La redacción legal real está pendiente (plan/00_Plan_de_maduracion.md, bloque M4.3) y depende de decisiones institucionales todavía abiertas: qué área de la Universidad Veracruzana figura como responsable del tratamiento, el nombre y dominio definitivos del producto, y la ubicación del centro de datos del proveedor de alojamiento.",
+        "El sistema identifica a cada jugador únicamente por un identificador (UUID) y un nickname derivado de las respuestas a un cuestionario de gustos no sensibles — nunca se pide ni se guarda nombre, correo electrónico o teléfono."
+      ]
+    },
+    {
+      "heading": "Qué datos se usan",
+      "paragraphs": [
+        "Identificador de cuenta, nickname, respuestas al cuestionario de registro, edad autorreportada, progreso de juego y dirección IP en bitácoras técnicas. Aunque no incluyen nombre ni correo, siguen siendo datos personales seudonimizados conforme a la normativa aplicable, no datos anónimos."
+      ]
+    },
+    {
+      "heading": "No se despliega a producción con este texto",
+      "paragraphs": [
+        "El plan de maduración (decisión D-06) establece explícitamente que el sistema no se despliega a producción con un aviso provisional. Este texto existe para que el mecanismo de servir, versionar y sellar la aceptación del aviso pueda construirse y probarse antes de que exista la redacción legal final."
+      ]
+    }
+  ]
+}

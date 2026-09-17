@@ -50,6 +50,9 @@ func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrValidation):
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
 				"Validation Error", err.Error())
+		case errors.Is(err, ErrPrivacyVersionOutdated):
+			httpproblem.WriteProblem(w, r, http.StatusConflict, "privacy-notice-outdated",
+				"Privacy Notice Outdated", "The privacy notice version has changed; reload and accept the current one")
 		case errors.Is(err, ErrAuthBusy):
 			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "auth-busy",
 				"Too Many Requests", "Authentication service is busy; retry shortly")
@@ -186,10 +189,13 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 			"Unauthorized", "Missing JWT claims in context")
 		return
 	}
-	httpproblem.WriteJSON(w, http.StatusOK, map[string]any{
-		"user_id": claims.UserID,
-		"role":    claims.Role,
-	})
+	resp, err := h.svc.Me(r.Context(), claims.UserID)
+	if err != nil {
+		httpproblem.WriteProblem(w, r, http.StatusInternalServerError, "internal-error",
+			"Internal Server Error", "Could not load account")
+		return
+	}
+	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
 // AgeUp maneja POST /api/v1/auth/age-up. (Relleno)

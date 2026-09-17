@@ -226,3 +226,23 @@ WHERE id = $1 AND deleted_at IS NULL
 `, id, passwordHash)
 	return err
 }
+
+type UpdatePrivacyAcceptanceParams struct {
+	ID         uuid.UUID
+	Version    string
+	AcceptedAt time.Time
+	Hash       []byte
+}
+
+// UpdatePrivacyAcceptance registra que la cuenta aceptó una versión nueva del
+// aviso de privacidad mientras ya tenía sesión — el banner informativo de
+// cambio de versión (M2.5, D-06), no el registro inicial (ese sello lo pone
+// CreateAccount).
+func (q *Queries) UpdatePrivacyAcceptance(ctx context.Context, arg UpdatePrivacyAcceptanceParams) error {
+	_, err := q.db.ExecContext(ctx, `
+UPDATE accounts
+SET privacy_notice_version = $2, privacy_notice_accepted_at = $3, privacy_acceptance_hash = $4, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`, arg.ID, arg.Version, arg.AcceptedAt, arg.Hash)
+	return err
+}

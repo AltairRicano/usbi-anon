@@ -56,6 +56,16 @@ type RegisterConfirmResponse struct {
 	DisplayAlias string    `json:"display_alias"`
 }
 
+// MeResponse es la respuesta de GET /auth/me. PrivacyNoticeVersion es la que
+// aceptó la cuenta; CurrentPrivacyNoticeVersion la vigente — el frontend
+// muestra el banner de cambio de versión (D-06) cuando difieren.
+type MeResponse struct {
+	UserID                      uuid.UUID       `json:"user_id"`
+	Role                        domain.UserRole `json:"role"`
+	PrivacyNoticeVersion        string          `json:"privacy_notice_version"`
+	CurrentPrivacyNoticeVersion string          `json:"current_privacy_notice_version"`
+}
+
 // ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
 
 // LoginRequest es el cuerpo para POST /auth/login. (Relleno)

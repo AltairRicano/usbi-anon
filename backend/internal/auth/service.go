@@ -24,6 +24,7 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/privacy"
 	"github.com/altair/usbi-anon-backend/internal/quiz"
 	"github.com/altair/usbi-anon-backend/internal/repository"
+	legaltext "github.com/altair/usbi-anon-backend/legal"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
@@ -41,6 +42,11 @@ var (
 	ErrNotFound             = errors.New("not found")
 	ErrCannotDeleteAdmin    = errors.New("cannot delete an admin account")
 	ErrTooManyAgeUpAttempts = errors.New("maximum age-up attempts exceeded")
+	// ErrPrivacyVersionOutdated: el cliente mandó una versión del aviso de
+	// privacidad que ya no es la vigente (M2.4 punto 4) — típicamente una
+	// pestaña de registro abierta desde antes de un cambio de versión. El
+	// handler lo mapea a 409, obligando a recargar y ver el texto actual.
+	ErrPrivacyVersionOutdated = errors.New("privacy notice version is outdated")
 )
 
 const defaultMaxConcurrentPasswordHashes = 2
@@ -137,8 +143,8 @@ func (s *Service) RegisterQuestions(ctx context.Context) (RegisterQuestionsRespo
 // nada en la base todavía: una persona que abandona aquí no deja ninguna
 // fila a medias. (Útil)
 func (s *Service) RegisterAnswers(ctx context.Context, req RegisterAnswersRequest) (RegisterAnswersResponse, error) {
-	if strings.TrimSpace(req.PrivacyNoticeVersion) == "" {
-		return RegisterAnswersResponse{}, fmt.Errorf("%w: privacy_notice_version is required", ErrValidation)
+	if !legaltext.VerifyVersion(strings.TrimSpace(req.PrivacyNoticeVersion)) {
+		return RegisterAnswersResponse{}, ErrPrivacyVersionOutdated
 	}
 	if len(req.Answers) < 2 || len(req.Answers) > 10 {
 		return RegisterAnswersResponse{}, fmt.Errorf("%w: answers must contain between 2 and 10 items", ErrValidation)
@@ -252,7 +258,14 @@ func (s *Service) RegisterConfirm(ctx context.Context, req RegisterConfirmReques
 
 	accountID := uuid.New()
 	acceptedAt := time.Now().UTC()
-	acceptanceHash := crypto.GenerateHMAC(privacyAcceptanceSealPayload(accountID, payload.PrivacyNoticeVersion, acceptedAt), s.cfg.HMACSecret)
+	// Se sella y almacena la versión VIGENTE en este instante, no la que
+	// traía el token de registro: RegisterAnswers ya exigió que coincidieran
+	// en ese momento (M2.4 punto 4), pero el token vive hasta 10 minutos
+	// (registrationTokenTTL) y D-06 no bloquea un cambio de versión mientras
+	// tanto — más simple y siempre consistente que dejar la cuenta con una
+	// versión distinta a la que realmente quedó sellada.
+	currentNotice := legaltext.Current()
+	acceptanceHash := crypto.GenerateHMAC(legaltext.SealPayload(accountID, acceptedAt), s.cfg.HMACSecret)
 
 	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
@@ -270,7 +283,7 @@ func (s *Service) RegisterConfirm(ctx context.Context, req RegisterConfirmReques
 		AliasAdjectiveID:        adjectiveID,
 		AliasNounID:             nounID,
 		AliasNumber:             number,
-		PrivacyNoticeVersion:    payload.PrivacyNoticeVersion,
+		PrivacyNoticeVersion:    currentNotice.Version,
 		PrivacyNoticeAcceptedAt: acceptedAt,
 		PrivacyAcceptanceHash:   acceptanceHash,
 		CryptoKeyVersion:        1,
@@ -450,6 +463,26 @@ func (s *Service) issueSession(ctx context.Context, account repository.Account) 
 			Status:       domain.UserStatus(account.Status),
 			CreatedAt:    account.CreatedAt,
 		},
+	}, nil
+}
+
+// Me devuelve el estado de privacidad de la cuenta — GET /auth/me
+// (documentado hasta M2 como endpoint sin consumidor): es la fuente natural
+// de qué versión del aviso aceptó la cuenta, para que el frontend decida si
+// mostrar el banner informativo de cambio de versión (D-06, M2.5).
+func (s *Service) Me(ctx context.Context, accountID uuid.UUID) (MeResponse, error) {
+	account, err := s.repo.GetAccountByID(ctx, accountID)
+	if err != nil {
+		if repository.IsNoRows(err) {
+			return MeResponse{}, ErrUserNotFound
+		}
+		return MeResponse{}, err
+	}
+	return MeResponse{
+		UserID:                      account.ID,
+		Role:                        domain.UserRole(account.Role),
+		PrivacyNoticeVersion:        account.PrivacyNoticeVersion,
+		CurrentPrivacyNoticeVersion: legaltext.CurrentVersion,
 	}, nil
 }
 
