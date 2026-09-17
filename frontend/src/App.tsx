@@ -2,12 +2,14 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { applyDocumentClasses, useSettingsStore } from './features/settings/useSettingsStore';
+import { PrivacyVersionBanner } from './features/legal/PrivacyVersionBanner';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
 const AdminQuizBankPage = lazy(() => import('./features/admin-quiz-bank/AdminQuizBankPage'));
 const AdminAccountsPage = lazy(() => import('./features/admin-accounts/AdminAccountsPage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
+const PrivacyPage = lazy(() => import('./features/legal/PrivacyPage'));
 const MakerPage = lazy(() => import('./features/maker').then((mod) => ({ default: mod.MakerPage })));
 const AdminContentPage = lazy(() => import('./features/content/AdminContentPage').then((mod) => ({ default: mod.AdminContentPage })));
 
@@ -34,6 +36,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthEventBridge />
+      <PrivacyVersionBanner />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -41,6 +44,9 @@ export default function App() {
           {/* Pública a propósito: alguien con baja visión o daltonismo debe
               poder ajustar apariencia/accesibilidad ANTES de tener cuenta. */}
           <Route path="/settings" element={<SettingsPage />} />
+          {/* Pública a propósito (M2.2): el aviso debe poder leerse antes de
+              tener cuenta, mismo criterio que /settings. */}
+          <Route path="/privacidad" element={<PrivacyPage />} />
 
           {/* / → dashboard; HomePage fue una landing temporal de F10 que ya no hace falta. */}
           <Route

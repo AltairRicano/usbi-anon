@@ -148,6 +148,12 @@ export default function LoginPage() {
               ¿No tienes cuenta? Regístrate
             </Link>
           </div>
+
+          <div className="text-center text-xs">
+            <Link to="/privacidad" style={{ color: 'var(--color-muted)' }} className="inline-flex items-center justify-center py-2 hover:underline">
+              Aviso de privacidad
+            </Link>
+          </div>
         </div>
       </div>
     </main>

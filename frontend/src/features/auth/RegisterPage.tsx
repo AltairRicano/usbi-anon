@@ -7,18 +7,14 @@ import { UsbiEmblem, Spinner } from '../../shared/components/ui/Brand';
 import { SettingsEntry } from '../../shared/components/SettingsEntry';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
+import { usePrivacyNotice } from '../legal/usePrivacyNotice';
+import { PrivacyNoticeInline } from '../legal/PrivacyNoticeInline';
 import {
   AnswerTextSchema,
   RegisterAnswersResponseSchema,
   RegisterConfirmResponseSchema,
   RegisterQuestionsResponseSchema,
 } from './schemas';
-
-// Versión de aviso de privacidad "preliminar": la reescritura legal completa
-// (F11, plan/04_Rediseno_identidad_gustos.md §6) sigue pendiente. Este valor
-// solo sella qué texto vio la persona al registrarse (privacy_acceptance_hash
-// en Go) — no es el texto legal final.
-const PRIVACY_NOTICE_VERSION = 'v1.0-preliminar';
 
 type Step = 1 | 2 | 3;
 
@@ -41,6 +37,7 @@ export default function RegisterPage() {
   const [isAdult, setIsAdult] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const { notice: privacyNotice, loading: loadingPrivacyNotice, error: privacyNoticeError } = usePrivacyNotice();
 
   // ── Paso 2: elegir nickname ─────────────────────────────────────────────
   const [registrationToken, setRegistrationToken] = useState('');
@@ -95,13 +92,17 @@ export default function RegisterPage() {
       setError('Debes aceptar el aviso de privacidad para continuar.');
       return;
     }
+    if (!privacyNotice) {
+      setError('No se pudo cargar el aviso de privacidad. Recarga la página e intenta de nuevo.');
+      return;
+    }
 
     setLoading(true);
     try {
       const resp = await apiClient.post('/auth/register/answers', {
         answers: payloadAnswers,
         is_adult: isAdult,
-        privacy_notice_version: PRIVACY_NOTICE_VERSION,
+        privacy_notice_version: privacyNotice.version,
       });
       const data = RegisterAnswersResponseSchema.parse(resp.data);
       setRegistrationToken(data.registration_token);
@@ -232,6 +233,14 @@ export default function RegisterPage() {
                     <span>Soy mayor de edad (18 años o más). Puedes actualizar esto después.</span>
                   </label>
 
+                  {loadingPrivacyNotice && (
+                    <p className="text-sm text-[--color-muted]" aria-live="polite">Cargando aviso de privacidad…</p>
+                  )}
+                  {privacyNoticeError && (
+                    <p className="text-sm text-[--color-error]" role="alert">{privacyNoticeError}</p>
+                  )}
+                  {privacyNotice && <PrivacyNoticeInline notice={privacyNotice} />}
+
                   <label className="flex items-start gap-2 text-sm">
                     <input
                       type="checkbox"
@@ -241,16 +250,16 @@ export default function RegisterPage() {
                       aria-required="true"
                       className="mt-1 h-5 w-5 shrink-0"
                     />
-                    <span>
-                      He leído y acepto el aviso de privacidad. Este sistema no guarda tu nombre, correo ni
-                      teléfono — solo un identificador y tus respuestas a este cuestionario.
-                      <span className="block text-xs text-[--color-muted]">
-                        (Versión preliminar del aviso — la reescritura legal completa está en curso.)
-                      </span>
-                    </span>
+                    <span>He leído y acepto el aviso de privacidad de arriba.</span>
                   </label>
 
-                  <Button type="submit" size="lg" className="w-full font-bold" disabled={loading || questions.length === 0} aria-busy={loading}>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full font-bold"
+                    disabled={loading || questions.length === 0 || !privacyNotice}
+                    aria-busy={loading}
+                  >
                     {loading && <Spinner />}
                     {loading ? 'Validando…' : 'Continuar'}
                   </Button>

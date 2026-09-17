@@ -143,14 +143,26 @@ export default function ProfilePage() {
                 {(progress.badges ?? []).length === 0 && <p className="text-sm text-[--color-muted]">Aún no hay insignias.</p>}
               </div>
 
-              <div className="rounded-lg border border-[--color-border] p-5 shadow-sm bg-[--color-card] flex flex-col justify-between mb-6 max-w-xs">
-                <div>
-                  <h3 className="text-lg font-bold mb-2">Configuración</h3>
-                  <p className="text-sm text-[--color-muted] mb-4">Filtro de daltonización, tema, tamaño de texto, movimiento y sonido.</p>
+              <div className="mb-6 flex flex-wrap gap-4">
+                <div className="rounded-lg border border-[--color-border] p-5 shadow-sm bg-[--color-card] flex flex-col justify-between max-w-xs flex-1">
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">Configuración</h3>
+                    <p className="text-sm text-[--color-muted] mb-4">Filtro de daltonización, tema, tamaño de texto, movimiento y sonido.</p>
+                  </div>
+                  <Button variant="outline" onClick={() => navigate('/settings')} className="w-full mt-4">
+                    Ir a Configuración
+                  </Button>
                 </div>
-                <Button variant="outline" onClick={() => navigate('/settings')} className="w-full mt-4">
-                  Ir a Configuración
-                </Button>
+
+                <div className="rounded-lg border border-[--color-border] p-5 shadow-sm bg-[--color-card] flex flex-col justify-between max-w-xs flex-1">
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">Privacidad y datos</h3>
+                    <p className="text-sm text-[--color-muted] mb-4">Qué datos usa el sistema y qué versión del aviso aceptó tu cuenta.</p>
+                  </div>
+                  <LinkButton to="/privacidad" variant="outline" size="md" className="w-full mt-4">
+                    Ver aviso de privacidad
+                  </LinkButton>
+                </div>
               </div>
 
               <h2 className="mb-4 text-xl font-semibold">Niveles jugados</h2>
