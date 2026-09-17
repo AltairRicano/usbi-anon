@@ -18,3 +18,7 @@ core.*
 .env.*
 !.env.example
 
+# Plantillas de Postgres ya rellenadas con valores concretos del servidor de
+# destino (usbictl pgconf render, M3.7) — se regeneran, no se versionan.
+backend/deploy/postgres/rendered/
+

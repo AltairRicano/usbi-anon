@@ -31,6 +31,7 @@ type secretSpec struct {
 var machineSecrets = []secretSpec{
 	{key: "JWT_SECRET", bytes: 32, doc: "firma los JWT de sesión"},
 	{key: "HMAC_SECRET", bytes: 32, doc: "sella refresh tokens y aceptación del aviso de privacidad"},
+	{key: "DB_SUPERUSER_PASSWORD", bytes: 24, doc: "contraseña del superusuario postgres (solo bootstrap del clúster, ver backend/sql/00_init_cluster.sh)"},
 	{key: "DB_APP_PASSWORD", bytes: 24, doc: "contraseña del rol usbi_app"},
 	{key: "DB_MODERADOR_PASSWORD", bytes: 24, doc: "contraseña del rol usbi_moderador"},
 	{key: "DB_MIGRATE_PASSWORD", bytes: 24, doc: "contraseña del rol usbi_migrate"},
