@@ -100,4 +100,32 @@ describe('WordSearchEngine', () => {
     expect(engine.getState().score).toBe(0);
     expect(engine.getState().isFinished).toBe(false);
   });
+
+  it('getResult: not completed until every word is found', () => {
+    const engine = new WordSearchEngine(['CAT', 'DOG'], 8, 8, 123);
+    const result = engine.getResult();
+    expect(result.completed).toBe(false);
+    expect(result.maxScore).toBe(engine.getState().words.length);
+  });
+
+  it('getResult: completed once all words found', () => {
+    const engine = new WordSearchEngine(['CAT'], 5, 5, 123);
+    const state = engine.getState();
+    let catCoords: {x: number, y: number}[] = [];
+    outer: for (let y = 0; y < state.height; y++) {
+      for (let x = 0; x < state.width; x++) {
+        if (state.grid[y][x] === 'C' && x + 2 < state.width && state.grid[y][x+1] === 'A' && state.grid[y][x+2] === 'T') {
+          catCoords = [{x, y}, {x: x+1, y}, {x: x+2, y}];
+          break outer;
+        }
+        if (state.grid[y][x] === 'C' && y + 2 < state.height && state.grid[y+1][x] === 'A' && state.grid[y+2][x] === 'T') {
+          catCoords = [{x, y}, {x, y: y+1}, {x, y: y+2}];
+          break outer;
+        }
+      }
+    }
+    engine.checkWord(catCoords);
+    const result = engine.getResult();
+    expect(result).toEqual({ completed: true, score: 1, maxScore: 1 });
+  });
 });

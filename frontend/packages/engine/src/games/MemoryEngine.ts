@@ -1,5 +1,6 @@
 import { MemoryPair } from "@usbi/schema";
 import { normalizeMemoryPairs } from "./memory/MemoryPalette.js";
+import { GameResult } from "../interfaces/GameResult.js";
 
 export interface MemoryCard {
   id: string;
@@ -75,5 +76,14 @@ export class MemoryEngine {
       match,
       gameOver: this.matchedPairs === this.totalPairs
     };
+  }
+
+  isGameOver(): boolean {
+    return this.matchedPairs === this.totalPairs;
+  }
+
+  getResult(): GameResult {
+    // El memorama solo termina emparejando todo: no existe forma de perder (M1.2).
+    return { completed: this.isGameOver(), score: this.matchedPairs, maxScore: this.totalPairs };
   }
 }

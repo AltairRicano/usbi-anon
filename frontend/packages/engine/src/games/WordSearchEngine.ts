@@ -1,4 +1,4 @@
-
+import { GameResult } from "../interfaces/GameResult.js";
 
 export interface WordSearchState {
   grid: string[][];
@@ -161,6 +161,11 @@ export class WordSearchEngine {
     this.notify();
   }
   
+  public getResult(): GameResult {
+    const maxScore = this.state.words.length;
+    return { completed: this.state.isFinished, score: this.state.foundWords.length, maxScore };
+  }
+
   public destroy() {
     this.listeners.clear();
   }

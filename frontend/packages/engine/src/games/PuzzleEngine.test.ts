@@ -67,4 +67,32 @@ describe('PuzzleEngine', () => {
     expect(state.score).toBe(0);
     expect(state.isFinished).toBe(false);
   });
+
+  it('getResult: not completed while pieces are out of order', () => {
+    const engine = new PuzzleEngine("secret message", 4, 123);
+    const result = engine.getResult();
+    expect(result.completed).toBe(false);
+    expect(result.maxScore).toBe(4);
+  });
+
+  it('getResult: completed with full score when solved', () => {
+    const engine = new PuzzleEngine("abc", 3, 123);
+    let state = engine.getState();
+    while (!state.isFinished) {
+      let moved = false;
+      for (let i = 0; i < state.pieces.length; i++) {
+        if (state.pieces[i].originalIndex !== i) {
+          const targetIndex = state.pieces.findIndex(p => p.originalIndex === i);
+          engine.reorderPieces(targetIndex, i);
+          moved = true;
+          break;
+        }
+      }
+      if (!moved) break;
+      state = engine.getState();
+    }
+
+    const result = engine.getResult();
+    expect(result).toEqual({ completed: true, score: 3, maxScore: 3 });
+  });
 });

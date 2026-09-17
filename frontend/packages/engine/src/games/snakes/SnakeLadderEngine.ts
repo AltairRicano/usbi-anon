@@ -1,4 +1,5 @@
 import { weightedRandom } from './WeightedRandom';
+import { GameResult } from '../../interfaces/GameResult.js';
 
 export type GameState = 'idle' | 'starting' | 'player_turn' | 'player_rolling' | 'player_moving' | 'resolving_player_tile' | 'ai_turn' | 'ai_thinking' | 'ai_rolling' | 'ai_moving' | 'resolving_ai_tile' | 'game_over';
 
@@ -153,5 +154,10 @@ export class SnakeLadderEngine {
 
   private winPosition(): number {
     return this.config.endPosition ?? this.config.boardSize;
+  }
+
+  public getResult(): GameResult {
+    const completed = this.state.winner === 'player';
+    return { completed, score: completed ? 1 : 0, maxScore: 1 };
   }
 }

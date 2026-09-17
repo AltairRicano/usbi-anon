@@ -76,4 +76,24 @@ describe('TriviaEngine', () => {
     expect(engine.getState().score).toBe(0);
     expect(engine.getState().isFinished).toBe(false);
   });
+
+  it('getResult: completed when hits pass ratio (>=60% correct)', () => {
+    const engine = new TriviaEngine(mockQuestions);
+    engine.submitAnswer(0); // correct
+    vi.advanceTimersByTime(1600);
+    engine.submitAnswer(1); // correct
+    vi.advanceTimersByTime(1600);
+    const result = engine.getResult();
+    expect(result).toEqual({ completed: true, score: 2, maxScore: 2 });
+  });
+
+  it('getResult: not completed when below pass ratio', () => {
+    const engine = new TriviaEngine(mockQuestions);
+    engine.submitAnswer(1); // incorrect
+    vi.advanceTimersByTime(1600);
+    engine.submitAnswer(1); // correct (Q2 correct_index is 1)
+    vi.advanceTimersByTime(1600);
+    const result = engine.getResult();
+    expect(result).toEqual({ completed: false, score: 1, maxScore: 2 });
+  });
 });

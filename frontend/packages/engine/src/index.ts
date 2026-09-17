@@ -1,4 +1,5 @@
 export * from './interfaces/IGameState.js';
+export * from './interfaces/GameResult.js';
 export * from './games/FakeNewsEngine.js';
 export * from './games/MemoryEngine.js';
 export * from './games/memory/MemoryPalette.js';

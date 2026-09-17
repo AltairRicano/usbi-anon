@@ -1,4 +1,7 @@
 import { FakeNewsItem } from "@usbi/schema";
+import { GameResult } from "../interfaces/GameResult.js";
+
+const PASS_RATIO = 0.6;
 
 export class FakeNewsEngine {
   private news: FakeNewsItem[];
@@ -36,5 +39,11 @@ export class FakeNewsEngine {
   
   getMaxScore(): number {
     return this.news.length;
+  }
+
+  getResult(): GameResult {
+    const maxScore = this.getMaxScore();
+    const completed = maxScore > 0 && this.score / maxScore >= PASS_RATIO;
+    return { completed, score: this.score, maxScore };
   }
 }

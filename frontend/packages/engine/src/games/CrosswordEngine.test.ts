@@ -147,4 +147,27 @@ describe('CrosswordEngine', () => {
     expect(state.isFinished).toBe(false);
     expect(state.selectedCell).toBeNull();
   });
+
+  it('getResult: not completed with a partial grid', () => {
+    const engine = new CrosswordEngine(words);
+    const cells = engine.getGridCells();
+    engine.selectCell(cells[0].x, cells[0].y);
+    engine.inputChar(cells[0].char);
+
+    const result = engine.getResult();
+    expect(result.completed).toBe(false);
+    expect(result.maxScore).toBe(cells.length);
+  });
+
+  it('getResult: completed when every cell is correct', () => {
+    const engine = new CrosswordEngine(words);
+    const cells = engine.getGridCells();
+    cells.forEach(c => {
+      engine.selectCell(c.x, c.y);
+      engine.inputChar(c.char);
+    });
+
+    const result = engine.getResult();
+    expect(result).toEqual({ completed: true, score: cells.length, maxScore: cells.length });
+  });
 });

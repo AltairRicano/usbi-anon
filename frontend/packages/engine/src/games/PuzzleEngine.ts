@@ -1,3 +1,5 @@
+import { GameResult } from "../interfaces/GameResult.js";
+
 export interface PuzzlePiece {
   id: string;
   text: string;
@@ -120,6 +122,12 @@ export class PuzzleEngine {
     this.state.isFinished = false;
     this.generatePieces();
     this.notify();
+  }
+
+  public getResult(): GameResult {
+    const maxScore = this.state.pieces.length;
+    const piecesCorrect = this.state.pieces.filter((p, i) => p.originalIndex === i).length;
+    return { completed: this.state.isFinished, score: piecesCorrect, maxScore };
   }
 
   public destroy() {

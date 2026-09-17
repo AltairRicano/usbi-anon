@@ -1,4 +1,5 @@
 import { CrosswordWord } from "@usbi/schema";
+import { GameResult } from "../interfaces/GameResult.js";
 
 export interface CrosswordCell {
   x: number;
@@ -177,6 +178,11 @@ export class CrosswordEngine {
     this.state.orientation = 'horizontal';
     this.state.lockedCells = new Set();
     this.notify();
+  }
+
+  public getResult(): GameResult {
+    const maxScore = this.grid.size;
+    return { completed: this.state.isFinished, score: this.state.score / 10, maxScore };
   }
 
   public destroy() {

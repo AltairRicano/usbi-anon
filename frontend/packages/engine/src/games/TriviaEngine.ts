@@ -1,9 +1,13 @@
 
 import { MultipleChoice } from '@usbi/schema';
+import { GameResult } from '../interfaces/GameResult.js';
+
+const PASS_RATIO = 0.6;
 
 export interface TriviaState {
   currentQuestionIndex: number;
   score: number;
+  correctCount: number;
   selectedAnswer: number | null;
   isFinished: boolean;
   timeLeft: number;
@@ -20,6 +24,7 @@ export class TriviaEngine {
     this.state = {
       currentQuestionIndex: 0,
       score: 0,
+      correctCount: 0,
       selectedAnswer: null,
       isFinished: questions.length === 0,
       timeLeft: this.defaultTimePerQuestion,
@@ -69,6 +74,7 @@ export class TriviaEngine {
     const currentQ = this.state.questions[this.state.currentQuestionIndex];
     if (answerIndex === currentQ.correct_index) {
       this.state.score += 100 + this.state.timeLeft * 2; // Simple scoring
+      this.state.correctCount++;
     }
     
     this.notify();
@@ -98,12 +104,19 @@ export class TriviaEngine {
       ...this.state,
       currentQuestionIndex: 0,
       score: 0,
+      correctCount: 0,
       selectedAnswer: null,
       isFinished: this.state.questions.length === 0,
       timeLeft: this.defaultTimePerQuestion,
     };
     this.notify();
     this.startTimer();
+  }
+
+  public getResult(): GameResult {
+    const maxScore = this.state.questions.length;
+    const completed = maxScore > 0 && this.state.correctCount / maxScore >= PASS_RATIO;
+    return { completed, score: this.state.correctCount, maxScore };
   }
 
   public destroy() {
