@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import type { GameResult } from '@usbi/engine';
 import { HomeButton } from '../../shared/components/ui/HomeButton';
 import { LinkButton } from '../../shared/components/ui/LinkButton';
+import { Button } from '../../shared/components/ui/Button';
 import { apiClient } from '../../shared/apiClient';
 import { errorMessage } from '../../shared/errorMessage';
 import { CompleteLevelResponseSchema, LevelDTOSchema } from './schemas';
@@ -31,7 +33,9 @@ export function OfficialLevelPage() {
   const [level, setLevel] = useState<LevelDTO | null>(null);
   const [levelError, setLevelError] = useState(false);
   const [result, setResult] = useState<CompleteLevelResponse | null>(null);
+  const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [attemptKey, setAttemptKey] = useState(0);
   const submittedRef = useRef(false);
 
   useEffect(() => {
@@ -90,21 +94,31 @@ export function OfficialLevelPage() {
     [level],
   );
 
-  const finishLevel = useCallback(async (score: number) => {
+  const finishLevel = useCallback(async (gameResult: GameResult) => {
     if (!levelId || submittedRef.current || !level?.is_published) return;
     submittedRef.current = true;
+    setGameResult(gameResult);
     setSaveError(null);
     try {
       const { data } = await apiClient.post(`/levels/${levelId}/complete`, {
-        score,
-        completed: true,
+        score: gameResult.score,
+        completed: gameResult.completed,
         client_finished_at: new Date().toISOString(),
       });
       setResult(CompleteLevelResponseSchema.parse(data));
     } catch (err) {
+      submittedRef.current = false;
       setSaveError(errorMessage(err, 'No se pudo guardar el resultado en línea.'));
     }
   }, [level?.is_published, levelId]);
+
+  const retryLevel = useCallback(() => {
+    submittedRef.current = false;
+    setResult(null);
+    setGameResult(null);
+    setSaveError(null);
+    setAttemptKey((key) => key + 1);
+  }, []);
 
   if (levelError) {
     return (
@@ -134,10 +148,21 @@ export function OfficialLevelPage() {
 
         {result && (
           <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
-            <h2 className="text-xl font-semibold">Resultado oficial</h2>
-            <p className="text-sm text-[--color-muted]">
-              XP otorgada: {result.xp_awarded} · intento {result.attempt_number} · XP total: {result.total_xp} · racha: {result.current_streak}
-            </p>
+            <h2 className="text-xl font-semibold">
+              {result.completed ? '¡Nivel superado!' : 'Nivel no superado'}
+            </h2>
+            {gameResult && (
+              <p className="text-sm text-[--color-muted]">
+                {result.completed
+                  ? `Puntuación: ${gameResult.score} de ${gameResult.maxScore}.`
+                  : `Puntuación: ${gameResult.score} de ${gameResult.maxScore}, necesitas más para superarlo.`}
+              </p>
+            )}
+            {result.completed && (
+              <p className="text-sm text-[--color-muted]">
+                XP otorgada: {result.xp_awarded} · intento {result.attempt_number} · XP total: {result.total_xp} · racha: {result.current_streak}
+              </p>
+            )}
             {(result.badges_awarded ?? []).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {(result.badges_awarded ?? []).map((badge) => (
@@ -147,7 +172,12 @@ export function OfficialLevelPage() {
                 ))}
               </div>
             )}
-            <LinkButton to="/perfil" className="mt-4">Ver progreso</LinkButton>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {!result.completed && (
+                <Button variant="primary" onClick={retryLevel}>Reintentar</Button>
+              )}
+              <LinkButton to="/perfil">Ver progreso</LinkButton>
+            </div>
           </section>
         )}
 
@@ -158,18 +188,20 @@ export function OfficialLevelPage() {
         )}
         {saveError && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{saveError}</p>}
 
+        {!result && (
         <Suspense fallback={<GameFallback />}>
           {level.template_type === 'trivia' && triviaQuestions.length > 0 && (
-            <TriviaGame questions={triviaQuestions} onFinish={finishLevel} />
+            <TriviaGame key={attemptKey} questions={triviaQuestions} onFinish={finishLevel} />
           )}
           {level.template_type === 'memory' && memoryPairs.length >= 2 && (
-            <MemoryGame pairs={memoryPairs} backColor={memoryBackColor} onComplete={(score) => void finishLevel(score)} />
+            <MemoryGame key={attemptKey} pairs={memoryPairs} backColor={memoryBackColor} onFinish={finishLevel} />
           )}
           {level.template_type === 'fake_news' && fakeNews.length > 0 && (
-            <FakeNewsGame news={fakeNews} onComplete={(score) => void finishLevel(score)} />
+            <FakeNewsGame key={attemptKey} news={fakeNews} onFinish={finishLevel} />
           )}
           {level.template_type === 'word_search' && wordSearch && wordSearch.words.length > 0 && (
             <WordSearchGame
+              key={attemptKey}
               words={wordSearch.words}
               width={wordSearch.width}
               height={wordSearch.height}
@@ -178,15 +210,16 @@ export function OfficialLevelPage() {
             />
           )}
           {level.template_type === 'puzzle' && puzzle && (
-            <PuzzleGame phrase={puzzle.phrase} pieces={puzzle.pieces} seed={puzzle.seed} onFinish={finishLevel} />
+            <PuzzleGame key={attemptKey} phrase={puzzle.phrase} pieces={puzzle.pieces} seed={puzzle.seed} onFinish={finishLevel} />
           )}
           {level.template_type === 'crossword' && crosswordWords.length >= 2 && (
-            <CrosswordGame words={crosswordWords} onFinish={finishLevel} />
+            <CrosswordGame key={attemptKey} words={crosswordWords} onFinish={finishLevel} />
           )}
           {level.template_type === 'snakes_ladders' && snakes && (
-            <SnakeLadderGame level={snakes} onComplete={(score) => void finishLevel(score)} />
+            <SnakeLadderGame key={attemptKey} level={snakes} onFinish={finishLevel} />
           )}
         </Suspense>
+        )}
         {!hasPlayableContent(level) && (
           <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
             <p className="text-[--color-muted]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>

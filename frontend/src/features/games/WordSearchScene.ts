@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
-import { WordSearchEngine } from '@usbi/engine';
+import { WordSearchEngine, type GameResult } from '@usbi/engine';
 
 interface SceneData {
   engine: WordSearchEngine;
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export class WordSearchScene extends Phaser.Scene {
   private engine!: WordSearchEngine;
-  private onFinish?: (score: number) => void;
+  private onFinish?: (result: GameResult) => void;
   private unsubscribeEngine?: () => void;
   
   private cellSize: number = 40;
@@ -88,7 +88,7 @@ export class WordSearchScene extends Phaser.Scene {
     this.unsubscribeEngine = this.engine.subscribe((newState) => {
       this.redrawFound(newState.foundWords, newState.grid, newState.width, newState.height);
       if (newState.isFinished && this.onFinish) {
-        this.onFinish(newState.score);
+        this.onFinish(this.engine.getResult());
       }
     });
 

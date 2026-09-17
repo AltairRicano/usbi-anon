@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { PuzzleEngine, PuzzleState, type PuzzlePiece } from '@usbi/engine';
+import { PuzzleEngine, PuzzleState, type PuzzlePiece, type GameResult } from '@usbi/engine';
 import { Card, CardTitle } from '../../shared/components/ui/Card';
 import { Reorder } from 'framer-motion';
 
@@ -14,7 +14,7 @@ interface PuzzleGameProps {
   phrase: string;
   pieces?: number;
   seed?: number;
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export function PuzzleGame({ phrase, pieces = 3, seed = 1234, onFinish }: PuzzleGameProps) {
@@ -32,7 +32,7 @@ export function PuzzleGame({ phrase, pieces = 3, seed = 1234, onFinish }: Puzzle
     const unsubscribe = engine.subscribe((newState) => {
       setState({ ...newState });
       if (newState.isFinished && onFinish) {
-        onFinish(newState.score);
+        onFinish(engine.getResult());
       }
     });
 

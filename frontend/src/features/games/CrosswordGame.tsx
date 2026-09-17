@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Phaser from 'phaser';
-import { CrosswordEngine, type CrosswordState, type PlacedWord } from '@usbi/engine';
+import { CrosswordEngine, type CrosswordState, type PlacedWord, type GameResult } from '@usbi/engine';
 import type { CrosswordWord } from '@usbi/schema';
 import { CrosswordScene } from './CrosswordScene';
 import { Card, CardTitle, CardContent } from '../../shared/components/ui/Card';
@@ -8,7 +8,7 @@ import { PhaserGame, type IRefPhaserGame } from '../../shared/PhaserGame';
 
 interface CrosswordGameProps {
   words: CrosswordWord[];
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {

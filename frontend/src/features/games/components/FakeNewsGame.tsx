@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FakeNewsItem } from '@usbi/schema';
-import { FakeNewsEngine } from '@usbi/engine';
+import { FakeNewsEngine, GameResult } from '@usbi/engine';
 
 interface FakeNewsGameProps {
   news: FakeNewsItem[];
-  onComplete: (score: number, maxScore: number) => void;
+  onFinish: (result: GameResult) => void;
 }
 
-export const FakeNewsGame: React.FC<FakeNewsGameProps> = ({ news, onComplete }) => {
+export const FakeNewsGame: React.FC<FakeNewsGameProps> = ({ news, onFinish }) => {
   const [engine] = useState(() => new FakeNewsEngine(news));
   const [currentItem, setCurrentItem] = useState<FakeNewsItem | null>(engine.getCurrentItem());
 
   const handleSwipe = (isFake: boolean) => {
     engine.answer(isFake);
     if (engine.isGameOver()) {
-      onComplete(engine.getScore(), engine.getMaxScore());
+      onFinish(engine.getResult());
       setCurrentItem(null);
     } else {
       setCurrentItem(engine.getCurrentItem());

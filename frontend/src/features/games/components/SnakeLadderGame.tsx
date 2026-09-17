@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Snakes } from '@usbi/schema';
-import { SnakeLadderEngine, SnakeLadderConfig } from '@usbi/engine';
+import { SnakeLadderEngine, SnakeLadderConfig, GameResult } from '@usbi/engine';
 import { PhaserGame, IRefPhaserGame } from '../../../shared/PhaserGame';
 import { Button } from '../../../shared/components/ui/Button';
 import { SnakeLadderScene } from '../phaser/SnakeLadderScene';
@@ -8,10 +8,10 @@ import Phaser from 'phaser';
 
 interface SnakeLadderGameProps {
   level: Snakes;
-  onComplete: (score: number, maxScore: number) => void;
+  onFinish: (result: GameResult) => void;
 }
 
-export const SnakeLadderGame: React.FC<SnakeLadderGameProps> = ({ level, onComplete }) => {
+export const SnakeLadderGame: React.FC<SnakeLadderGameProps> = ({ level, onFinish }) => {
   const phaserRef = useRef<IRefPhaserGame | null>(null);
   
   const engineConfig = useMemo<SnakeLadderConfig>(() => ({
@@ -75,8 +75,7 @@ export const SnakeLadderGame: React.FC<SnakeLadderGameProps> = ({ level, onCompl
      const handleGameOver = (data: { winner: string }) => {
          setIsGameOver(true);
          setWinner(data.winner);
-         const score = data.winner === 'player' ? 100 : 0;
-         onComplete(score, 100);
+         onFinish(engine.getResult());
      };
 
      readyScene.events.on('GAME_OVER', handleGameOver);
@@ -91,7 +90,7 @@ export const SnakeLadderGame: React.FC<SnakeLadderGameProps> = ({ level, onCompl
          readyScene.events.off('GAME_OVER', handleGameOver);
          clearInterval(interval);
      };
-  }, [readyScene, engine, onComplete]);
+  }, [readyScene, engine, onFinish]);
 
   // Cola de preguntas pendientes por responder: cada tiro de dado consume la
   // de al frente. Una respuesta correcta la retira definitivamente de esta

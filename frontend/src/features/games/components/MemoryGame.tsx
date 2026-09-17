@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { MemoryPair } from '@usbi/schema';
-import { MemoryEngine, MemoryCard } from '@usbi/engine';
+import { MemoryEngine, MemoryCard, GameResult } from '@usbi/engine';
 import clsx from 'clsx';
 import { DEFAULT_MEMORY_BACK_COLOR, getMemoryBackCardStyle, getMemoryFrontCardStyle, getMemoryReadableTextColor, normalizeMemoryBackColor } from '@usbi/engine';
 
 interface MemoryGameProps {
   pairs: MemoryPair[];
   backColor?: string;
-  onComplete: (score: number, maxScore: number) => void;
+  onFinish: (result: GameResult) => void;
 }
 
-export const MemoryGame: React.FC<MemoryGameProps> = ({ pairs, backColor = DEFAULT_MEMORY_BACK_COLOR, onComplete }) => {
+export const MemoryGame: React.FC<MemoryGameProps> = ({ pairs, backColor = DEFAULT_MEMORY_BACK_COLOR, onFinish }) => {
   const [engine] = useState(() => new MemoryEngine(pairs));
   const [cards, setCards] = useState<MemoryCard[]>(engine.getCards());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,8 +33,7 @@ export const MemoryGame: React.FC<MemoryGameProps> = ({ pairs, backColor = DEFAU
         setCards([...engine.getCards()]);
         setIsProcessing(false);
         if (result && result.gameOver) {
-          // Score logic can be improved. Passing a generic maxScore as total pairs.
-          onComplete(pairs.length, pairs.length);
+          onFinish(engine.getResult());
         }
       }, 1000);
     }

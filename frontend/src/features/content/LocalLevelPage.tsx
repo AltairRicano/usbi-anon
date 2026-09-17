@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import type { GameResult } from '@usbi/engine';
 import { HomeButton } from '../../shared/components/ui/HomeButton';
+import { Button } from '../../shared/components/ui/Button';
 import type { LevelDTO } from './types';
 import {
   normalizeCrosswordContent,
@@ -35,9 +37,10 @@ interface StoredLocalLevel {
 
 export function LocalLevelPage() {
   const { levelId } = useParams();
-  const [result, setResult] = useState<{ score: number } | null>(null);
+  const [result, setResult] = useState<GameResult | null>(null);
   const [level, setLevel] = useState<LevelDTO | null>(null);
   const [isError, setIsError] = useState(false);
+  const [attemptKey, setAttemptKey] = useState(0);
   const submittedRef = useRef(false);
 
   useEffect(() => {
@@ -67,11 +70,17 @@ export function LocalLevelPage() {
     }
   }, [levelId]);
 
-  const finishLevel = useCallback(async (score: number) => {
+  const finishLevel = useCallback(async (gameResult: GameResult) => {
     if (submittedRef.current || !level) return;
     submittedRef.current = true;
-    setResult({ score });
+    setResult(gameResult);
   }, [level]);
+
+  const retryLevel = useCallback(() => {
+    submittedRef.current = false;
+    setResult(null);
+    setAttemptKey((key) => key + 1);
+  }, []);
 
   // Memoized on level: a fresh array/object reference on every render would
   // make the game components below think their content prop changed, tearing
@@ -140,29 +149,39 @@ export function LocalLevelPage() {
 
         {result && (
           <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border]">
-            <h2 className="text-xl font-semibold">Nivel completado</h2>
+            <h2 className="text-xl font-semibold">
+              {result.completed ? '¡Nivel superado!' : 'Nivel no superado'}
+            </h2>
             <p className="text-sm text-[--color-muted] mt-2">
-              Puntuación final: {result.score}
+              Puntuación: {result.score} de {result.maxScore}
+              {!result.completed && ', necesitas más para superarlo'}.
             </p>
             <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
               Nota: Los niveles locales (Maker) no otorgan puntos de experiencia ni medallas en tu progreso oficial.
             </p>
-            <HomeButton className="mt-4" />
+            <div className="mt-4 flex flex-wrap gap-3">
+              {!result.completed && (
+                <Button variant="primary" onClick={retryLevel}>Reintentar</Button>
+              )}
+              <HomeButton />
+            </div>
           </section>
         )}
 
+        {!result && (
         <Suspense fallback={<GameFallback />}>
           {level.template_type === 'trivia' && triviaQuestions.length > 0 && (
-            <TriviaGame questions={triviaQuestions} onFinish={finishLevel} />
+            <TriviaGame key={attemptKey} questions={triviaQuestions} onFinish={finishLevel} />
           )}
           {level.template_type === 'memory' && memoryPairs.length >= 2 && (
-            <MemoryGame pairs={memoryPairs} backColor={memoryBackColor} onComplete={(score) => void finishLevel(score)} />
+            <MemoryGame key={attemptKey} pairs={memoryPairs} backColor={memoryBackColor} onFinish={finishLevel} />
           )}
           {level.template_type === 'fake_news' && fakeNews.length > 0 && (
-            <FakeNewsGame news={fakeNews} onComplete={(score) => void finishLevel(score)} />
+            <FakeNewsGame key={attemptKey} news={fakeNews} onFinish={finishLevel} />
           )}
           {level.template_type === 'word_search' && wordSearch && wordSearch.words.length > 0 && (
             <WordSearchGame
+              key={attemptKey}
               words={wordSearch.words}
               width={wordSearch.width}
               height={wordSearch.height}
@@ -171,15 +190,16 @@ export function LocalLevelPage() {
             />
           )}
           {level.template_type === 'puzzle' && puzzle && (
-            <PuzzleGame phrase={puzzle.phrase} pieces={puzzle.pieces} seed={puzzle.seed} onFinish={finishLevel} />
+            <PuzzleGame key={attemptKey} phrase={puzzle.phrase} pieces={puzzle.pieces} seed={puzzle.seed} onFinish={finishLevel} />
           )}
           {level.template_type === 'crossword' && crosswordWords.length >= 2 && (
-            <CrosswordGame words={crosswordWords} onFinish={finishLevel} />
+            <CrosswordGame key={attemptKey} words={crosswordWords} onFinish={finishLevel} />
           )}
           {level.template_type === 'snakes_ladders' && snakes && (
-            <SnakeLadderGame level={snakes} onComplete={(score) => void finishLevel(score)} />
+            <SnakeLadderGame key={attemptKey} level={snakes} onFinish={finishLevel} />
           )}
         </Suspense>
+        )}
         {!hasPlayableContent(level) && (
           <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
             <p className="text-[--color-muted]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>

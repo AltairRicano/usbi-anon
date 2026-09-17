@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
-import type { CrosswordEngine, CrosswordState } from '@usbi/engine';
+import type { CrosswordEngine, CrosswordState, GameResult } from '@usbi/engine';
 
 interface SceneData {
   engine?: CrosswordEngine;
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export class CrosswordScene extends Phaser.Scene {
   private engine!: CrosswordEngine;
-  private onFinish?: (score: number) => void;
+  private onFinish?: (result: GameResult) => void;
   private unsubscribeEngine?: () => void;
   
   private cellSize: number = 50;
@@ -191,7 +191,7 @@ export class CrosswordScene extends Phaser.Scene {
     this.unsubscribeEngine = this.engine.subscribe((newState) => {
       this.drawState(newState);
       if (newState.isFinished && this.onFinish) {
-        this.onFinish(newState.score);
+        this.onFinish(this.engine.getResult());
       }
     });
   }

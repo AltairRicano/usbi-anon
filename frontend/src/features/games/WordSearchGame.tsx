@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Phaser from 'phaser';
-import { WordSearchEngine, WordSearchState } from '@usbi/engine';
+import { WordSearchEngine, WordSearchState, GameResult } from '@usbi/engine';
 import { WordSearchScene } from './WordSearchScene';
 import { Card, CardTitle, CardContent } from '../../shared/components/ui/Card';
 import { PhaserGame, IRefPhaserGame } from '../../shared/PhaserGame';
@@ -10,7 +10,7 @@ interface WordSearchGameProps {
   width?: number;
   height?: number;
   seed?: number;
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export function WordSearchGame({ words, width = 10, height = 10, seed = 1234, onFinish }: WordSearchGameProps) {

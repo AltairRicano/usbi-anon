@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { TriviaEngine, TriviaState } from '@usbi/engine';
+import { TriviaEngine, TriviaState, GameResult } from '@usbi/engine';
 import { MultipleChoice } from '@usbi/schema';
 import { Card, CardHeader, CardTitle, CardContent } from '../../shared/components/ui/Card';
 import { Button } from '../../shared/components/ui/Button';
 
 interface TriviaGameProps {
   questions: MultipleChoice[];
-  onFinish?: (score: number) => void;
+  onFinish?: (result: GameResult) => void;
 }
 
 export function TriviaGame({ questions, onFinish }: TriviaGameProps) {
@@ -20,7 +20,7 @@ export function TriviaGame({ questions, onFinish }: TriviaGameProps) {
     const unsubscribe = engine.subscribe((newState) => {
       setState({ ...newState });
       if (newState.isFinished && onFinish) {
-        onFinish(newState.score);
+        onFinish(engine.getResult());
       }
     });
 
