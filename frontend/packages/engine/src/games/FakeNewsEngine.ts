@@ -7,6 +7,8 @@ export class FakeNewsEngine {
   private news: FakeNewsItem[];
   private currentIndex = 0;
   private score = 0;
+  /** Lo que el jugador marcó como "es falsa" por ítem, en orden — evidencia que el servidor verifica en Fase B. */
+  private guesses: boolean[] = [];
 
   constructor(news: FakeNewsItem[]) {
     this.news = news;
@@ -25,6 +27,7 @@ export class FakeNewsEngine {
     if (correct) {
       this.score++;
     }
+    this.guesses.push(isFake);
     this.currentIndex++;
     return correct;
   }
@@ -44,6 +47,6 @@ export class FakeNewsEngine {
   getResult(): GameResult {
     const maxScore = this.getMaxScore();
     const completed = maxScore > 0 && this.score / maxScore >= PASS_RATIO;
-    return { completed, score: this.score, maxScore };
+    return { completed, score: this.score, maxScore, answers: { guesses: this.guesses } };
   }
 }

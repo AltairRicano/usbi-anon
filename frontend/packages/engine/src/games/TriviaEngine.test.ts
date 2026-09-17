@@ -84,7 +84,7 @@ describe('TriviaEngine', () => {
     engine.submitAnswer(1); // correct
     vi.advanceTimersByTime(1600);
     const result = engine.getResult();
-    expect(result).toEqual({ completed: true, score: 2, maxScore: 2 });
+    expect(result).toEqual({ completed: true, score: 2, maxScore: 2, answers: { selected_indices: [0, 1] } });
   });
 
   it('getResult: not completed when below pass ratio', () => {
@@ -94,6 +94,6 @@ describe('TriviaEngine', () => {
     engine.submitAnswer(1); // correct (Q2 correct_index is 1)
     vi.advanceTimersByTime(1600);
     const result = engine.getResult();
-    expect(result).toEqual({ completed: false, score: 1, maxScore: 2 });
+    expect(result).toEqual({ completed: false, score: 1, maxScore: 2, answers: { selected_indices: [1, 1] } });
   });
 });

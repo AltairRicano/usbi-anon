@@ -103,6 +103,7 @@ export function OfficialLevelPage() {
       const { data } = await apiClient.post(`/levels/${levelId}/complete`, {
         score: gameResult.score,
         completed: gameResult.completed,
+        answers: gameResult.answers,
         client_finished_at: new Date().toISOString(),
       });
       setResult(CompleteLevelResponseSchema.parse(data));

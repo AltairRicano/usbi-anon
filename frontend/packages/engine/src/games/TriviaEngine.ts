@@ -8,6 +8,8 @@ export interface TriviaState {
   currentQuestionIndex: number;
   score: number;
   correctCount: number;
+  /** Índice elegido por pregunta, en orden — -1 si venció el tiempo. Es la evidencia que el servidor verifica en Fase B. */
+  selectedIndices: number[];
   selectedAnswer: number | null;
   isFinished: boolean;
   timeLeft: number;
@@ -25,6 +27,7 @@ export class TriviaEngine {
       currentQuestionIndex: 0,
       score: 0,
       correctCount: 0,
+      selectedIndices: [],
       selectedAnswer: null,
       isFinished: questions.length === 0,
       timeLeft: this.defaultTimePerQuestion,
@@ -71,6 +74,7 @@ export class TriviaEngine {
     this.stopTimer();
 
     this.state.selectedAnswer = answerIndex;
+    this.state.selectedIndices.push(answerIndex);
     const currentQ = this.state.questions[this.state.currentQuestionIndex];
     if (answerIndex === currentQ.correct_index) {
       this.state.score += 100 + this.state.timeLeft * 2; // Simple scoring
@@ -105,6 +109,7 @@ export class TriviaEngine {
       currentQuestionIndex: 0,
       score: 0,
       correctCount: 0,
+      selectedIndices: [],
       selectedAnswer: null,
       isFinished: this.state.questions.length === 0,
       timeLeft: this.defaultTimePerQuestion,
@@ -116,7 +121,12 @@ export class TriviaEngine {
   public getResult(): GameResult {
     const maxScore = this.state.questions.length;
     const completed = maxScore > 0 && this.state.correctCount / maxScore >= PASS_RATIO;
-    return { completed, score: this.state.correctCount, maxScore };
+    return {
+      completed,
+      score: this.state.correctCount,
+      maxScore,
+      answers: { selected_indices: this.state.selectedIndices },
+    };
   }
 
   public destroy() {

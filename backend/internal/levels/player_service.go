@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/altair/usbi-anon-backend/internal/domain"
 	"github.com/altair/usbi-anon-backend/internal/repository"
 	"github.com/google/uuid"
 )
@@ -123,6 +124,19 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 		return CompleteLevelResponse{}, ErrNotFound
 	}
 
+	// M1 Fase B (D-03): el servidor recalcula completed/score contra
+	// level.content cuando la plantilla y las respuestas enviadas lo permiten
+	// (verify.go); si no, cae al comportamiento anterior (confiar en el
+	// cliente) y lo deja registrado como tal en verification_method.
+	completed := req.Completed
+	score := req.Score
+	verificationMethod := domain.VerificationOnlineReported
+	if verified, ok := verifyAnswers(level.TemplateType, level.Content, req.Answers); ok {
+		completed = verified.completed
+		score = verified.score
+		verificationMethod = domain.VerificationOnlineVerified
+	}
+
 	attemptDate := completionDate(req.ClientFinishedAt)
 	if err := qtx.LockLevelAttempt(ctx, repository.LockLevelAttemptParams{
 		UserID:      userID,
@@ -142,7 +156,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 	}
 
 	attemptNumber := int32(priorAttempts + 1)
-	xpAwarded := CalculateXP(level.Difficulty, attemptNumber, req.Completed)
+	xpAwarded := CalculateXP(level.Difficulty, attemptNumber, completed)
 
 	if err := qtx.InsertLevelAttempt(ctx, repository.InsertLevelAttemptParams{
 		ID:            newID(),
@@ -151,7 +165,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 		AttemptDate:   attemptDate,
 		AttemptNumber: attemptNumber,
 		XpAwarded:     xpAwarded,
-		Completed:     req.Completed,
+		Completed:     completed,
 	}); err != nil {
 		return CompleteLevelResponse{}, err
 	}
@@ -159,14 +173,14 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 	if err := qtx.UpsertPlayerProgressForAttempt(ctx, repository.UpsertPlayerProgressForAttemptParams{
 		UserID:          userID,
 		LevelID:         levelID,
-		BestScore:       req.Score,
+		BestScore:       score,
 		XpTotalForLevel: xpAwarded,
-		Completed:       req.Completed,
+		Completed:       completed,
 	}); err != nil {
 		return CompleteLevelResponse{}, err
 	}
 
-	if req.Completed {
+	if completed {
 		if err := qtx.UpsertDailyStreak(ctx, repository.UpsertDailyStreakParams{
 			UserID:       userID,
 			ActivityDate: attemptDate,
@@ -176,7 +190,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 	}
 
 	eventType := "level_failed"
-	if req.Completed {
+	if completed {
 		eventType = "level_completed"
 	}
 	if err := qtx.InsertExperienceHistory(ctx, repository.InsertExperienceHistoryParams{
@@ -186,7 +200,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 		EventType:          eventType,
 		XpGained:           xpAwarded,
 		Source:             "online",
-		VerificationMethod: "online_direct",
+		VerificationMethod: string(verificationMethod),
 		SyncEventID:        uuid.NullUUID{},
 	}); err != nil {
 		return CompleteLevelResponse{}, err
@@ -214,7 +228,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 
 	return CompleteLevelResponse{
 		LevelID:       levelID,
-		Completed:     req.Completed,
+		Completed:     completed,
 		AttemptNumber: attemptNumber,
 		XPAwarded:     xpAwarded,
 		TotalXP:       totals.TotalXP,

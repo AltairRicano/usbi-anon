@@ -34,7 +34,7 @@ describe('FakeNewsEngine', () => {
     engine.answer(true); // correct
     engine.answer(true); // incorrect
     engine.answer(true); // incorrect
-    expect(engine.getResult()).toEqual({ completed: false, score: 1, maxScore: 3 });
+    expect(engine.getResult()).toEqual({ completed: false, score: 1, maxScore: 3, answers: { guesses: [true, true, true] } });
   });
 
   it('getResult: completed when hits pass ratio (>=60% correct)', () => {
@@ -42,6 +42,6 @@ describe('FakeNewsEngine', () => {
     engine.answer(true); // correct
     engine.answer(false); // correct
     engine.answer(false); // correct
-    expect(engine.getResult()).toEqual({ completed: true, score: 3, maxScore: 3 });
+    expect(engine.getResult()).toEqual({ completed: true, score: 3, maxScore: 3, answers: { guesses: [true, false, false] } });
   });
 });
