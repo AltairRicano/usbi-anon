@@ -180,9 +180,35 @@ export class CrosswordEngine {
     this.notify();
   }
 
+  // Palabras cuyas celdas están todas bloqueadas (correctas) — evidencia por
+  // palabra que el servidor verifica en Fase B, en vez de coordenadas de
+  // celda (evitaría depender de que el layout de rejilla en Go coincida
+  // byte a byte con el de este motor).
+  public getSolvedWords(): string[] {
+    const solved: string[] = [];
+    for (const pw of this.placedWords) {
+      let allLocked = true;
+      for (let i = 0; i < pw.word.length; i++) {
+        const cx = pw.isVertical ? pw.x : pw.x + i;
+        const cy = pw.isVertical ? pw.y + i : pw.y;
+        if (!this.state.lockedCells.has(`${cx},${cy}`)) {
+          allLocked = false;
+          break;
+        }
+      }
+      if (allLocked) solved.push(pw.word);
+    }
+    return solved;
+  }
+
   public getResult(): GameResult {
     const maxScore = this.grid.size;
-    return { completed: this.state.isFinished, score: this.state.score / 10, maxScore };
+    return {
+      completed: this.state.isFinished,
+      score: this.state.score / 10,
+      maxScore,
+      answers: { solved_words: this.getSolvedWords() },
+    };
   }
 
   public destroy() {

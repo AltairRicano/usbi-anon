@@ -93,6 +93,6 @@ describe('PuzzleEngine', () => {
     }
 
     const result = engine.getResult();
-    expect(result).toEqual({ completed: true, score: 3, maxScore: 3 });
+    expect(result).toEqual({ completed: true, score: 3, maxScore: 3, answers: { piece_order: [0, 1, 2] } });
   });
 });

@@ -163,7 +163,12 @@ export class WordSearchEngine {
   
   public getResult(): GameResult {
     const maxScore = this.state.words.length;
-    return { completed: this.state.isFinished, score: this.state.foundWords.length, maxScore };
+    return {
+      completed: this.state.isFinished,
+      score: this.state.foundWords.length,
+      maxScore,
+      answers: { found_words: this.state.foundWords },
+    };
   }
 
   public destroy() {

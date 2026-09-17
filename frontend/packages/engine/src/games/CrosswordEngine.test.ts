@@ -168,6 +168,10 @@ describe('CrosswordEngine', () => {
     });
 
     const result = engine.getResult();
-    expect(result).toEqual({ completed: true, score: cells.length, maxScore: cells.length });
+    expect(result.completed).toBe(true);
+    expect(result.score).toBe(cells.length);
+    expect(result.maxScore).toBe(cells.length);
+    expect(result.answers).toEqual({ solved_words: expect.arrayContaining(['HELLO', 'WORLD']) });
+    expect((result.answers as { solved_words: string[] }).solved_words).toHaveLength(2);
   });
 });

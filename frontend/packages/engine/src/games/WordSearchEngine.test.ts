@@ -126,6 +126,6 @@ describe('WordSearchEngine', () => {
     }
     engine.checkWord(catCoords);
     const result = engine.getResult();
-    expect(result).toEqual({ completed: true, score: 1, maxScore: 1 });
+    expect(result).toEqual({ completed: true, score: 1, maxScore: 1, answers: { found_words: ['CAT'] } });
   });
 });

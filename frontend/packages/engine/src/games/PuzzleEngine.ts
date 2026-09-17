@@ -127,7 +127,8 @@ export class PuzzleEngine {
   public getResult(): GameResult {
     const maxScore = this.state.pieces.length;
     const piecesCorrect = this.state.pieces.filter((p, i) => p.originalIndex === i).length;
-    return { completed: this.state.isFinished, score: piecesCorrect, maxScore };
+    const pieceOrder = this.state.pieces.map((p) => p.originalIndex);
+    return { completed: this.state.isFinished, score: piecesCorrect, maxScore, answers: { piece_order: pieceOrder } };
   }
 
   public destroy() {

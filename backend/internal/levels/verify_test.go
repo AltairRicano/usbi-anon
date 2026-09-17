@@ -139,6 +139,122 @@ func TestVerifyFakeNewsAnswers(t *testing.T) {
 	}
 }
 
+func TestVerifyCrosswordAnswers(t *testing.T) {
+	content := json.RawMessage(`{"words":[{"word":"HELLO","clue":"Greeting"},{"word":"WORLD","clue":"Earth"}]}`)
+
+	t.Run("all words solved is completed", func(t *testing.T) {
+		result, ok := verifyCrosswordAnswers(content, json.RawMessage(`{"solved_words":["HELLO","WORLD"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if !result.completed || result.score != 2 || result.maxScore != 2 {
+			t.Errorf("unexpected result: %+v", result)
+		}
+	})
+
+	t.Run("partial grid is not completed (all-or-nothing per M1.2)", func(t *testing.T) {
+		result, ok := verifyCrosswordAnswers(content, json.RawMessage(`{"solved_words":["HELLO"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if result.completed {
+			t.Error("one of two words should not be completed")
+		}
+		if result.score != 1 {
+			t.Errorf("score = %d, want 1", result.score)
+		}
+	})
+
+	t.Run("duplicate or unknown submitted words do not inflate the score", func(t *testing.T) {
+		result, ok := verifyCrosswordAnswers(content, json.RawMessage(`{"solved_words":["HELLO","hello","NOPE"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if result.score != 1 {
+			t.Errorf("score = %d, want 1 (case-insensitive duplicate + unknown word must not count twice)", result.score)
+		}
+	})
+}
+
+func TestVerifyWordSearchAnswers(t *testing.T) {
+	content := json.RawMessage(`{"words":["CAT","DOG","BIRD"]}`)
+
+	t.Run("all words found is completed", func(t *testing.T) {
+		result, ok := verifyWordSearchAnswers(content, json.RawMessage(`{"found_words":["CAT","DOG","BIRD"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if !result.completed || result.score != 3 || result.maxScore != 3 {
+			t.Errorf("unexpected result: %+v", result)
+		}
+	})
+
+	t.Run("missing a word is not completed", func(t *testing.T) {
+		result, ok := verifyWordSearchAnswers(content, json.RawMessage(`{"found_words":["CAT","DOG"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if result.completed {
+			t.Error("2 of 3 words should not be completed")
+		}
+	})
+
+	t.Run("accented content word matches unaccented submission", func(t *testing.T) {
+		accented := json.RawMessage(`{"words":["ÁGUILA"]}`)
+		result, ok := verifyWordSearchAnswers(accented, json.RawMessage(`{"found_words":["AGUILA"]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if !result.completed {
+			t.Error("expected accent-insensitive match to complete the level")
+		}
+	})
+}
+
+func TestVerifyPuzzleAnswers(t *testing.T) {
+	content := json.RawMessage(`{"phrase":"secret message","pieces":4}`)
+
+	t.Run("identity order is completed", func(t *testing.T) {
+		result, ok := verifyPuzzleAnswers(content, json.RawMessage(`{"piece_order":[0,1,2,3]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if !result.completed || result.score != 4 || result.maxScore != 4 {
+			t.Errorf("unexpected result: %+v", result)
+		}
+	})
+
+	t.Run("shuffled order is not completed", func(t *testing.T) {
+		result, ok := verifyPuzzleAnswers(content, json.RawMessage(`{"piece_order":[1,0,2,3]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if result.completed {
+			t.Error("shuffled order should not be completed")
+		}
+		if result.score != 2 {
+			t.Errorf("score = %d, want 2 (positions 2 and 3 already correct)", result.score)
+		}
+	})
+
+	t.Run("missing pieces count defaults to 3", func(t *testing.T) {
+		noCount := json.RawMessage(`{"phrase":"abc"}`)
+		result, ok := verifyPuzzleAnswers(noCount, json.RawMessage(`{"piece_order":[0,1,2]}`))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if result.maxScore != 3 {
+			t.Errorf("maxScore = %d, want 3", result.maxScore)
+		}
+	})
+
+	t.Run("wrong-length piece_order is not verifiable", func(t *testing.T) {
+		if _, ok := verifyPuzzleAnswers(content, json.RawMessage(`{"piece_order":[0,1]}`)); ok {
+			t.Error("expected ok=false for a piece_order of the wrong length")
+		}
+	})
+}
+
 func TestVerifyAnswers_UnsupportedOrMissing(t *testing.T) {
 	content := json.RawMessage(`{"questions":[{"question":"Q1","options":["A","B"],"correct_index":0}]}`)
 
