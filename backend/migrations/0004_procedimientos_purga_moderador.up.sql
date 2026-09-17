@@ -32,8 +32,19 @@ AS $$
     UPDATE audit_log SET actor_account_id = NULL WHERE actor_account_id = p_account_id;
 $$;
 
+-- ALTER ... OWNER TO exige que el rol NUEVO dueño tenga CREATE en el schema
+-- que contiene el objeto (no solo que quien ejecuta sea miembro de ese rol,
+-- ver documentación de ALTER FUNCTION) — y usbi_moderador deliberadamente
+-- solo tiene USAGE (00_roles_unificado.sql), nunca CREATE. Se le concede
+-- CREATE de forma transitoria, únicamente para que las dos líneas ALTER de
+-- abajo puedan ejecutarse, y se revoca en la misma migración: el estado
+-- final de permisos de usbi_moderador queda idéntico al de antes de este
+-- bloque (M3.3: descubierto al aplicar esta migración por primera vez con
+-- el rol real usbi_migrate en vez del superusuario postgres).
+GRANT CREATE ON SCHEMA public TO usbi_moderador;
 ALTER FUNCTION purge_account_quiz_answers(uuid) OWNER TO usbi_moderador;
 ALTER FUNCTION null_user_in_pseudonymizable_ledgers(uuid) OWNER TO usbi_moderador;
+REVOKE CREATE ON SCHEMA public FROM usbi_moderador;
 
 GRANT EXECUTE ON FUNCTION purge_account_quiz_answers(uuid) TO usbi_app;
 GRANT EXECUTE ON FUNCTION null_user_in_pseudonymizable_ledgers(uuid) TO usbi_app;
