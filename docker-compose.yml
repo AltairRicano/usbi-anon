@@ -17,6 +17,7 @@ services:
   db:
     image: postgres:15
     restart: unless-stopped
+    mem_limit: 250m
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:?configura DB_SUPERUSER_PASSWORD en .env — usbictl secrets init lo genera}
@@ -72,6 +73,7 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    mem_limit: 250m
     depends_on:
       db:
         condition: service_healthy
@@ -125,6 +127,7 @@ services:
     build:
       context: ./frontend
     restart: unless-stopped
+    mem_limit: 250m
     depends_on:
       - api
     ports:
