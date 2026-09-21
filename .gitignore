@@ -24,3 +24,6 @@ backend/deploy/postgres/rendered/
 
 # grafo de contexto para IA (repo anidado, personal por máquina)
 .graph/
+
+# reportes de subagentes (auditoría/investigación) — operativo, no producto
+agentes/
