@@ -8,7 +8,7 @@ import (
 )
 
 // CategoryResponse es la representación pública de una categoría del
-// carrusel de "enlaces de interés" (sección "Más" del frontend). (Relleno)
+// carrusel de "enlaces de interés" (sección "Más" del frontend).
 type CategoryResponse struct {
 	ID           uuid.UUID `json:"id"`
 	Name         string    `json:"name"`
@@ -17,7 +17,7 @@ type CategoryResponse struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-// LinkResponse es una tarjeta del carrusel. (Relleno)
+// LinkResponse es una tarjeta del carrusel.
 type LinkResponse struct {
 	ID          uuid.UUID `json:"id"`
 	CategoryID  uuid.UUID `json:"category_id"`
@@ -29,21 +29,16 @@ type LinkResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// CategoryWithLinks agrupa una categoría con sus tarjetas — es la forma que
-// pide GET /interest-links para el jugador (estado_proyecto.md 2026-09-08:
-// "GET /interest-links agrupado por categoría"). Links nunca es nil: una
-// categoría sin tarjetas aparece con un arreglo vacío para que el frontend
-// pueda decidir si oculta el carrusel vacío. (Relleno)
+// CategoryWithLinks agrupa una categoría con sus enlaces para la vista de jugador.
+// Links nunca es nil: una categoría sin tarjetas aparece con un arreglo vacío
+// para que el frontend pueda decidir si oculta el carrusel vacío.
 type CategoryWithLinks struct {
 	Category CategoryResponse `json:"category"`
 	Links    []LinkResponse   `json:"links"`
 }
 
-// InterestLinksResponse/CategoriesResponse/LinksResponse envuelven a sus
-// respectivos listados en `{"items": [...]}` (C4, estado_proyecto.md
-// 2026-09-10) — antes de esta uniformización estos tres endpoints eran los
-// únicos, junto con GET /admin/badges, que devolvían un arreglo JSON crudo
-// en vez del sobre `items` que ya usan levels/auditlog/suggestions/devices.
+// InterestLinksResponse, CategoriesResponse y LinksResponse envuelven a sus
+// respectivos listados en `{"items": [...]}` de forma consistente con los demás endpoints.
 type InterestLinksResponse struct {
 	Items []CategoryWithLinks `json:"items"`
 }
@@ -56,8 +51,8 @@ type LinksResponse struct {
 	Items []LinkResponse `json:"items"`
 }
 
-// CreateCategoryRequest/UpdateCategoryRequest son el cuerpo de
-// POST/PATCH /admin/interest-link-categories. (Relleno)
+// CreateCategoryRequest y UpdateCategoryRequest son el cuerpo de
+// POST/PATCH /admin/interest-link-categories.
 type CreateCategoryRequest struct {
 	Name         string `json:"name"`
 	DisplayOrder int16  `json:"display_order"`
@@ -68,8 +63,8 @@ type UpdateCategoryRequest struct {
 	DisplayOrder int16  `json:"display_order"`
 }
 
-// CreateLinkRequest/UpdateLinkRequest son el cuerpo de
-// POST/PATCH /admin/interest-links. (Relleno)
+// CreateLinkRequest y UpdateLinkRequest son el cuerpo de
+// POST/PATCH /admin/interest-links.
 type CreateLinkRequest struct {
 	CategoryID  uuid.UUID `json:"category_id"`
 	Title       string    `json:"title"`

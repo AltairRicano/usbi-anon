@@ -13,19 +13,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler expone los endpoints HTTP de autenticación. (Relleno)
 type Handler struct {
 	svc *Service
 }
 
-// NewHandler crea un auth.Handler. (Relleno)
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// ── Registro en 3 pasos ────────────────────────────────────────────────── (Útil)
+// ── Registro en 3 pasos ──────────────────────────────────────────────────
 
-// RegisterQuestions maneja POST /api/v1/auth/register/questions. (Relleno)
 func (h *Handler) RegisterQuestions(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.RegisterQuestions(r.Context())
 	if err != nil {
@@ -36,7 +33,6 @@ func (h *Handler) RegisterQuestions(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// RegisterAnswers maneja POST /api/v1/auth/register/answers. (Relleno)
 func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
 	var req RegisterAnswersRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -66,7 +62,6 @@ func (h *Handler) RegisterAnswers(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// RegisterConfirm maneja POST /api/v1/auth/register/confirm. (Relleno)
 func (h *Handler) RegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	var req RegisterConfirmRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -102,9 +97,8 @@ func (h *Handler) RegisterConfirm(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
+// ── Login / sesión ────────────────────────────────────────────────────────
 
-// Login maneja POST /api/v1/auth/login. (Relleno)
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -119,7 +113,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			httpproblem.WriteProblem(w, r, http.StatusUnprocessableEntity, "validation-error",
 				"Validation Error", err.Error())
 		case errors.Is(err, ErrUserNotFound), errors.Is(err, ErrInvalidPassword):
-			// Usa un mensaje idéntico para ambos para prevenir la enumeración de nicknames. (Útil)
+			// Usa un mensaje idéntico para ambos para prevenir la enumeración de nicknames.
 			httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
 				"Authentication Failed", "Invalid nickname or password")
 		case errors.Is(err, ErrAccountSuspended):
@@ -138,7 +132,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// Refresh maneja POST /api/v1/auth/refresh. (Relleno)
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := httpjson.DecodeStrict(r.Body, &req); err != nil {
@@ -164,7 +157,6 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// Logout maneja POST /api/v1/auth/logout. (Relleno)
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -181,7 +173,6 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Me maneja GET /api/v1/auth/me. (Relleno)
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -198,7 +189,6 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// AgeUp maneja POST /api/v1/auth/age-up. (Relleno)
 func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -220,7 +210,6 @@ func (h *Handler) AgeUp(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, map[string]string{"status": "success", "message": "User adult status updated"})
 }
 
-// CancelSelf maneja DELETE /api/v1/auth/me. (Relleno)
 func (h *Handler) CancelSelf(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -236,9 +225,8 @@ func (h *Handler) CancelSelf(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ── Administración de cuentas ──────────────────────────────────────────── (Útil)
+// ── Administración de cuentas ────────────────────────────────────────────
 
-// CreateAdminAccount maneja POST /api/v1/admin/accounts. (Relleno)
 func (h *Handler) CreateAdminAccount(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -259,7 +247,6 @@ func (h *Handler) CreateAdminAccount(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// DeleteAdminAccount maneja DELETE /api/v1/admin/accounts/{account_id}. (Relleno)
 func (h *Handler) DeleteAdminAccount(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -278,7 +265,6 @@ func (h *Handler) DeleteAdminAccount(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GetAccountQuizAnswers maneja GET /api/v1/admin/accounts/{account_id}/quiz-answers. (Relleno)
 func (h *Handler) GetAccountQuizAnswers(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -298,7 +284,6 @@ func (h *Handler) GetAccountQuizAnswers(w http.ResponseWriter, r *http.Request) 
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// ResetAccountPassword maneja POST /api/v1/admin/accounts/{account_id}/reset-password. (Relleno)
 func (h *Handler) ResetAccountPassword(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok {
@@ -318,7 +303,6 @@ func (h *Handler) ResetAccountPassword(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// ── Ayudantes internos ────────────────────────────────────────────────────── (Relleno)
 
 func claimsFromContext(r *http.Request) (*domain.JWTClaims, bool) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)

@@ -1,20 +1,6 @@
-// Reescrito en F7 (rediseño de identidad, ver
-// plan/04_Rediseno_identidad_gustos.md §1 y §2) para la base única. Antes
-// (F4, dos bases) este servicio recibía DOS *Queries y el RunOnce tenía
-// cuatro responsabilidades: purgar registros atascados en
-// 'pending_tutor_consent', suspender/cancelar jugadores inactivos, y
-// reconciliar solicitudes ARCO de cancelación que quedaron a medio camino
-// entre las dos fases de la saga.
-//
-// De las cuatro, dos desaparecen por completo:
-//   - El flujo de tutor por correo se eliminó (§1) — no hay
-//     'pending_tutor_consent' que purgar.
-//   - internal/privacy.CancelAccount es ahora una sola *sql.Tx (§2): no hay
-//     "a medio camino" posible, así que tampoco hay nada que reconciliar.
-//
-// Las otras dos (retención legal automática por inactividad, purga de
-// refresh_tokens vencidos) siguen aplicando igual que antes, solo que contra
-// una única base. (Útil)
+// Package maintenance implementa las tareas periódicas de retención legal y purga:
+// suspender y cancelar cuentas de jugadores inactivos de acuerdo a las políticas
+// de retención, y purgar refresh tokens expirados o revocados.
 package maintenance
 
 import (
@@ -79,8 +65,8 @@ func (s *Service) RunOnce(ctx context.Context, now time.Time) (Summary, error) {
 		summary.SuspendedCancelled++
 	}
 
-	// Purga de mantenimiento (A1): elimina refresh tokens expirados/revocados hace tiempo para que la
-	// tabla no crezca sin límite. (Útil)
+	// Purga de mantenimiento: elimina refresh tokens expirados/revocados hace tiempo para que la
+	// tabla no crezca sin límite.
 	refreshTokens, err := s.repo.PurgeExpiredRefreshTokens(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("purging expired refresh tokens: %w", err)
@@ -91,12 +77,9 @@ func (s *Service) RunOnce(ctx context.Context, now time.Time) (Summary, error) {
 }
 
 // cancelAccount ejecuta la retención legal automática con la misma
-// CancelAccount que usa la cancelación autoservicio (DELETE /auth/me) — un
-// solo camino para "cómo se cancela una cuenta", disparado por dos motivos
-// distintos (A4). Idempotente por construcción: si un reintento la vuelve a
-// listar (no debería, DeactivateAccount la saca de 'suspended' en la misma
-// tx), CancelAccount simplemente no encuentra fila con deleted_at IS NULL
-// que actualizar. (Útil)
+// CancelAccount que usa la cancelación autoservicio (DELETE /auth/me).
+// Idempotente por construcción: si un reintento la vuelve a listar,
+// CancelAccount no encuentra una fila activa que actualizar.
 func (s *Service) cancelAccount(ctx context.Context, accountID uuid.UUID) error {
 	return privacy.CancelAccount(ctx, s.repo, privacy.CancelAccountParams{
 		AccountID: accountID,

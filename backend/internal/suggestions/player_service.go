@@ -1,5 +1,4 @@
-// Package suggestions implementa el buzón de sugerencias anónimo (migración
-// 0003_enlaces_interes_y_sugerencias, F4 — estado_proyecto.md 2026-09-09).
+// Package suggestions implementa el buzón de sugerencias anónimo.
 package suggestions
 
 import (
@@ -16,9 +15,8 @@ var ErrValidation = errors.New("validation error")
 
 const descriptionMaxLen = 1000
 
-// PlayerService corre sobre el pool de jugador (usbi_app), que en
-// 00_roles_unificado.sql solo tiene INSERT en suggestions — ni siquiera
-// SELECT, así que este Service no expone ningún método de lectura.
+// PlayerService corre sobre el pool de jugador (usbi_app), que
+// solo tiene permisos de inserción en suggestions para preservar el anonimato.
 type PlayerService struct {
 	repo *repository.Queries
 }
@@ -35,14 +33,10 @@ func newID() uuid.UUID {
 	return id
 }
 
-// Submit calcula el snapshot de progreso (misma fórmula que
-// GetProfileProgress, GetUserProgressTotals) en el momento del envío y lo
+// Submit calcula el snapshot de progreso en el momento del envío y lo
 // congela en la fila — la sugerencia queda desvinculada de userID desde
-// este punto, sin ninguna FK ni columna que lo conserve (comentario de la
-// migración 0003: "es anónimo por diseño"). No se llama a audit.Log aquí a
-// propósito: una entrada de auditoría con actor_account_id + marca de
-// tiempo casi idéntica a submitted_at recrearía el vínculo que la ausencia
-// de account_id en la tabla busca evitar.
+// este punto, sin ninguna clave foránea ni columna que lo conserve. No se registra en audit.Log
+// para evitar que una marca temporal y actor_account_id correlacionen la sugerencia con el autor.
 func (s *PlayerService) Submit(ctx context.Context, userID uuid.UUID, req SubmitRequest) (SubmitResponse, error) {
 	description := strings.TrimSpace(req.Description)
 	if description == "" || len(description) > descriptionMaxLen {

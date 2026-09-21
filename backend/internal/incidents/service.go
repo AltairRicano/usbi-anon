@@ -1,7 +1,5 @@
-// Package incidents implementa el registro de incidentes de seguridad para administradores requerido
-// por el Documento de Seguridad (hallazgo de auditoría A5). Antes de este paquete, la tabla
-// security_incidents existía en el esquema pero no tenía escritores — el
-// registro de incidentes obligatorio estaba inerte. (Útil)
+// Package incidents implementa el registro y consulta de incidentes de seguridad para administradores,
+// sellándolos criptográficamente para evidencia de No-Repudio.
 package incidents
 
 import (
@@ -24,22 +22,22 @@ var (
 	ErrValidation = errors.New("validation error")
 )
 
-// validSeverities es el conjunto aceptado; también se hace cumplir con una restricción CHECK. (Relleno)
+// validSeverities es el conjunto aceptado; también se hace cumplir con una restricción CHECK.
 var validSeverities = map[string]struct{}{
 	"low": {}, "medium": {}, "high": {}, "critical": {},
 }
 
-// CreateIncidentRequest es el cuerpo enviado por el admin para POST /admin/security-incidents. (Relleno)
+// CreateIncidentRequest es el cuerpo enviado por el admin para POST /admin/security-incidents.
 type CreateIncidentRequest struct {
 	Severity           string `json:"severity"` // low|medium|high|critical
 	AffectedScope      string `json:"affected_scope"`
 	Description        string `json:"description"`
 	ContainmentActions string `json:"containment_actions"`
-	DetectedAt         string `json:"detected_at,omitempty"` // RFC3339; defaults to now
+	DetectedAt         string `json:"detected_at,omitempty"` // RFC3339; por defecto es la fecha/hora actual
 	ReportedToCutai    bool   `json:"reported_to_cutai,omitempty"`
 }
 
-// CreateIncidentResponse se devuelve en caso de éxito. (Relleno)
+// CreateIncidentResponse se devuelve en caso de éxito.
 type CreateIncidentResponse struct {
 	ID       uuid.UUID `json:"id"`
 	Severity string    `json:"severity"`
@@ -59,7 +57,7 @@ func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 }
 
 // CreateIncident registra un incidente de seguridad (solo admins), sellándolo
-// con un hash de evidencia HMAC para No-Repudio y escribiendo una entrada en admin_audit_log. (Útil)
+// con un hash de evidencia HMAC para No-Repudio y escribiendo una entrada en audit_log.
 func (s *Service) CreateIncident(ctx context.Context, actor domain.JWTClaims, req CreateIncidentRequest, ip, userAgent string) (CreateIncidentResponse, error) {
 	if actor.Role != domain.RoleAdmin {
 		return CreateIncidentResponse{}, ErrForbidden

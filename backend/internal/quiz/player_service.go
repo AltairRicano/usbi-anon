@@ -1,9 +1,9 @@
 // PlayerService agrupa las operaciones de internal/quiz que corren con el
-// pool de usbi_app (F3, 2026-09-09): muestreo de preguntas para el registro.
+// pool de usbi_app: muestreo de preguntas para el registro.
 // Sin CRUD — usbi_app solo tiene SELECT sobre registration_questions/
 // registration_settings (00_roles_unificado.sql), coherente con que esta
 // mitad nunca escribe. internal/auth es el único consumidor: llama estos dos
-// métodos directo durante el registro en 3 pasos, sin pasar por Handler. (Útil)
+// métodos directo durante el registro en 3 pasos, sin pasar por Handler.
 package quiz
 
 import (
@@ -27,7 +27,7 @@ func NewPlayerService(repo *repository.Queries) *PlayerService {
 // POST /auth/register/answers (internal/auth, F9) y devuelve el texto a
 // congelar en account_quiz_answers.question_text_snapshot. internal/auth
 // pasa por aquí en vez de tocar internal/repository directo — el banco de
-// preguntas es dominio de este paquete, no del repositorio genérico. (Útil)
+// preguntas es dominio de este paquete, no del repositorio genérico.
 func (s *PlayerService) GetActiveQuestionByID(ctx context.Context, id uuid.UUID) (QuestionResponse, error) {
 	question, err := s.repo.GetRegistrationQuestionByID(ctx, id)
 	if err != nil {
@@ -47,7 +47,7 @@ func (s *PlayerService) GetActiveQuestionByID(ctx context.Context, id uuid.UUID)
 // display_order— de las preguntas activas, hasta max_questions_shown. Con
 // más activas que el máximo configurado, el resto queda en reserva y rota
 // entre registros porque cada llamada vuelve a sortear desde cero (decisión
-// 8 del rediseño). (Útil)
+// 8 del rediseño).
 func (s *PlayerService) SelectQuestionsForRegistration(ctx context.Context) (RegistrationQuestionsResponse, error) {
 	settings, err := s.repo.GetRegistrationSettings(ctx)
 	if err != nil {

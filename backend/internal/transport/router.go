@@ -33,7 +33,7 @@ import (
 
 // RouterDependencies contiene todas las dependencias de configuración y handlers. Un handler nil
 // registra un stub 501 "no implementado" para sus rutas en vez de hacer panic,
-// para que el cableado parcial (ej. en tests) sea seguro. (Útil)
+// para que el cableado parcial (ej. en tests) sea seguro.
 type RouterDependencies struct {
 	AuditLogHandler  *auditlog.Handler
 	AuthHandler      *auth.Handler
@@ -43,31 +43,22 @@ type RouterDependencies struct {
 	LevelsHandler    *levels.Handler
 	DevicesHandler   *devices.Handler
 	IncidentsHandler *incidents.Handler
-	// InterestLinksHandler/SuggestionsHandler: F4 (estado_proyecto.md
-	// 2026-09-09) — las 3 tablas que F1 detectó sin ningún código Go
-	// (interest_link_categories, interest_links, suggestions).
+	// InterestLinksHandler/SuggestionsHandler manejan las tablas de enlaces de interés y sugerencias.
 	InterestLinksHandler *interestlinks.Handler
 	SuggestionsHandler   *suggestions.Handler
-	// LegalHandler sirve el aviso de privacidad vigente (M2 del plan de
-	// maduración) — GetPrivacyNotice es pública (igual criterio que
-	// /settings: debe leerse antes de tener cuenta), Accept requiere sesión.
+	// LegalHandler sirve el aviso de privacidad vigente. GetPrivacyNotice es pública, Accept requiere sesión.
 	LegalHandler *legal.Handler
 	ReadyCheck   func(context.Context) error
 	TokenCfg             crypto.TokenConfig
-	// Repo valida token_version/status contra la ÚNICA base del sistema —
-	// con el rediseño de identidad ya no hace falta una base de identidad
-	// aparte (plan/04_Rediseno_identidad_gustos.md §1 y §2). (Útil)
+	// Repo valida token_version y status de la cuenta.
 	Repo *repository.Queries
-	// MaxBodyBytes limita el tamaño del cuerpo de la petición HTTP entrante. Por defecto 6 MiB. (Relleno)
 	MaxBodyBytes int64
-	// AllowedOrigin es una lista blanca separada por comas (o "*" para permitir
-	// cualquier origen) para CORS. Por defecto "https://usbi.edu.mx" si está vacío. (Relleno)
 	AllowedOrigin string
 	// TrustProxyHeaders activa el middleware RealIP de chi, que sobrescribe
 	// r.RemoteAddr con base en los headers True-Client-IP/X-Real-IP/X-Forwarded-For.
 	// DEBE mantenerse false a menos que el proxy inverso confirme limpiar/establecer
 	// esos headers; de otra forma un cliente podría suplantar su IP
-	// para burlar rate limits y auditorías. (Útil)
+	// para burlar rate limits y auditorías.
 	TrustProxyHeaders bool
 	// RequestTimeout bounds every request via middleware.Timeout. Defaults to 20s.
 	RequestTimeout time.Duration
@@ -89,7 +80,7 @@ func ClaimsFromContext(ctx context.Context) *domain.JWTClaims {
 // SetupRoutes registra todas las rutas HTTP con su cadena de middleware.
 // Devuelve una función de cleanup que detiene las goroutines de limpieza de rate limit
 // en background — quien llama debería usar defer (o invocarla en shutdown graceful);
-// no es estricamente necesario para que el servidor funcione. (Útil)
+// no es estricamente necesario para que el servidor funcione.
 func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 	rl := newRateLimiters()
 
@@ -119,8 +110,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// ── Public routes ─────────────────────────────────────────────────────
-		// Registro en 3 pasos (plan/04_Rediseno_identidad_gustos.md §3): sin
-		// email ni flujo de tutor, así que no hay tutor-consent que exponer.
+		// Registro sin email ni flujo de tutor.
 		r.Group(func(r chi.Router) {
 			r.Use(rl.authMiddleware)
 			if deps.AuthHandler != nil {
@@ -138,11 +128,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 			}
 		})
 
-		// El aviso de privacidad debe poder leerse antes de tener cuenta
-		// (M2.4 punto 2, mismo criterio que ya aplica a /settings) — grupo
-		// público propio, sin jwtAuthMiddleware, pero con el limitador
-		// general por IP (no el estricto de auth: se lee en cada carga de
-		// /privacidad y del formulario de registro, no solo al autenticar).
+		// El aviso de privacidad es público pero cuenta con rate-limit general por IP.
 		r.Group(func(r chi.Router) {
 			r.Use(rl.generalMiddleware)
 			if deps.LegalHandler != nil {
@@ -198,9 +184,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 			if deps.SyncHandler != nil {
 				r.Post("/sync", deps.SyncHandler.SyncData)
-				// Historial de sync del propio jugador (B4, estado_proyecto.md
-				// 2026-09-09): sin variante de admin — sync.ListMyHistory
-				// siempre filtra por claims.UserID.
+				// Historial de sync del propio jugador (filtra por claims.UserID).
 				r.Get("/sync/events", deps.SyncHandler.ListMyHistory)
 			} else {
 				r.Post("/sync", notImplementedHandler("sync.offlineProgress"))
@@ -209,9 +193,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 
 			if deps.IncidentsHandler != nil {
 				r.Post("/admin/security-incidents", deps.IncidentsHandler.CreateIncident)
-				// B2 (estado_proyecto.md 2026-09-09): leer y editar, nunca
-				// borrar — sin ruta DELETE, la app no expone forma alguna de
-				// destruir un incidente de seguridad.
+				// Rutas para incidentes (leer y editar, sin ruta DELETE por seguridad).
 				r.Get("/admin/security-incidents", deps.IncidentsHandler.List)
 				r.Get("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Get)
 				r.Patch("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Update)
@@ -245,8 +227,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Post("/sections/{section_id}/unpublish", deps.LevelsHandler.UnpublishSection)
 				r.Post("/sections/{section_id}/archive", deps.LevelsHandler.ArchiveSection)
 				r.Post("/sections/{section_id}/unarchive", deps.LevelsHandler.UnarchiveSection)
-				// F10.9: purga irreversible, solo sobre contenido ya archivado
-				// (plan/05_Contenido_maker_y_juego.md §6).
+				// Purga irreversible, solo sobre contenido ya archivado.
 				r.Delete("/sections/{section_id}", deps.LevelsHandler.PurgeSection)
 
 				r.Post("/levels", deps.LevelsHandler.CreateLevel)
@@ -270,8 +251,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Get("/profile/progress", notImplementedHandler("profile.progress"))
 			}
 
-			// Enlaces de interés (sección "Más") y buzón de sugerencias (F4,
-			// estado_proyecto.md 2026-09-09).
+			// Enlaces de interés y buzón de sugerencias.
 			if deps.InterestLinksHandler != nil {
 				r.Get("/interest-links", deps.InterestLinksHandler.ListInterestLinks)
 
@@ -306,17 +286,14 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Delete("/admin/suggestions/{suggestion_id}", notImplementedHandler("admin.deleteSuggestion"))
 			}
 
-			// Banner de cambio de versión del aviso de privacidad (D-06,
-			// M2.5): informativo, no bloquea — el jugador ya tiene sesión.
+			// Banner de cambio de versión del aviso de privacidad (informativo, no bloquea).
 			if deps.LegalHandler != nil {
 				r.Post("/legal/accept", deps.LegalHandler.Accept)
 			} else {
 				r.Post("/legal/accept", notImplementedHandler("legal.accept"))
 			}
 
-			// Catálogo de insignias (B3, estado_proyecto.md 2026-09-09): CRUD
-			// de admin sobre el pool de moderador. La lectura del jugador no
-			// pasa por aquí — sigue en GET /profile/progress (internal/levels).
+			// Catálogo de insignias (CRUD de admin). La lectura del jugador usa GET /profile/progress.
 			if deps.BadgesHandler != nil {
 				r.Get("/admin/badges", deps.BadgesHandler.List)
 				r.Post("/admin/badges", deps.BadgesHandler.Create)
@@ -329,10 +306,7 @@ func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
 				r.Delete("/admin/badges/{badge_id}", notImplementedHandler("admin.deleteBadge"))
 			}
 
-			// Lectura de audit_log (B1, estado_proyecto.md 2026-09-09): hueco
-			// de producto abierto desde 2026-09-02 ("un admin puede escribir
-			// pero no releer sin acceso directo a Postgres"). Cada consulta se
-			// audita a sí misma (decisión D4) dentro del propio AdminService.
+			// Lectura de audit_log. Cada consulta se audita a sí misma dentro de AdminService.
 			if deps.AuditLogHandler != nil {
 				r.Get("/admin/audit-log", deps.AuditLogHandler.List)
 			} else {
@@ -366,7 +340,7 @@ func maxBodyBytesMiddleware(maxBytes int64) func(http.Handler) http.Handler {
 // requestLogger emite un registro estructurado (slog) por cada petición: método, ruta,
 // estado, bytes, latencia, ID de petición e IP del cliente (B4). Reemplaza el middleware
 // Logger de texto de chi para que sea parseable por máquina, y sus campos de estado
-// y duración sirven como métricas base de peticiones. (Útil)
+// y duración sirven como métricas base de peticiones.
 func requestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -391,11 +365,7 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok","service":"usbi-anon-backend"}`))
 }
 
-// readyHandler expone en el body cuál dependencia falló (criterio 5 de
-// plan/02_Backend.md §8: con dos bases independientes, "la base de datos no
-// responde" ya no es suficiente detalle para operar el servicio — hace falta
-// saber si es la principal o la de identidad). check (ver readyCheck en
-// main.go) ya se encarga de no filtrar el error crudo del driver. (Útil)
+// readyHandler expone en el body cuál dependencia falló sin filtrar el error crudo del driver.
 func readyHandler(check func(context.Context) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if check == nil {
@@ -430,12 +400,7 @@ func notImplementedHandler(operation string) http.HandlerFunc {
 	}
 }
 
-// securityHeaders sets conservative, framework-agnostic security response
-// headers on every response (audit finding CN-003). It hardens the JSON API and
-// any direct browser navigation to an API URL — including the tutor-consent
-// verify link, whose Referrer-Policy: no-referrer stops the single-use token
-// from leaking via the Referer header (CN-006). The SPA served by the reverse
-// proxy still needs its own Content-Security-Policy configured there.
+// securityHeaders sets conservative security response headers on every response.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -502,9 +467,7 @@ func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
 
 // jwtAuthMiddleware validates the JWT and injects claims into the request context.
 // Downstream handlers retrieve claims via ClaimsFromContext(r.Context()).
-// repo revalida token_version y status contra accounts, la única tabla del
-// sistema con esa información — con el rediseño de identidad ya no hay una
-// base de identidad separada que consultar (plan/04_Rediseno_identidad_gustos.md §1).
+// repo revalida token_version y status contra accounts.
 func jwtAuthMiddleware(cfg crypto.TokenConfig, repo *repository.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -621,11 +584,7 @@ func (t *visitorTracker) snapshot() (distinctIPs, requests int) {
 }
 
 // rateLimiters owns both per-IP limiter buckets (general + auth) and the
-// goroutine that expires idle entries. It replaces what used to be
-// package-level global maps/mutexes plus an uncancellable init() goroutine —
-// each RouterDependencies instance now gets its own, stoppable via Close(),
-// which also makes it safe to spin up multiple independent routers (e.g. in
-// tests) without sharing rate-limit state between them.
+// goroutine that expires idle entries. Stoppable via Close().
 type rateLimiters struct {
 	general            *visitorTracker
 	auth               *visitorTracker
@@ -663,10 +622,7 @@ func (rl *rateLimiters) runCleanup() {
 }
 
 // warnIfLikelyProxyMisconfigured logs once if every request so far has come
-// from the same IP after a meaningful sample size — the signature of
-// TRUST_PROXY_HEADERS=false behind a reverse proxy that strips/rewrites the
-// client's real IP, collapsing rate limiting and tutor-consent audit IPs onto
-// the proxy's loopback address (audit finding B3).
+// from the same IP, which usually means TRUST_PROXY_HEADERS=false is used behind a reverse proxy.
 func (rl *rateLimiters) warnIfLikelyProxyMisconfigured() {
 	distinctGeneral, generalCount := rl.general.snapshot()
 	distinctAuth, authCount := rl.auth.snapshot()
@@ -699,9 +655,7 @@ func (rl *rateLimiters) generalMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// authMiddleware applies a much stricter per-IP limit to the public
-// authentication routes, which are the most attractive target for credential
-// stuffing / brute force and previously had no rate limiting at all.
+// authMiddleware applies a much stricter per-IP limit to the public authentication routes.
 func (rl *rateLimiters) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		limiter := rl.auth.getLimiter(httputil.ClientIP(r))

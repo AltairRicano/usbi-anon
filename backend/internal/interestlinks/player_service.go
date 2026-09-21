@@ -6,10 +6,8 @@ import (
 	"github.com/altair/usbi-anon-backend/internal/repository"
 )
 
-// PlayerService corre sobre el pool de jugador (usbi_app), que en
-// 00_roles_unificado.sql solo tiene SELECT en interest_link_categories/
-// interest_links — de ahí que solo exponga lectura agrupada, nunca
-// mutaciones.
+// PlayerService corre sobre el pool de jugador (usbi_app) con permisos de solo lectura,
+// exponiendo la consulta agrupada de categorías y enlaces sin permitir mutaciones.
 type PlayerService struct {
 	repo *repository.Queries
 }

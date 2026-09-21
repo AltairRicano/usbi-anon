@@ -1,12 +1,4 @@
-// auth_queries.go absorbe las consultas de refresh_tokens que antes vivían en
-// identityrepo/auth_queries.go (F2, dos bases). Migradas sin más cambio que
-// el JOIN contra `accounts` en vez de `identities`. La FK se llamó
-// `account_id` desde F5 hasta la sesión de revisión de tablas de 2026-09-02,
-// que la renombró a `user_id` para quedar consistente con el resto de tablas
-// de progreso/identidad — la razón histórica del nombre distinto (no
-// invalidar la capa de repositorio copiada verbatim) ya no aplicaba: esa capa
-// se reescribió por completo en F7. IsNoRows no se duplica aquí: ya vive en
-// errors.go, en este mismo paquete.
+// auth_queries.go maneja las consultas de refresh_tokens.
 package repository
 
 import (
@@ -31,9 +23,7 @@ VALUES ($1, $2, $3, $4)
 	return err
 }
 
-// RefreshTokenAccount es la proyección mínima que necesita el flujo de
-// refresh: no trae nickname ni ningún otro dato que no haga falta para
-// revalidar la sesión y volver a emitir el JWT.
+// RefreshTokenAccount es la proyección mínima para revalidar la sesión y emitir el JWT.
 type RefreshTokenAccount struct {
 	TokenID      uuid.UUID
 	UserID       uuid.UUID

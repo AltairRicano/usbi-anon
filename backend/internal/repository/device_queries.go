@@ -72,15 +72,8 @@ WHERE user_id = $1 AND revoked_at IS NULL
 	return err
 }
 
-// RevokeDevice es la "eliminación" de un dispositivo desde la perspectiva
-// del jugador (C2, estado_proyecto.md 2026-09-10): nunca un DELETE físico,
-// porque sync_events.FOREIGN KEY (device_id, user_id) REFERENCES
-// devices(id, user_id) ON DELETE CASCADE borraría en cascada el historial
-// de sincronización que la pantalla "Procesos Offline" existe para mostrar.
-// En vez de eso marca revoked_at y wipe_local_data — mismo mecanismo que ya
-// usa la cancelación de cuenta para forzar el borrado del SQLite local en
-// la siguiente respuesta de sync. sql.ErrNoRows significa "no es tuyo, no
-// existe, o ya estaba revocado".
+// RevokeDevice revoca un dispositivo (no hace DELETE físico para no borrar el historial en cascada).
+// Marca revoked_at y wipe_local_data para borrar el SQLite local en el siguiente sync.
 func (q *Queries) RevokeDevice(ctx context.Context, arg GetActiveDeviceParams) (Device, error) {
 	row := q.db.QueryRowContext(ctx, `
 UPDATE devices

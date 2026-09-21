@@ -1,14 +1,6 @@
-// Package interestlinks implementa la sección "Más" / "Enlaces de interés"
-// del frontend (migración 0003_enlaces_interes_y_sugerencias, F4 —
-// estado_proyecto.md 2026-09-09). Antes de F4, interest_link_categories e
-// interest_links existían en el esquema sin ningún código Go que las
-// tocara — F1 las marcó como huérfanas.
-//
-// Sigue el mismo patrón PlayerService/AdminService que F3 dejó establecido
-// para internal/levels e internal/quiz: un archivo de lógica compartida
-// (este) más dos Service, cada uno con su propio *repository.Queries — el
-// del jugador sobre el pool usbi_app (solo lectura, 00_roles_unificado.sql),
-// el de administración sobre usbi_moderador (CRUD completo).
+// Package interestlinks implementa la sección de enlaces de interés del sistema.
+// Separa las operaciones en PlayerService (solo lectura para jugadores sobre el pool usbi_app)
+// y AdminService (CRUD completo para administración sobre el pool usbi_moderador).
 package interestlinks
 
 import (

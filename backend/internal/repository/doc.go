@@ -50,7 +50,7 @@
 // privacy_queries.go (salvo NullUserInPseudonymizableLedgers y
 // PurgeUserProgressData) migraron íntegros a identityrepo en F2. ESTA
 // RESTRICCIÓN YA NO APLICA: con una sola base (F5) e identityrepo eliminado
-// todo se vuelve a juntar aquí en internal/repository. (Útil)esh_tokens a este paquete (auth_queries.go) y
+// todo se vuelve a juntar aquí en internal/repository. esh_tokens a este paquete (auth_queries.go) y
 // accounts ya vivía aquí desde F1 (account_queries.go). `tutor_consent*` no
 // vuelve — el flujo de tutor se eliminó por completo, no se fusionó.
 // `arco_requests` tampoco vuelve: el flujo ARCO se abandonó junto con el

@@ -1,12 +1,4 @@
-// Lógica compartida entre PlayerService (player_service.go, pool usbi_app) y
-// AdminService (admin_service.go, pool usbi_moderador) — F3 partió el
-// Service único que existía aquí en dos, uno por rol de base de datos, para
-// poder inyectar dos *repository.Queries distintos sin mezclar permisos
-// dentro del mismo tipo. Este archivo se queda con todo lo que no depende de
-// qué rol ejecuta la consulta: validación de contenido de niveles, mapeo de
-// respuestas, cálculo de XP/rachas y el envoltorio de auditoría — funciones
-// libres, no métodos, así que ninguna de las dos mitades necesita
-// duplicarlas. (Útil)
+// duplicarlas.
 package levels
 
 import (
@@ -34,13 +26,13 @@ var (
 
 // ErrNotArchived se devuelve cuando se intenta purgar o restaurar contenido
 // que no ha pasado primero por archivar — la purga irreversible solo opera
-// sobre lo ya archivado (plan/05_Contenido_maker_y_juego.md §6). (Útil)
+// sobre lo ya archivado (plan/05_Contenido_maker_y_juego.md §6).
 var ErrNotArchived = errors.New("content is not archived")
 
 // ErrSectionHasLevels se devuelve cuando se intenta purgar una sección que
 // todavía tiene niveles (archivados o no) referenciándola. levels.section_id
 // es ON DELETE RESTRICT a propósito: cada nivel se purga uno por uno, con sus
-// contadores acumulados, nunca en cascada silenciosa. (Útil)
+// contadores acumulados, nunca en cascada silenciosa.
 var ErrSectionHasLevels = errors.New("section still has levels")
 
 func CalculateXP(difficulty int32, attemptNumber int32, completed bool) int32 {
@@ -216,7 +208,7 @@ func validatePuzzleContent(content json.RawMessage) error {
 		Seed   *int32 `json:"seed,omitempty"`
 	}
 	if err := decodeStrictContent(content, &payload); err != nil {
-		// Nunca registrar el contenido crudo: puede ser de hasta 5 MB y está influenciado por el atacante (B4). (Útil)
+		// Nunca registrar el contenido crudo: puede ser de hasta 5 MB y está influenciado por el atacante (B4).
 		log.Printf("validatePuzzleContent unmarshal error: %v", err)
 		return ErrValidation
 	}
@@ -231,7 +223,7 @@ func validatePuzzleContent(content json.RawMessage) error {
 	return nil
 }
 
-// maxCrosswordWords limita la búsqueda de colocación casi cúbica del constructor de crucigramas. (Útil)
+// maxCrosswordWords limita la búsqueda de colocación casi cúbica del constructor de crucigramas.
 const maxCrosswordWords = 30
 
 func validateCrosswordContent(content json.RawMessage) error {
@@ -244,7 +236,7 @@ func validateCrosswordContent(content json.RawMessage) error {
 	}
 	// Limita el conteo de palabras: canBuildConnectedCrossword es ~O(N^3·L^2), así que un payload
 	// de cientos de palabras cortas (muy por debajo del límite de 5 MB de cuerpo) saturaría
-	// el único vCPU de forma síncrona dentro del handler (hallazgo de auditoría B6). (Útil)
+	// el único vCPU de forma síncrona dentro del handler (hallazgo de auditoría B6).
 	if err := decodeStrictContent(content, &payload); err != nil || len(payload.Words) < 2 || len(payload.Words) > maxCrosswordWords {
 		return ErrValidation
 	}
@@ -531,7 +523,7 @@ func validateSnakesContent(content json.RawMessage) error {
 	}
 	// Serpientes y escaleras restringe cada tirada de dado detrás de una pregunta de dos opciones extraída
 	// de una cola (ver SnakeLadderGame en el frontend); un banco mínimo de 8 evita
-	// que esa cola cicle por el mismo puñado de preguntas demasiado rápido. (Útil)
+	// que esa cola cicle por el mismo puñado de preguntas demasiado rápido.
 	if len(payload.Questions) < minSnakesQuestions {
 		return ErrValidation
 	}
@@ -579,9 +571,6 @@ type AuditParams struct {
 	AfterState  any
 }
 
-// logAdminAudit es un envoltorio ligero sobre el paquete de auditoría compartido, mantenido para que
-// los lugares de llamada existentes en admin_service.go no cambien. Las acciones de administración de contenido no tienen
-// IP/user-agent por petición aquí, así que audit.Log rellena sus placeholders. (Relleno)
 func logAdminAudit(ctx context.Context, params AuditParams) error {
 	return audit.Log(ctx, params.Repo, audit.Entry{
 		ActorID:    params.ActorID,

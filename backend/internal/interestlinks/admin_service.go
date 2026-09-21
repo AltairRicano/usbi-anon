@@ -13,9 +13,7 @@ import (
 )
 
 // AdminService corre sobre el pool de moderador (usbi_moderador), que tiene
-// CRUD completo en interest_link_categories/interest_links
-// (00_roles_unificado.sql: "es contenido editorial igual que
-// sections/levels/badges").
+// permisos para la gestión de categorías y enlaces de interés.
 type AdminService struct {
 	repo *repository.Queries
 }
@@ -127,11 +125,9 @@ func (s *AdminService) UpdateCategory(ctx context.Context, adminID, categoryID u
 	return resp, nil
 }
 
-// DeleteCategory pregunta primero por enlaces vivos (mismo patrón que
-// levels.PurgeSection/CountLevelsBySection) en vez de dejar que el ON DELETE
-// RESTRICT de interest_links.category_id devuelva un error crudo de
-// Postgres: un admin que intenta borrar una categoría con tarjetas debe
-// vaciarla o reasignarlas primero (comentario de la migración 0003).
+// DeleteCategory pregunta primero por enlaces vivos en vez de dejar que el ON DELETE
+// RESTRICT de interest_links.category_id devuelva un error crudo de Postgres:
+// quien administre debe vaciar la categoría o reasignar sus enlaces primero.
 func (s *AdminService) DeleteCategory(ctx context.Context, adminID, categoryID uuid.UUID) error {
 	tx, err := s.repo.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
@@ -311,12 +307,10 @@ func linkAuditPayload(l LinkResponse) map[string]any {
 	}
 }
 
-// isUniqueViolation/isForeignKeyViolation traducen los códigos de error de
-// Postgres (mismo patrón que auth.Service para la colisión de nickname) en
-// vez de dejar pasar el error crudo del driver: el nombre de categoría es
-// UNIQUE, y category_id en interest_links es NOT NULL REFERENCES ... ON
-// DELETE RESTRICT — un category_id inexistente en un create/update debe
-// verse como un 422 de validación, no como un 500.
+// isUniqueViolation y isForeignKeyViolation traducen los códigos de error de
+// Postgres (23505 y 23503) para evitar propagar errores crudos del driver:
+// el nombre de categoría es UNIQUE y category_id es una clave foránea RESTRICT,
+// por lo que violaciones de integridad referencial o unicidad se traducen a errores de validación.
 func isUniqueViolation(err error) bool {
 	var pqErr *pq.Error
 	return errors.As(err, &pqErr) && pqErr.Code == "23505"

@@ -1,13 +1,9 @@
-// Package auditlog implementa la lectura de audit_log para el panel de
-// administración (B1, estado_proyecto.md 2026-09-09) — el hueco de producto
-// abierto desde 2026-09-02: "un admin puede escribir pero no releer sin
-// acceso directo a Postgres". internal/audit sigue siendo la única puerta
-// de escritura (audit.Log); este paquete solo lee.
+// Package auditlog implementa la lectura de audit_log para el panel de administración.
+// internal/audit es la puerta de escritura (audit.Log); este paquete solo gestiona lecturas.
 //
-// Solo AdminService: no existe lado jugador. Cualquier consulta exitosa deja
-// a su vez una entrada audit_log.read con los filtros usados —nunca con los
-// resultados— (decisión D4): es una lectura privilegiada de un libro
-// forense y debe quedar trazado quién la hizo.
+// Solo AdminService: no existe lado jugador. Cualquier consulta exitosa registra
+// una entrada audit_log.read con los filtros usados (nunca con los resultados devueltos),
+// al tratarse de una lectura privilegiada de un registro forense para trazar quién la realizó.
 package auditlog
 
 import (
@@ -64,7 +60,7 @@ func encodeCursor(t time.Time, id uuid.UUID) string {
 	return t.Format(time.RFC3339Nano) + "_" + id.String()
 }
 
-// List filtra y pagina audit_log, y audita la propia consulta (decisión D4)
+// List filtra y pagina audit_log, y audita la propia consulta
 // con los filtros usados —nunca con los resultados devueltos— en la misma
 // transacción para que una falla al auditar no deje una lectura sin rastro.
 func (s *AdminService) List(ctx context.Context, adminID uuid.UUID, f Filters) (Page, error) {
@@ -132,8 +128,7 @@ func (s *AdminService) List(ctx context.Context, adminID uuid.UUID, f Filters) (
 	return page, nil
 }
 
-// auditReadFilters registra qué se consultó, nunca lo que se encontró — ver
-// la nota de paquete sobre la decisión D4.
+// auditReadFilters registra qué se consultó, nunca los resultados obtenidos.
 func auditReadFilters(f Filters) map[string]any {
 	filters := map[string]any{"page_size": f.PageSize}
 	if f.ActorAccountID != uuid.Nil {

@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// BadgeResponse es la representación de una insignia para el panel admin. (Relleno)
+// BadgeResponse es la representación de una insignia para el panel admin.
 type BadgeResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -13,22 +13,21 @@ type BadgeResponse struct {
 	IconKey     string    `json:"icon_key"`
 }
 
-// CreateBadgeRequest es el cuerpo de POST /admin/badges. (Relleno)
+// CreateBadgeRequest es el cuerpo de POST /admin/badges.
 type CreateBadgeRequest struct {
 	Name        string `json:"name"`
 	XPThreshold int32  `json:"xp_threshold"`
 	IconKey     string `json:"icon_key"`
 }
 
-// UpdateBadgeRequest es el cuerpo de PATCH /admin/badges/{id}. (Relleno)
+// UpdateBadgeRequest es el cuerpo de PATCH /admin/badges/{id}.
 type UpdateBadgeRequest struct {
 	Name        string `json:"name"`
 	XPThreshold int32  `json:"xp_threshold"`
 	IconKey     string `json:"icon_key"`
 }
 
-// BadgesResponse envuelve el listado en `{"items": [...]}` (C4,
-// estado_proyecto.md 2026-09-10) — mismo sobre que ya usan
+// BadgesResponse envuelve el listado en `{"items": [...]}` — mismo formato que usan
 // devices/levels/auditlog/suggestions/interestlinks.
 type BadgesResponse struct {
 	Items []BadgeResponse `json:"items"`

@@ -12,8 +12,7 @@ import (
 )
 
 // Handler expone el CRUD administrativo del catálogo de insignias. Solo
-// AdminService — la lectura del jugador sigue en internal/levels
-// (GetProfileProgress → repository.ListUserBadges), sin cambios por B3.
+// AdminService — la lectura del jugador se gestiona en internal/levels.
 type Handler struct {
 	admin *AdminService
 }

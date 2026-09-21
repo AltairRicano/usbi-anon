@@ -22,3 +22,5 @@ core.*
 # destino (usbictl pgconf render, M3.7) — se regeneran, no se versionan.
 backend/deploy/postgres/rendered/
 
+# grafo de contexto para IA (repo anidado, personal por máquina)
+.graph/

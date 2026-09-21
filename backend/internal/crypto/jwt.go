@@ -25,7 +25,7 @@ type usbiClaims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken crea un JWT firmado para un usuario. (Relleno)
+// GenerateToken crea un JWT firmado para un usuario.
 func GenerateToken(claims domain.JWTClaims, cfg TokenConfig) (string, error) {
 	now := time.Now()
 
@@ -45,7 +45,7 @@ func GenerateToken(claims domain.JWTClaims, cfg TokenConfig) (string, error) {
 	return token.SignedString(cfg.Secret)
 }
 
-// ValidateToken analiza y valida un JWT, devolviendo los claims centrales. (Relleno)
+// ValidateToken analiza y valida un JWT, devolviendo los claims centrales.
 func ValidateToken(tokenString string, cfg TokenConfig) (*domain.JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &usbiClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

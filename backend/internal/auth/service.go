@@ -1,10 +1,4 @@
-// Reescrito en F9 (plan/04_Rediseno_identidad_gustos.md §2 y §3) para el
-// esquema unificado sin email ni flujo de tutor. El diseño anterior (dos
-// bases, correo cifrado, doble opt-in de tutor por correo) queda descartado
-// por completo: no hay Register de una sola llamada, sino tres pasos
-// (RegisterQuestions → RegisterAnswers → RegisterConfirm, ver
-// registration_token.go), y no hay SubmitTutorConsent/VerifyTutorConsent —
-// un menor autoreportado juega de inmediato. (Útil)
+// Package auth gestiona el registro en 3 pasos y la autenticación.
 package auth
 
 import (
@@ -29,7 +23,7 @@ import (
 	"github.com/lib/pq"
 )
 
-// Errores centinela — usados por el handler para un mapeo correcto del estado HTTP. (Útil)
+// Errores centinela — usados por el handler para un mapeo correcto del estado HTTP.
 var (
 	ErrValidation           = errors.New("validation error")
 	ErrUserNotFound         = errors.New("user not found")
@@ -53,7 +47,7 @@ const defaultMaxConcurrentPasswordHashes = 2
 
 // dummyPasswordHash es un hash de Argon2id precalculado usado para rellenar la
 // ruta de login de "nickname no encontrado" con el mismo costo de CPU que una
-// verificación de contraseña real, así la latencia no filtra si un nickname existe. (Útil)
+// verificación de contraseña real, así la latencia no filtra si un nickname existe.
 var dummyPasswordHash string
 
 func init() {
@@ -64,27 +58,24 @@ func init() {
 	dummyPasswordHash = h
 }
 
-// Config contiene todos los secretos y configuraciones necesarios para auth.Service. (Relleno)
 type Config struct {
 	// HMACSecret firma el token de registro y el sello de aceptación del
 	// aviso de privacidad, y los tokens de refresh.
 	HMACSecret []byte
-	// TokenConfig transporta la clave de firma JWT y la duración de expiración. (Relleno)
 	TokenConfig crypto.TokenConfig
-	// MaxConcurrentPasswordHashes limita el trabajo concurrente de Argon2. Por defecto 2. (Relleno)
 	MaxConcurrentPasswordHashes int
 	// StaffPrivacyNoticeVersion se sella en las cuentas creadas por un admin
 	// (POST /admin/accounts, decisión 6 del rediseño) — esas cuentas no
 	// pasan por el cuestionario de gustos, así que no traen su propia
 	// versión del aviso. Placeholder hasta la reescritura legal completa
-	// (F11): no hay todavía un aviso de privacidad específico para staff. (Útil)
+	// No hay todavía un aviso de privacidad específico para staff.
 	StaffPrivacyNoticeVersion string
 }
 
 // Service implementa la lógica de autenticación contra la única base del
 // sistema. quiz orquesta la generación de nickname/password y el banco de
 // preguntas — auth nunca genera candidatos ni toca registration_questions
-// directo, siempre a través de ese paquete. (Útil)
+// directo, siempre a través de ese paquete.
 type Service struct {
 	repo              *repository.Queries
 	quiz              *quiz.PlayerService
@@ -95,10 +86,9 @@ type Service struct {
 // NewService crea un auth.Service. Entra en pánico si cfg contiene valores cero
 // para secretos requeridos, previniendo malas configuraciones silenciosas al inicio.
 //
-// quizSvc es *quiz.PlayerService (F3, 2026-09-09), no el AdminService del
-// banco de preguntas: auth solo necesita muestrear preguntas activas durante
+// quizSvc es *quiz.PlayerService.r preguntas activas durante
 // el registro (SelectQuestionsForRegistration/GetActiveQuestionByID), nunca
-// administrar el banco. (Útil)
+// administrar el banco.
 func NewService(repo *repository.Queries, quizSvc *quiz.PlayerService, cfg Config) *Service {
 	if len(cfg.HMACSecret) == 0 {
 		panic("auth.Config: HMACSecret must not be empty")
@@ -121,11 +111,11 @@ func NewService(repo *repository.Queries, quizSvc *quiz.PlayerService, cfg Confi
 	}
 }
 
-// ── Registro en 3 pasos ────────────────────────────────────────────────── (Útil)
+// ── Registro en 3 pasos ──────────────────────────────────────────────────
 
 // RegisterQuestions maneja el primer paso: un subconjunto aleatorio de preguntas
 // activas. Delega enteramente a internal/quiz — auth no decide el
-// muestreo, solo traduce el DTO. (Útil)
+// muestreo, solo traduce el DTO.
 func (s *Service) RegisterQuestions(ctx context.Context) (RegisterQuestionsResponse, error) {
 	resp, err := s.quiz.SelectQuestionsForRegistration(ctx)
 	if err != nil {
@@ -141,7 +131,7 @@ func (s *Service) RegisterQuestions(ctx context.Context) (RegisterQuestionsRespo
 // RegisterAnswers valida las respuestas, genera 4 candidatos de nickname y
 // devuelve el estado firmado que RegisterConfirm necesitará — sin escribir
 // nada en la base todavía: una persona que abandona aquí no deja ninguna
-// fila a medias. (Útil)
+// fila a medias.
 func (s *Service) RegisterAnswers(ctx context.Context, req RegisterAnswersRequest) (RegisterAnswersResponse, error) {
 	if !legaltext.VerifyVersion(strings.TrimSpace(req.PrivacyNoticeVersion)) {
 		return RegisterAnswersResponse{}, ErrPrivacyVersionOutdated
@@ -205,7 +195,7 @@ func (s *Service) RegisterAnswers(ctx context.Context, req RegisterAnswersReques
 // RegisterConfirm valida el nickname elegido contra los 4 candidatos
 // firmados, RE-verifica la colisión (pudo tomarse en los minutos que pasaron
 // desde /answers), genera el password y crea la cuenta — respuestas,
-// account_quiz_answers y alias en una sola transacción. (Útil)
+// account_quiz_answers y alias en una sola transacción.
 func (s *Service) RegisterConfirm(ctx context.Context, req RegisterConfirmRequest) (RegisterConfirmResponse, error) {
 	payload, err := s.verifyRegistrationToken(req.RegistrationToken)
 	if err != nil {
@@ -354,10 +344,10 @@ func isUniqueViolation(err error) bool {
 	return false
 }
 
-// ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
+// ── Login / sesión ────────────────────────────────────────────────────────
 
 // Login busca la cuenta directo por nickname (sin blind index: no es PII
-// cifrada) y verifica el password con comparación en tiempo constante. (Útil)
+// cifrada) y verifica el password con comparación en tiempo constante.
 func (s *Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, error) {
 	if err := validateLogin(req); err != nil {
 		return LoginResponse{}, fmt.Errorf("%w: %s", ErrValidation, err.Error())
@@ -502,7 +492,7 @@ func (s *Service) Logout(ctx context.Context, accountID uuid.UUID) error {
 }
 
 // AgeUp aplica la transición a mayoría de edad (Ley 251, máx. 3 intentos).
-// Simplificado frente al diseño de dos bases: sin tutor que pseudonimizar,
+// Cancela la cuenta.
 // sin identity_audit_log — solo el contador y el estado, auditados en la
 // misma bitácora unificada que cualquier otra acción.
 func (s *Service) AgeUp(ctx context.Context, accountID uuid.UUID, ip, userAgent string) error {

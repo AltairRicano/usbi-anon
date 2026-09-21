@@ -1,10 +1,6 @@
-// registration_token.go implementa el estado intermedio del registro entre
-// "elegir preguntas" y "confirmar nickname" (decisión 9 del rediseño): un
+// registration_token.go implementa el estado intermedio del registro: un
 // token HMAC firmado con TTL de 10 minutos, sin tabla intermedia en la base.
-// El payload completo (respuestas, is_adult, versión del aviso de
-// privacidad, los 4 candidatos ya generados) viaja firmado en el propio
-// token — el servidor no necesita recordar nada entre /register/answers y
-// /register/confirm. (Útil)
+// El payload completo viaja firmado en el propio token.
 package auth
 
 import (
@@ -34,11 +30,8 @@ type registrationTokenPayload struct {
 	ExpiresAt            time.Time       `json:"expires_at"`
 }
 
-// signRegistrationToken serializa el payload y lo firma: la forma en texto
-// es base64url(json) + "." + base64url(hmac-sha256(json)). No es un JWT
-// (no hace falta el resto del estándar para un token interno de un solo
-// flujo), pero el mismo principio: firmar, no cifrar — el cliente puede leer
-// el contenido, no puede falsificarlo. (Útil)
+// signRegistrationToken serializa el payload y lo firma.
+// Principio: firmar, no cifrar — el cliente puede leer el contenido, no falsificarlo.
 func (s *Service) signRegistrationToken(payload registrationTokenPayload) (string, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -49,9 +42,7 @@ func (s *Service) signRegistrationToken(payload registrationTokenPayload) (strin
 }
 
 // verifyRegistrationToken valida la firma ANTES de confiar en cualquier
-// campo del payload (incluido ExpiresAt) — el orden importa: comprobar la
-// expiración de un payload no verificado le daría a un atacante una forma de
-// sondear el reloj del servidor con datos falsificados. (Útil)
+// campo del payload (incluido ExpiresAt) para evitar ataques de tiempo.
 func (s *Service) verifyRegistrationToken(token string) (registrationTokenPayload, error) {
 	var payload registrationTokenPayload
 

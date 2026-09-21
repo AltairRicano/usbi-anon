@@ -15,9 +15,8 @@ var ErrNotFound = errors.New("not found")
 const defaultPageSize = 20
 const maxPageSize = 50
 
-// AdminService corre sobre el pool de moderador (usbi_moderador), que tiene
-// SELECT+DELETE (nunca INSERT ni UPDATE — una sugerencia no se edita) en
-// suggestions.
+// AdminService corre sobre el pool de moderador (usbi_moderador), con permisos de
+// lectura y eliminación (las sugerencias no se editan).
 type AdminService struct {
 	repo *repository.Queries
 }

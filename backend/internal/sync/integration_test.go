@@ -17,19 +17,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// Cobertura de integración para ProcessSync contra un esquema real de Postgres (hallazgo de auditoría
-// B9) — la verificación HMAC, idempotencia y caminos de rechazo de fechas futuras
-// antes no se probaban end-to-end; solo funciones puras auxiliares tenían
-// pruebas unitarias. Ejecutar con TEST_DATABASE_URL definido (ver internal/testdb); de lo contrario
-// se salta.
+// Cobertura de integración para ProcessSync contra un esquema real de Postgres.
+// Ejecutar con TEST_DATABASE_URL definido; de lo contrario se salta.
 //
-// Reescrito en F9 (plan/04_Rediseno_identidad_gustos.md §2 y §3) para el
-// esquema unificado: ya no hay dos bases (testdb.Setup devuelve un único
-// *testdb.DB{Repo, DB}) ni Register de una sola llamada por email —
-// setupFixtures ahora recorre el registro real en 3 pasos
-// (RegisterQuestions → RegisterAnswers → RegisterConfirm) contra las
-// registration_questions sembradas por el baseline de
-// 0001_esquema_unificado.up.sql, exactamente como lo haría un cliente real. (Útil)
+// setupFixtures recorre el registro real en 3 pasos (RegisterQuestions → RegisterAnswers → RegisterConfirm)
+// como lo haría un cliente real.
 
 const testHMACSecret = "integration-test-hmac-secret-32-bytes-min!!"
 
@@ -44,9 +36,7 @@ func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Se
 	})
 	syncSvc := syncpkg.NewService(db.Repo, []byte(testHMACSecret))
 	devicesSvc := devices.NewService(db.Repo)
-	// AdminService: el fixture crea/publica contenido (CreateSection,
-	// CreateLevel, PublishLevel), operaciones exclusivas de moderador — F3
-	// partió levels.Service en PlayerService/AdminService (2026-09-09). (Útil)
+	// AdminService: el fixture crea/publica contenido, operaciones de moderador.
 	levelsSvc := levels.NewAdminService(db.Repo)
 	return syncSvc, authSvc, devicesSvc, levelsSvc
 }
@@ -55,7 +45,7 @@ func newTestServices(t *testing.T) (*syncpkg.Service, *auth.Service, *devices.Se
 // un dispositivo registrado y un nivel de trivia publicado (dificultad
 // 5, por lo que intento 1 = 20 XP) — todo lo que ProcessSync necesita, todo a través de
 // los servicios reales (RegisterConfirm hace hashing real con Argon2id; nada aquí está
-// mockeado). (Útil)
+// mockeado).
 func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, devicesSvc *devices.Service, levelsSvc *levels.AdminService) (userID, deviceID, levelID uuid.UUID) {
 	t.Helper()
 
@@ -97,7 +87,7 @@ func setupFixtures(t *testing.T, ctx context.Context, authSvc *auth.Service, dev
 
 	// Login (no solo RegisterConfirm) confirma que el password devuelto en
 	// claro es de verdad el que quedó hasheado en la cuenta — sin esto, un
-	// bug en el hash de RegisterConfirm pasaría inadvertido para este test. (Útil)
+	// bug en el hash de RegisterConfirm pasaría inadvertido para este test.
 	if _, err := authSvc.Login(ctx, auth.LoginRequest{Nickname: confirm.Nickname, Password: confirm.Password}); err != nil {
 		t.Fatalf("Login() error = %v", err)
 	}
@@ -168,7 +158,7 @@ func TestProcessSyncEndToEnd(t *testing.T) {
 		if resp.Status != "synced" {
 			t.Fatalf("ProcessSync() status = %q, want %q", resp.Status, "synced")
 		}
-		// dificultad 5, intento 1 -> 4*5 = 20 XP, sin importar el puntaje del cliente. (Útil)
+		// dificultad 5, intento 1 -> 4*5 = 20 XP, sin importar el puntaje del cliente.
 		if resp.ServerXPTotal != 20 {
 			t.Fatalf("ProcessSync() server_xp_total = %d, want 20 (server-recalculated, client XP ignored)", resp.ServerXPTotal)
 		}

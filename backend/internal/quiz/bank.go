@@ -11,7 +11,7 @@
 //     banco de preguntas y su Handler HTTP.
 //   - credentials.go: generación de nickname/password a partir de las
 //     respuestas. Sin HTTP, sin acceso al banco de preguntas — funciones
-//     puras que internal/auth orquesta durante el registro. (Útil)
+//     puras que internal/auth orquesta durante el registro.
 package quiz
 
 import (
@@ -38,7 +38,7 @@ var (
 // comentario de registration_questions — un CHECK/trigger no puede contar
 // filas de la misma tabla de forma segura bajo concurrencia sin el mismo
 // FOR UPDATE que ya hacen CountActiveRegistrationQuestions/
-// GetRegistrationQuestionForUpdate. (Útil)
+// GetRegistrationQuestionForUpdate.
 const (
 	minActiveQuestions   = 4
 	minMaxQuestionsShown = 4
@@ -81,7 +81,7 @@ type UpdateSettingsRequest struct {
 }
 
 // PublicQuestion es la proyección que ve quien se está registrando: sin
-// is_active ni display_order, que son detalles de administración. (Útil)
+// is_active ni display_order, que son detalles de administración.
 type PublicQuestion struct {
 	ID   uuid.UUID `json:"id"`
 	Text string    `json:"text"`
@@ -95,7 +95,7 @@ type RegistrationQuestionsResponse struct {
 // selectRandom hace el muestreo aleatorio puro que pide plan/04 §2: sin
 // ponderar por display_order ni nada más, un shuffle completo del pool y se
 // toman los primeros `max`. math/rand (no crypto/rand): esto no es un
-// secreto que proteger, es solo variar qué preguntas ve cada registro. (Útil)
+// secreto que proteger, es solo variar qué preguntas ve cada registro.
 func selectRandom(pool []repository.RegistrationQuestion, max int) []repository.RegistrationQuestion {
 	if max <= 0 || len(pool) == 0 {
 		return nil
@@ -132,7 +132,7 @@ func questionAuditPayload(q QuestionResponse) map[string]any {
 		"display_order": q.DisplayOrder,
 		// question_text se omite a propósito: no es dato personal, pero el
 		// texto de la pregunta no aporta nada al rastro de auditoría que
-		// is_active/display_order no den ya, y mantiene el payload chico. (Útil)
+		// is_active/display_order no den ya, y mantiene el payload chico.
 	}
 }
 

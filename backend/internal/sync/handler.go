@@ -14,12 +14,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler expone el endpoint HTTP de sincronización. (Relleno)
+// Handler expone el endpoint HTTP de sincronización.
 type Handler struct {
 	svc *Service
 }
 
-// NewHandler crea un sync.Handler. (Relleno)
+// NewHandler crea un sync.Handler.
 func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
@@ -29,9 +29,9 @@ func NewHandler(svc *Service) *Handler {
 // Contrato de seguridad:
 //   - El HMAC se verifica sobre un payload técnico canónico, no sobre el JSON en crudo.
 //   - hmac_signature en el cuerpo JSON son bytes codificados en base64 (codificación estándar).
-//   - El user_id en el cuerpo DEBE coincidir con las claims del JWT (verificado por middleware). (Útil)
+//   - El user_id en el cuerpo DEBE coincidir con las claims del JWT (verificado por middleware).
 func (h *Handler) SyncData(w http.ResponseWriter, r *http.Request) {
-	// Leer el cuerpo una vez. La verificación HMAC usa el payload canónico decodificado. (Útil)
+	// Leer el cuerpo una vez. La verificación HMAC usa el payload canónico decodificado.
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError
@@ -77,11 +77,7 @@ func (h *Handler) SyncData(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusOK, resp)
 }
 
-// ListMyHistory maneja GET /api/v1/sync/events: el historial de
-// sincronización offline del propio jugador autenticado, sin variante de
-// admin (B4, estado_proyecto.md 2026-09-09) — un admin que jugó offline ve
-// aquí sus propios eventos, como cualquier jugador, nunca los de otra
-// cuenta.
+// ListMyHistory maneja GET /api/v1/sync/events: el historial del propio jugador autenticado.
 func (h *Handler) ListMyHistory(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	if !ok {

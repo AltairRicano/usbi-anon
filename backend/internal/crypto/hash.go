@@ -15,7 +15,7 @@ import (
 
 // Parámetros de Argon2id — alineados con el mínimo de OWASP 2023 para inicios de sesión interactivos.
 // memory=64MB, time=3, threads=1. El servidor de producción tiene 1 vCPU, así que usar
-// un solo hilo de Argon2 evita sobrecargar la CPU durante ráfagas de autenticación. (Útil)
+// un solo hilo de Argon2 evita sobrecargar la CPU durante ráfagas de autenticación.
 const (
 	argon2Memory      uint32 = 64 * 1024
 	argon2Iterations  uint32 = 3
@@ -29,7 +29,7 @@ var (
 	ErrIncompatibleVersion = errors.New("incompatible argon2 version")
 )
 
-// HashPassword genera un hash Argon2id en formato PHC de la contraseña. (Relleno)
+// HashPassword genera un hash Argon2id en formato PHC de la contraseña.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, argon2SaltLength)
 	if _, err := rand.Read(salt); err != nil {
@@ -53,10 +53,10 @@ func HashPassword(password string) (string, error) {
 	return encodedHash, nil
 }
 
-// VerifyPassword compara una contraseña en texto plano contra un hash Argon2id en formato PHC. (Relleno)
+// VerifyPassword compara una contraseña en texto plano contra un hash Argon2id en formato PHC.
 func VerifyPassword(password, encodedHash string) (bool, error) {
 	parts := strings.Split(encodedHash, "$")
-	// Formato PHC: ["", "argon2id", "v=19", "m=...", "b64salt", "b64hash"] (Relleno)
+	// Formato PHC: ["", "argon2id", "v=19", "m=...", "b64salt", "b64hash"]
 	if len(parts) != 6 {
 		return false, ErrInvalidHash
 	}
@@ -89,14 +89,14 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 	return subtle.ConstantTimeCompare(storedHash, computedHash) == 1, nil
 }
 
-// GenerateHMAC calcula un HMAC-SHA256 sobre el payload usando secret. (Relleno)
+// GenerateHMAC calcula un HMAC-SHA256 sobre el payload usando secret.
 func GenerateHMAC(payload, secret []byte) []byte {
 	h := hmac.New(sha256.New, secret)
 	h.Write(payload)
 	return h.Sum(nil)
 }
 
-// VerifyHMAC realiza una comparación en tiempo constante del HMAC esperado frente al provisto. (Útil)
+// VerifyHMAC realiza una comparación en tiempo constante del HMAC esperado frente al provisto.
 func VerifyHMAC(payload, signature, secret []byte) bool {
 	expected := GenerateHMAC(payload, secret)
 	return hmac.Equal(expected, signature)
@@ -105,7 +105,7 @@ func VerifyHMAC(payload, signature, secret []byte) bool {
 // BlindIndexHMAC genera un HMAC-SHA256 con clave para búsquedas deterministas
 // de coincidencia exacta (correo, teléfono). Usar HMAC en lugar de SHA256 simple previene
 // ataques de extensión de longitud y ataques de diccionario entre sistemas.
-// secret DEBE derivarse de la variable de entorno BLIND_INDEX_SECRET. (Útil)
+// secret DEBE derivarse de la variable de entorno BLIND_INDEX_SECRET.
 func BlindIndexHMAC(data string, secret []byte) []byte {
 	return GenerateHMAC([]byte(data), secret)
 }

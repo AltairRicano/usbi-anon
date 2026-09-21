@@ -1,6 +1,4 @@
-// validation.go valida las respuestas del cuestionario en el backend —
-// Zod en el frontend nunca es la única barrera (plan/04 §5): un cliente que
-// se salte el frontend igual debe chocar con estas mismas reglas aquí. (Útil)
+// validation.go valida las respuestas del cuestionario en el backend.
 package auth
 
 import (
@@ -14,17 +12,12 @@ const (
 	adminPasswordMinLen = 8
 )
 
-// htmlTagRe replica la exclusión de HTML del esquema Zod del frontend
-// (plan/04 §5): cualquier "<letra" seguido de cualquier cosa y un ">". (Útil)
+// htmlTagRe replica la exclusión de HTML del esquema Zod del frontend.
 var htmlTagRe = regexp.MustCompile(`(?i)<[a-z][\s\S]*>`)
 
 var nicknameFormatRe = regexp.MustCompile(`^[a-z0-9]{6,20}$`)
 
-// validateAnswerText replica en Go las tres reglas del esquema Zod
-// compartido en plan/04 §5: sin caracteres de control, sin apariencia de
-// JSON, sin HTML. answer_text es el único campo de texto libre escrito por
-// una persona usuaria en toda la base (comentario de account_quiz_answers en
-// el esquema), así que es el único que necesita esta validación. (Útil)
+// validateAnswerText valida el formato de la respuesta del usuario (sin control, JSON o HTML).
 func validateAnswerText(text string) error {
 	if text == "" {
 		return errors.New("answer_text is required")

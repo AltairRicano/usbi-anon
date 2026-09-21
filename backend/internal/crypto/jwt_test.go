@@ -10,9 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// crypto/jwt.go no tenía pruebas (hallazgo de auditoría B9) a pesar de ser la ruta
-// real de firma/verificación para cada petición autenticada. Estas prueban
-// la biblioteca jwt/v5 real de extremo a extremo — sin mockear la criptografía. (Útil)
+// Pruebas de la biblioteca jwt/v5 real de extremo a extremo —sin mockear la criptografía—
+// al ser la ruta real de firma/verificación para cada petición autenticada.
 
 func testConfig() TokenConfig {
 	return TokenConfig{Secret: []byte("test-secret-at-least-32-bytes-long!!"), AccessExpiry: time.Hour}
@@ -38,7 +37,7 @@ func TestGenerateAndValidateTokenRoundTrip(t *testing.T) {
 
 func TestValidateTokenRejectsExpiredToken(t *testing.T) {
 	cfg := testConfig()
-	cfg.AccessExpiry = -time.Minute // already expired at generation time
+	cfg.AccessExpiry = -time.Minute // ya expirado al momento de la generación
 
 	token, err := GenerateToken(domain.JWTClaims{UserID: uuid.New(), Role: domain.RolePlayer, TokenVersion: 1}, cfg)
 	if err != nil {
@@ -72,7 +71,7 @@ func TestValidateTokenRejectsTamperedPayload(t *testing.T) {
 	}
 
 	// Voltea un carácter en el segmento del payload para simular un intento de
-	// escalamiento de privilegios (ej. reescribiendo "player" a "admin") sin volver a firmar. (Útil)
+	// escalamiento de privilegios (ej. reescribiendo "player" a "admin") sin volver a firmar.
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		t.Fatalf("unexpected token shape: %d segments", len(parts))
@@ -87,7 +86,7 @@ func TestValidateTokenRejectsTamperedPayload(t *testing.T) {
 // TestValidateTokenRejectsAlgorithmConfusion protege la comprobación explícita de
 // SigningMethodHMAC en ValidateToken contra un atacante que crea un
 // token con un alg diferente (aquí "none") esperando que el verificador salte por
-// completo la comprobación de la firma — una vulnerabilidad de JWT del mundo real bien conocida. (Útil)
+// completo la comprobación de la firma — una vulnerabilidad de JWT del mundo real bien conocida.
 func TestValidateTokenRejectsAlgorithmConfusion(t *testing.T) {
 	cfg := testConfig()
 	claims := jwt.MapClaims{

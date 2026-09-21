@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// MockRepository es un mock básico para probar la lógica de CreateLevel sin una DB. (Relleno)
 type MockRepository struct {
 	createdID uuid.UUID
 	shouldErr bool
@@ -24,7 +23,7 @@ func (m *MockRepository) CreateLevel(ctx context.Context, arg interface{}) error
 func TestCreateLevel_Validation(t *testing.T) {
 	// No se prueba la inyección completa de DB aquí, solo la lógica de validación del servicio.
 	// Como el servicio depende de *repository.Queries que es un tipo concreto,
-	// solo probaremos los casos puros de validación. (Útil)
+	// solo probaremos los casos puros de validación.
 
 	svc := NewAdminService(nil) // Will panic if DB is called, but we expect validation to catch it first.
 

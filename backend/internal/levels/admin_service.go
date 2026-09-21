@@ -1,10 +1,4 @@
-// AdminService agrupa las operaciones de internal/levels que corren con el
-// pool de usbi_moderador (F3, 2026-09-09): todo lo que antes vivía detrás de
-// canManageContent/canArchiveContent en el Handler. A diferencia de
-// PlayerService (player_service.go), GetLevel siempre puede ver contenido no
-// publicado y ListLevels/ListSections lo exponen bajo un parámetro explícito
-// — coherente con el comportamiento que ya tenía el Service único antes de
-// partirse en dos. (Útil)
+// AdminService agrupa las operaciones CRUD de niveles. Puede ver contenido no publicado.
 package levels
 
 import (
@@ -294,11 +288,7 @@ func (s *AdminService) ListArchivedLevels(ctx context.Context, sectionID uuid.UU
 	return ArchivedLevelsResponse{Items: items}, nil
 }
 
-// PurgeLevel es irreversible. Solo opera sobre un nivel ya archivado: acumula
-// sus contadores de progreso en account_retired_progress ANTES del DELETE
-// (dentro de la misma transacción, orden que importa) para que la XP y los
-// "niveles completados" de cada jugador sobrevivan a la rotación de
-// temporada — ver CLAUDE.md, "rotación de niveles por temporadas". (Útil)
+// PurgeLevel es irreversible. Opera sobre nivel archivado y acumula progreso en account_retired_progress antes del DELETE (ver CLAUDE.md).
 func (s *AdminService) PurgeLevel(ctx context.Context, adminID, levelID uuid.UUID) error {
 	if levelID == uuid.Nil {
 		return ErrValidation
@@ -393,10 +383,7 @@ func (s *AdminService) ListArchivedSections(ctx context.Context) (ArchivedSectio
 	return ArchivedSectionsResponse{Items: items}, nil
 }
 
-// PurgeSection es irreversible. Solo opera sobre una sección ya archivada y
-// sin ningún nivel restante (archivado o no) referenciándola — levels.
-// section_id es RESTRICT a propósito, así que primero hay que purgar sus
-// niveles uno por uno. (Útil)
+// PurgeSection es irreversible. Solo opera sobre sección archivada sin niveles (levels.section_id es RESTRICT).
 func (s *AdminService) PurgeSection(ctx context.Context, adminID, sectionID uuid.UUID) error {
 	if sectionID == uuid.Nil {
 		return ErrValidation
@@ -443,11 +430,7 @@ func (s *AdminService) PurgeSection(ctx context.Context, adminID, sectionID uuid
 	return tx.Commit()
 }
 
-// GetLevel siempre puede ver contenido no publicado — el Handler solo llama a
-// este método cuando canManageContent(claims.Role) ya dio true, así que no
-// hace falta un parámetro includeUnpublished aquí (a diferencia de
-// ListLevels/ListSections, donde el admin sigue optando explícitamente vía
-// query param). (Útil)
+// GetLevel siempre puede ver contenido no publicado para los admins.
 func (s *AdminService) GetLevel(ctx context.Context, levelID uuid.UUID) (LevelResponse, error) {
 	if levelID == uuid.Nil {
 		return LevelResponse{}, ErrValidation

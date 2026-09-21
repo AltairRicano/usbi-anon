@@ -11,9 +11,8 @@ import (
 	"github.com/lib/pq"
 )
 
-// AdminService corre sobre el pool de moderador (usbi_moderador), que tiene
-// CRUD completo en badges desde el 2026-09-02 (00_roles_unificado.sql) —
-// B3 solo construye la capa Go que faltaba, sin tocar la matriz de roles.
+// AdminService corre sobre el pool de moderador (usbi_moderador), que cuenta con
+// permisos para la administración del catálogo de insignias.
 type AdminService struct {
 	repo *repository.Queries
 }
@@ -127,8 +126,7 @@ func (s *AdminService) Update(ctx context.Context, adminID, badgeID uuid.UUID, r
 	return resp, nil
 }
 
-// Delete pregunta primero por titulares vivos (mismo patrón que
-// interestlinks.DeleteCategory/levels.PurgeSection) en vez de dejar que el
+// Delete pregunta primero por titulares vivos en vez de dejar que el
 // ON DELETE RESTRICT de user_badges.badge_id devuelva un error crudo de
 // Postgres. Una insignia ya ganada nunca se revoca: si al menos un jugador
 // la tiene, el borrado se rechaza con un error de dominio propio, nunca con
@@ -167,9 +165,8 @@ func (s *AdminService) Delete(ctx context.Context, adminID, badgeID uuid.UUID) e
 	return tx.Commit()
 }
 
-// isUniqueViolation traduce el 23505 de Postgres (badges.name ahora único,
-// migración 0006) en vez de dejar pasar el error crudo del driver — mismo
-// patrón que interestlinks.isUniqueViolation.
+// isUniqueViolation traduce el error 23505 de Postgres (badges.name único)
+// en vez de propagar el error crudo del driver.
 func isUniqueViolation(err error) bool {
 	var pqErr *pq.Error
 	return errors.As(err, &pqErr) && pqErr.Code == "23505"

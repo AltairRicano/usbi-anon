@@ -13,14 +13,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler expone el endpoint de administración de incidentes de seguridad. (Relleno)
+// Handler expone el endpoint de administración de incidentes de seguridad.
 type Handler struct {
 	svc *Service
 }
 
 func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 
-// CreateIncident maneja POST /api/v1/admin/security-incidents. (Relleno)
+// CreateIncident maneja POST /api/v1/admin/security-incidents.
 func (h *Handler) CreateIncident(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	if !ok {
@@ -107,9 +107,8 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update maneja PATCH /api/v1/admin/security-incidents/{incident_id}.
 // Nunca expone un DELETE: no hay ruta, ningún rol tiene el privilegio, y el
-// esquema lo prohíbe con un trigger BEFORE DELETE (migración 0006) — un
-// incidente de seguridad no se borra desde la aplicación bajo ninguna
-// circunstancia.
+// esquema lo prohíbe con un trigger BEFORE DELETE — un incidente de seguridad
+// no se borra desde la aplicación bajo ninguna circunstancia.
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	if !ok {

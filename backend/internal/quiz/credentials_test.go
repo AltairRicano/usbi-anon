@@ -36,7 +36,7 @@ func TestGenerateNicknameCandidates_ShapeAndCharset(t *testing.T) {
 
 func TestGenerateNicknameCandidates_InsufficientAnswers(t *testing.T) {
 	// Solo "7" aporta un fragmento normalizable ("azul" con solo espacios
-	// alrededor también cuenta, así que se usan respuestas vacías/símbolos). (Útil)
+	// alrededor también cuenta, así que se usan respuestas vacías/símbolos).
 	answers := []string{"7", "!!!", "   "}
 	exists := func(string) (bool, error) { return false, nil }
 
@@ -49,7 +49,7 @@ func TestGenerateNicknameCandidates_InsufficientAnswers(t *testing.T) {
 // verifica el requisito central del algoritmo (plan/04 §4): una colisión
 // regenera SOLO el candidato afectado, no el lote completo. Se simula
 // rechazando las primeras N propuestas y confirmando que igual se completan
-// los 4 candidatos, todos distintos entre sí y del valor "ocupado". (Útil)
+// los 4 candidatos, todos distintos entre sí y del valor "ocupado".
 func TestGenerateNicknameCandidates_CollisionRegeneratesOnlyThatCandidate(t *testing.T) {
 	answers := []string{"azul", "perro", "matematicas", "siete"}
 
@@ -126,7 +126,7 @@ func TestGeneratePassword_ExactLengthAndFragmentPresent(t *testing.T) {
 func TestGeneratePassword_FillerExcludesAmbiguousChars(t *testing.T) {
 	// "9999999999" no aporta letras normalizables más allá de dígitos, así
 	// que el fragmento legible es corto y la mayor parte del password es
-	// relleno — bueno para verificar el charset sin ambiguos en la práctica. (Útil)
+	// relleno — bueno para verificar el charset sin ambiguos en la práctica.
 	answers := []string{"999"}
 
 	for i := 0; i < 20; i++ {
@@ -138,7 +138,7 @@ func TestGeneratePassword_FillerExcludesAmbiguousChars(t *testing.T) {
 			if r == '0' || r == 'O' || r == '1' || r == 'l' || r == 'I' {
 				// El fragmento (derivado de "999") no puede producir estos
 				// caracteres, así que cualquier aparición vendría del
-				// relleno — justo lo que no debe pasar. (Útil)
+				// relleno — justo lo que no debe pasar.
 				t.Errorf("password %q contains ambiguous char %q from filler charset", password, r)
 			}
 		}

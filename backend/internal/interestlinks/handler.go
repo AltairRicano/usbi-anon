@@ -12,8 +12,7 @@ import (
 )
 
 // Handler mantiene un PlayerService (pool usbi_app, GET /interest-links) y
-// un AdminService (pool usbi_moderador, CRUD /admin/interest-link-*) —
-// mismo patrón que internal/levels desde F3.
+// un AdminService (pool usbi_moderador, CRUD /admin/interest-link-*).
 type Handler struct {
 	player *PlayerService
 	admin  *AdminService

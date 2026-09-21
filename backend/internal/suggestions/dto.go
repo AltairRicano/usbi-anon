@@ -7,17 +7,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// SubmitRequest es el cuerpo de POST /suggestions. Deliberadamente no lleva
-// ningún campo de identidad — suggestions es anónima por diseño
-// (migración 0003_enlaces_interes_y_sugerencias). (Relleno)
+// SubmitRequest es el cuerpo de POST /suggestions. No incluye ningún campo de
+// identidad ya que las sugerencias son anónimas por diseño.
 type SubmitRequest struct {
 	Description string `json:"description"`
 }
 
 // SuggestionResponse es la representación de una sugerencia para el panel
-// admin. No existe una respuesta equivalente para el jugador que la mandó:
-// usbi_app no tiene SELECT en esta tabla (00_roles_unificado.sql) — ni
-// siquiera el propio autor puede releerla. (Relleno)
+// admin. No existe lectura para el jugador, garantizando el anonimato de quien envía.
 type SuggestionResponse struct {
 	ID                      uuid.UUID `json:"id"`
 	Description             string    `json:"description"`
@@ -26,16 +23,14 @@ type SuggestionResponse struct {
 	SubmittedAt             time.Time `json:"submitted_at"`
 }
 
-// SubmitResponse es lo único que ve el jugador tras enviar su sugerencia:
-// una confirmación mínima, sin eco del contenido ni del snapshot — ese dato
-// es para el panel admin, no para que el cliente lo reconstruya. (Relleno)
+// SubmitResponse es la confirmación mínima que recibe el jugador tras enviar su sugerencia,
+// sin eco del contenido ni del snapshot de progreso.
 type SubmitResponse struct {
 	ID          uuid.UUID `json:"id"`
 	SubmittedAt time.Time `json:"submitted_at"`
 }
 
-// Page es la respuesta paginada de GET /admin/suggestions — mismo shape que
-// levels.LevelsPage. (Relleno)
+// Page es la respuesta paginada de GET /admin/suggestions.
 type Page struct {
 	Items      []SuggestionResponse `json:"items"`
 	NextCursor string               `json:"next_cursor,omitempty"`

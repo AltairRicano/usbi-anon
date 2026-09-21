@@ -105,6 +105,22 @@ Construye las dos imágenes (`api` multi-etapa Go, `web` multi-etapa
 Node→nginx) y arranca los tres servicios. `db` tiene `healthcheck`; `api`
 espera a que esté sano antes de arrancar.
 
+**Límite de memoria por contenedor.** Los tres servicios traen
+`mem_limit: 250m` en `docker-compose.yml` — 750 MB combinados en ejecución,
+con margen dentro del VPS de referencia de 1 GB. Docker Compose no tiene
+forma nativa de compartir un único tope entre varios contenedores (cada uno
+es su propio cgroup), así que es un límite por servicio, no un pool
+conjunto. **Este límite aplica solo en ejecución, no durante el build**: el
+paso `--build` de este mismo comando compila el frontend con Vite dentro
+del multi-stage de `web`, y ese build por sí solo puede picar a 600–700 MB
+(el mismo patrón que ya obligó, en el contenedor de desarrollo de un solo
+servicio, a generar `dist/` en el host — ver limitaciones conocidas en
+`CLAUDE.md`). En un VPS de 1 GB total, construir las imágenes ahí mismo
+sigue siendo un punto de riesgo de OOM aunque los contenedores ya corran
+acotados a 250 MB cada uno; si el build falla por memoria, la alternativa
+es construir las imágenes en otra máquina y subirlas (`docker save`/`load`
+o un registro) en vez de construir en el VPS.
+
 **La primera vez que arranca `db`** (volumen de datos vacío), la imagen
 oficial de Postgres corre automáticamente
 `backend/sql/00_init_cluster.sh` vía `docker-entrypoint-initdb.d`: crea los

@@ -17,14 +17,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// Errores centinela — usados por el handler para el mapeo correcto del estado HTTP. (Relleno)
 var (
 	ErrInvalidSignature = errors.New("invalid HMAC signature")
 	ErrInvalidPayload   = errors.New("invalid sync payload")
 )
 
 // Tabla de premio XP por número de intento.
-// XP base es 4*dificultad. Intento 1 obtiene 100%, intentos 2-3 obtienen 50%, 4+ obtiene 0%. (Útil)
+// XP base es 4*dificultad. Intento 1 obtiene 100%, intentos 2-3 obtienen 50%, 4+ obtiene 0%.
 func xpForAttempt(difficulty int32, attemptNumber int64, completed bool) int32 {
 	if !completed || difficulty <= 0 {
 		return 0
@@ -40,13 +39,11 @@ func xpForAttempt(difficulty int32, attemptNumber int64, completed bool) int32 {
 	}
 }
 
-// Service maneja la lógica de negocio de la sincronización offline. (Relleno)
 type Service struct {
 	queries    *repository.Queries
 	hmacSecret []byte
 }
 
-// NewService crea un sync.Service. (Relleno)
 func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 	if len(hmacSecret) == 0 {
 		panic("sync.Service: hmacSecret must not be empty")
@@ -58,7 +55,7 @@ func NewService(q *repository.Queries, hmacSecret []byte) *Service {
 // la mezcla aditiva usando recálculo del lado del servidor y candados transaccionales.
 // Los XP siempre se recalculan en el servidor — el xp_awarded provisto por el cliente es ignorado.
 //
-// sig son los bytes decodificados de la firma HMAC-SHA256. (Útil)
+// sig son los bytes decodificados de la firma HMAC-SHA256.
 func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, sig []byte) (domain.SyncEventResponse, error) {
 	if err := validateSyncPayload(req); err != nil {
 		return domain.SyncEventResponse{}, fmt.Errorf("%w: %s", ErrInvalidPayload, err.Error())
@@ -89,7 +86,6 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		return domain.SyncEventResponse{}, err
 	}
 
-	// ── Registrar el evento de sincronización sin importar el resultado HMAC (para rastro de auditoría) ──── (Relleno)
 	payloadHash := crypto.GenerateHMAC(payloadJSON, s.hmacSecret)
 	err = qtx.InsertSyncEventWithPayload(ctx, repository.InsertSyncEventWithPayloadParams{
 		ID:               req.SyncEventID,
@@ -103,7 +99,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		Status:           "pending",
 	})
 	if err != nil {
-		// sync_event_id duplicado → éxito idempotente (ya procesado). (Útil)
+		// sync_event_id duplicado → éxito idempotente (ya procesado).
 		if isDuplicateKey(err) {
 			return domain.SyncEventResponse{Status: "already_processed"}, nil
 		}
@@ -121,7 +117,6 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		return domain.SyncEventResponse{}, ErrInvalidPayload
 	}
 
-	// ── Procesar cada intento de nivel con recálculo de XP del lado del servidor ──────────── (Relleno)
 	for _, attempt := range attempts {
 		if err := qtx.LockLevelAttempt(ctx, repository.LockLevelAttemptParams{
 			UserID:      req.UserID,
@@ -140,7 +135,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 			return domain.SyncEventResponse{}, fmt.Errorf("locking level_attempts: %w", err)
 		}
 
-		// Recálculo de XP en el servidor — el valor del cliente no es confiable. (Útil)
+		// Recálculo de XP en el servidor — el valor del cliente no es confiable.
 		serverAttemptNumber := priorCount + 1
 		serverXP := xpForAttempt(attempt.Difficulty, serverAttemptNumber, attempt.Completed)
 
@@ -160,7 +155,7 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 			UserID:  req.UserID,
 			LevelID: attempt.LevelID,
 			// best_score es el puntaje en el juego (reportado por el cliente, validado >= 0),
-			// replicando el camino online. El total de XP se mantiene recalculado en el servidor. (Útil)
+			// replicando el camino online. El total de XP se mantiene recalculado en el servidor.
 			BestScore:       attempt.Score,
 			XpTotalForLevel: serverXP,
 			Completed:       attempt.Completed,
@@ -186,7 +181,6 @@ func (s *Service) ProcessSync(ctx context.Context, req domain.SyncEventRequest, 
 		}
 	}
 
-	// ── Entradas de racha diaria ────────────────────────────────────────────────── (Relleno)
 	for _, date := range streakDates {
 		if err := qtx.UpsertDailyStreak(ctx, repository.UpsertDailyStreakParams{
 			UserID:       req.UserID,
@@ -338,7 +332,6 @@ func badgeIDs(rows []repository.BadgeWithEarnedAt) []uuid.UUID {
 	return ids
 }
 
-// isDuplicateKey revisa violaciones a restricciones de unicidad de PostgreSQL. (Relleno)
 func isDuplicateKey(err error) bool {
 	return err != nil && (containsAny(err.Error(), "duplicate key", "23505"))
 }

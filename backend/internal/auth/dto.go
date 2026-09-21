@@ -7,9 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ── Registro en 3 pasos (plan/04_Rediseno_identidad_gustos.md §3) ─────────── (Útil)
+// ── Registro en 3 pasos ───────────
 
-// RegisterQuestionsResponse es la respuesta de POST /auth/register/questions. (Relleno)
 type RegisterQuestionsResponse struct {
 	Questions         []QuestionOption `json:"questions"`
 	MaxQuestionsShown int16            `json:"max_questions_shown"`
@@ -20,35 +19,31 @@ type QuestionOption struct {
 	Text string    `json:"text"`
 }
 
-// AnswerInput es una respuesta individual dentro de RegisterAnswersRequest. (Relleno)
 type AnswerInput struct {
 	QuestionID uuid.UUID `json:"question_id"`
 	AnswerText string    `json:"answer_text"`
 }
 
-// RegisterAnswersRequest es el cuerpo para POST /auth/register/answers. (Relleno)
 type RegisterAnswersRequest struct {
 	Answers              []AnswerInput `json:"answers"`
 	IsAdult              bool          `json:"is_adult"`
 	PrivacyNoticeVersion string        `json:"privacy_notice_version"`
 }
 
-// RegisterAnswersResponse carga el token firmado que confirm() debe
-// devolver, más los 4 candidatos de nickname generados a partir de las
-// respuestas. (Útil)
+// RegisterAnswersResponse carga el token firmado que confirm() debe devolver,
+// más los 4 candidatos de nickname generados a partir de las respuestas.
 type RegisterAnswersResponse struct {
 	RegistrationToken  string   `json:"registration_token"`
 	NicknameCandidates []string `json:"nickname_candidates"`
 }
 
-// RegisterConfirmRequest es el cuerpo para POST /auth/register/confirm. (Relleno)
 type RegisterConfirmRequest struct {
 	RegistrationToken string `json:"registration_token"`
 	ChosenNickname    string `json:"chosen_nickname"`
 }
 
 // RegisterConfirmResponse se muestra UNA sola vez: password en claro, jamás
-// vuelto a exponer por ningún otro endpoint. (Útil)
+// vuelto a exponer por ningún otro endpoint.
 type RegisterConfirmResponse struct {
 	AccountID    uuid.UUID `json:"account_id"`
 	Nickname     string    `json:"nickname"`
@@ -56,9 +51,7 @@ type RegisterConfirmResponse struct {
 	DisplayAlias string    `json:"display_alias"`
 }
 
-// MeResponse es la respuesta de GET /auth/me. PrivacyNoticeVersion es la que
-// aceptó la cuenta; CurrentPrivacyNoticeVersion la vigente — el frontend
-// muestra el banner de cambio de versión (D-06) cuando difieren.
+// MeResponse es la respuesta de GET /auth/me. Muestra la versión del aviso de privacidad.
 type MeResponse struct {
 	UserID                      uuid.UUID       `json:"user_id"`
 	Role                        domain.UserRole `json:"role"`
@@ -66,15 +59,13 @@ type MeResponse struct {
 	CurrentPrivacyNoticeVersion string          `json:"current_privacy_notice_version"`
 }
 
-// ── Login / sesión ──────────────────────────────────────────────────────── (Útil)
+// ── Login / sesión ────────────────────────────────────────────────────────
 
-// LoginRequest es el cuerpo para POST /auth/login. (Relleno)
 type LoginRequest struct {
 	Nickname string `json:"nickname"`
 	Password string `json:"password"`
 }
 
-// LoginResponse se devuelve tras un inicio de sesión o actualización exitosa. (Relleno)
 type LoginResponse struct {
 	AccessToken           string      `json:"access_token"`
 	RefreshToken          string      `json:"refresh_token"`
@@ -88,11 +79,10 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// ── Administración de cuentas ──────────────────────────────────────────── (Útil)
+// ── Administración de cuentas ────────────────────────────────────────────
 
-// AdminCreateAccountRequest es el cuerpo para POST /admin/accounts. Sin
-// cuestionario de gustos: un admin crea otra cuenta de staff con
-// nickname+password explícitos (§2 del rediseño). (Útil)
+// AdminCreateAccountRequest es el cuerpo para POST /admin/accounts.
+// Sin cuestionario de gustos: un admin crea otra cuenta de staff con nickname+password explícitos.
 type AdminCreateAccountRequest struct {
 	Nickname string          `json:"nickname"`
 	Password string          `json:"password"`

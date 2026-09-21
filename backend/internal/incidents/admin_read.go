@@ -1,10 +1,6 @@
-// admin_read.go implementa la lectura y edición de security_incidents (B2,
-// estado_proyecto.md 2026-09-09) — antes de esto la tabla solo tenía
-// escritores (CreateIncident, en service.go). No hay Delete: ni una ruta lo
-// expone, ni ningún rol tiene el privilegio, ni el esquema lo permite desde
-// que la migración 0006 le agregó un trigger BEFORE DELETE — tres capas
-// independientes, ninguna de las cuales depende de que las otras dos no
-// fallen.
+// admin_read.go implementa la lectura y edición de security_incidents.
+// No existe operación Delete: ninguna ruta lo expone, ningún rol tiene el privilegio,
+// y el esquema cuenta con un trigger BEFORE DELETE para garantizar inmutabilidad física.
 package incidents
 
 import (
@@ -32,7 +28,7 @@ const (
 // IncidentResponse representa un incidente para el panel de administración.
 // EvidenceValid recalcula el HMAC al leer y lo compara contra evidence_hash
 // — convierte el sello de un dato inerte en un control verificable en cada
-// lectura, no solo en el momento de crear el incidente. (Relleno)
+// lectura, no solo en el momento de crear el incidente.
 type IncidentResponse struct {
 	ID                   uuid.UUID  `json:"id"`
 	DetectedAt           time.Time  `json:"detected_at"`
@@ -49,9 +45,7 @@ type IncidentResponse struct {
 }
 
 // IncidentsPage es la respuesta paginada de GET /admin/security-incidents.
-// Cursor opaco "<RFC3339Nano>_<uuid>", mismo patrón que auditlog.Page: el ID
-// es uuid.New() (v4 aleatorio), ordenar por id no aproxima ningún orden
-// temporal. (Relleno)
+// Cursor opaco "<RFC3339Nano>_<uuid>", ya que audit_log usa UUIDv4 aleatorio.
 type IncidentsPage struct {
 	Items      []IncidentResponse `json:"items"`
 	NextCursor string              `json:"next_cursor,omitempty"`
@@ -192,12 +186,10 @@ func (s *Service) Get(ctx context.Context, actor domain.JWTClaims, id uuid.UUID)
 }
 
 // Update corrige la narrativa y/o las columnas de seguimiento de un
-// incidente, resellando evidence_hash con el contenido nuevo (decisión D1:
-// evidence_hash pasa de probar "esto nunca se tocó" a probar "esto coincide
-// con la última versión guardada por la aplicación" — sigue detectando
-// manipulación fuera de banda, que es el ataque que importa). La versión
-// anterior completa queda en audit_log.before_state, que es append-only por
-// trigger: ninguna corrección borra la historia.
+// incidente, resellando evidence_hash con el contenido nuevo para
+// mantener la verificación de integridad contra manipulación fuera de banda.
+// La versión anterior completa queda registrada en audit_log.before_state (append-only),
+// preservando el historial completo de cambios.
 func (s *Service) Update(ctx context.Context, actor domain.JWTClaims, id uuid.UUID, req UpdateIncidentRequest, ip, userAgent string) (IncidentResponse, error) {
 	if actor.Role != domain.RoleAdmin {
 		return IncidentResponse{}, ErrForbidden
@@ -271,10 +263,8 @@ func (s *Service) Update(ctx context.Context, actor domain.JWTClaims, id uuid.UU
 		return IncidentResponse{}, fmt.Errorf("updating security incident: %w", err)
 	}
 
-	// before_state lleva la narrativa completa anterior — audit_log es
-	// append-only, así que ninguna versión se pierde aunque el incidente se
-	// resele (ver nota de paquete). Referirse a personas por UUID: el mismo
-	// COMMENT ON COLUMN de la migración 0001 aplica aquí igual que en creación.
+	// before_state lleva la narrativa completa anterior en audit_log (append-only),
+	// garantizando que ninguna versión previa se pierda al resellar el incidente.
 	if err := audit.Log(ctx, qtx, audit.Entry{
 		ActorID:    actor.UserID,
 		Action:     "security_incident.update",

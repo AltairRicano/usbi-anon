@@ -1,8 +1,4 @@
-// PlayerService agrupa las operaciones de internal/levels que corren con el
-// pool de usbi_app (F3, 2026-09-09): jugar y consultar el propio progreso.
-// Nunca ve contenido no publicado — a diferencia de AdminService (
-// admin_service.go), no recibe ningún parámetro para pedirlo, así que un bug
-// en el caller no puede colar un include_unpublished=true por esta vía. (Útil)
+// PlayerService agrupa las operaciones para jugar y consultar el progreso. Nunca ve contenido no publicado.
 package levels
 
 import (
@@ -24,10 +20,7 @@ func NewPlayerService(repo *repository.Queries) *PlayerService {
 	return &PlayerService{repo: repo}
 }
 
-// GetLevel nunca devuelve un nivel no publicado — a diferencia de
-// AdminService.GetLevel, no acepta includeUnpublished: el jugador jamás
-// necesita verlo, así que ni siquiera existe la posibilidad de pasarlo por
-// error. (Útil)
+// GetLevel nunca devuelve un nivel no publicado.
 func (s *PlayerService) GetLevel(ctx context.Context, levelID uuid.UUID) (LevelResponse, error) {
 	if levelID == uuid.Nil {
 		return LevelResponse{}, ErrValidation
@@ -45,8 +38,7 @@ func (s *PlayerService) GetLevel(ctx context.Context, levelID uuid.UUID) (LevelR
 	return levelToResponse(level), nil
 }
 
-// ListLevels siempre filtra a solo publicados — sin parámetro
-// includeUnpublished, a diferencia de AdminService.ListLevels. (Útil)
+// ListLevels siempre filtra a solo publicados.
 func (s *PlayerService) ListLevels(ctx context.Context, cursor uuid.UUID, sectionID uuid.UUID, pageSize int32) (LevelsPage, error) {
 	if pageSize <= 0 || pageSize > 50 {
 		pageSize = 20
@@ -87,8 +79,7 @@ func (s *PlayerService) ListLevels(ctx context.Context, cursor uuid.UUID, sectio
 	return page, nil
 }
 
-// ListSections siempre filtra a solo publicadas — sin parámetro
-// includeUnpublished, a diferencia de AdminService.ListSections. (Útil)
+// ListSections siempre filtra a solo publicadas.
 func (s *PlayerService) ListSections(ctx context.Context) (SectionsResponse, error) {
 	sections, err := s.repo.ListSections(ctx, repository.ListSectionsParams{IncludeUnpublished: false})
 	if err != nil {
@@ -124,10 +115,7 @@ func (s *PlayerService) CompleteLevel(ctx context.Context, userID, levelID uuid.
 		return CompleteLevelResponse{}, ErrNotFound
 	}
 
-	// M1 Fase B (D-03): el servidor recalcula completed/score contra
-	// level.content cuando la plantilla y las respuestas enviadas lo permiten
-	// (verify.go); si no, cae al comportamiento anterior (confiar en el
-	// cliente) y lo deja registrado como tal en verification_method.
+	// Recalcula completed/score en el servidor cuando es posible (verify.go), si no confía en el cliente.
 	completed := req.Completed
 	score := req.Score
 	verificationMethod := domain.VerificationOnlineReported

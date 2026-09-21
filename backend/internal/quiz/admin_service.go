@@ -1,10 +1,4 @@
-// AdminService agrupa las operaciones de internal/quiz que corren con el
-// pool de usbi_moderador (F3, 2026-09-09): todo el CRUD del banco de
-// preguntas de registro, antes detrás de canManageQuizBank en el Handler
-// único. Handler (al final de este archivo) solo habla con AdminService —
-// las rutas de este paquete son 100% admin; el flujo de jugador
-// (PlayerService, player_service.go) no tiene Handler propio porque
-// internal/auth lo consume directo. (Útil)
+// AdminService agrupa las operaciones CRUD del banco de preguntas (rutas 100% admin).
 package quiz
 
 import (
@@ -75,13 +69,9 @@ func (s *AdminService) CreateQuestion(ctx context.Context, adminID uuid.UUID, re
 	return resp, nil
 }
 
-// UpdateQuestion es full-replace (mismo estilo que internal/levels), no
-// JSON-Patch parcial: el caller siempre manda los tres campos.
+// UpdateQuestion es full-replace.
 //
-// Cuando la actualización DESACTIVA una pregunta que estaba activa, corre en
-// una transacción con el mismo guard de mínimo 4 que DeleteQuestion — el
-// comentario de registration_questions en el esquema exige el guard tanto en
-// UPDATE como en DELETE, no solo en DELETE. (Útil)
+// Si desactiva una pregunta, usa el guard de "mínimo 4" en transacción.
 func (s *AdminService) UpdateQuestion(ctx context.Context, adminID, id uuid.UUID, req UpdateQuestionRequest) (QuestionResponse, error) {
 	text := strings.TrimSpace(req.QuestionText)
 	if id == uuid.Nil || text == "" || len(text) > questionTextMaxLen {
@@ -215,10 +205,7 @@ func (s *AdminService) UpdateSettings(ctx context.Context, adminID uuid.UUID, re
 	return resp, nil
 }
 
-// ── Handler HTTP: solo las rutas admin del banco. El endpoint público
-// POST /auth/register/questions vive en internal/auth (F9), que llama a
-// PlayerService.SelectQuestionsForRegistration directo — no pasa por este
-// Handler. (Útil)
+// ── Handler HTTP: solo las rutas admin del banco.
 
 type Handler struct {
 	svc *AdminService
@@ -228,10 +215,7 @@ func NewHandler(svc *AdminService) *Handler {
 	return &Handler{svc: svc}
 }
 
-// canManageQuizBank restringe el banco de preguntas a admin, no a
-// operator/director como el contenido de niveles (internal/levels): estas
-// preguntas determinan cómo se genera la credencial de login de cada cuenta
-// (ver credentials.go). (Útil)
+// canManageQuizBank restringe el banco de preguntas a admin.
 func canManageQuizBank(role domain.UserRole) bool {
 	return role == domain.RoleAdmin
 }
@@ -314,9 +298,7 @@ func (h *Handler) DeleteQuestion(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GetSettings maneja GET /admin/registration-settings (C3,
-// estado_proyecto.md 2026-09-10). AdminService.GetSettings ya existía desde
-// F8 sin ningún handler ni ruta que lo llamara — código muerto hasta ahora.
+// GetSettings maneja GET /admin/registration-settings.
 func (h *Handler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	claims, ok := claimsFromContext(r)
 	if !ok || !canManageQuizBank(claims.Role) {

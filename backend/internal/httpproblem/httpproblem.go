@@ -1,7 +1,5 @@
 // Package httpproblem centraliza las respuestas de error RFC 7807 y el escritor de JSON
-// de éxito que previamente estaban copiados tal cual entre auth, levels, devices,
-// sync y el router (hallazgo de auditoría B8). Una sola implementación garantiza que la
-// envoltura de error nunca varíe entre paquetes. (Útil)
+// de éxito. Una sola implementación garantiza que la envoltura de error nunca varíe entre paquetes.
 package httpproblem
 
 import (
@@ -13,7 +11,7 @@ import (
 )
 
 // WriteProblem emite una respuesta RFC 7807 application/problem+json. slug se convierte
-// en el sufijo del URI type. (Relleno)
+// en el sufijo del URI type.
 func WriteProblem(w http.ResponseWriter, r *http.Request, status int, slug, title, detail string) {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(status)
@@ -26,7 +24,7 @@ func WriteProblem(w http.ResponseWriter, r *http.Request, status int, slug, titl
 	})
 }
 
-// WriteJSON serializa v como application/json con el estado dado. (Relleno)
+// WriteJSON serializa v como application/json con el estado dado.
 func WriteJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -34,7 +32,7 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 }
 
 // WriteDecodeProblem mapea un error de decodificación de cuerpo de petición a la respuesta
-// problem correcta: 413 cuando el cuerpo excede el límite de tamaño, 400 de lo contrario. (Útil)
+// problem correcta: 413 cuando el cuerpo excede el límite de tamaño, 400 de lo contrario.
 func WriteDecodeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	var maxBytesErr *http.MaxBytesError
 	if errors.As(err, &maxBytesErr) {

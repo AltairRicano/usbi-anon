@@ -17,7 +17,7 @@ var (
 )
 
 // validDeviceKinds refleja el CHECK de devices.device_kind. Rechazar aquí,
-// antes del INSERT, da un 422 legible en vez de un error crudo de Postgres. (Útil)
+// antes del INSERT, da un 422 legible en vez de un error crudo de Postgres.
 var validDeviceKinds = map[string]bool{
 	"movil": true, "tablet": true, "laptop": true, "escritorio": true, "otro": true,
 }
@@ -30,10 +30,9 @@ func NewService(repo *repository.Queries) *Service {
 	return &Service{repo: repo}
 }
 
-// RegisterDevice es un upsert (C1, estado_proyecto.md 2026-09-10): el
-// frontend lo llama después de cada login exitoso, no detrás de un botón
-// manual. Si req.DeviceID viene y sigue siendo tuyo y activo, solo se
-// actualiza last_seen_at; si no —dispositivo nuevo, ajeno, o revocado—, se
+// RegisterDevice es un upsert: el frontend lo llama después de cada login exitoso,
+// no detrás de un botón manual. Si req.DeviceID viene y sigue siendo propio y activo,
+// solo se actualiza last_seen_at; si no —dispositivo nuevo, ajeno, o revocado—, se
 // crea uno con un id generado por el servidor. Así un mismo dispositivo no
 // acumula una fila nueva por cada inicio de sesión, y el cliente nunca
 // puede reclamar el dispositivo de otra cuenta.
@@ -77,13 +76,9 @@ func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req Regi
 	return deviceToResponse(device), true, nil
 }
 
-// RevokeDevice maneja DELETE /devices/{device_id} (C2, estado_proyecto.md
-// 2026-09-10): revocación lógica, no un DELETE físico — ver el comentario
-// de repository.RevokeDevice para el porqué (la FK compuesta de
-// sync_events). Se audita (`device.revoke`) porque, a diferencia de
-// internal/suggestions, devices ya guarda user_id en claro — no hay
-// anonimato que proteger aquí — y el pool de jugador (usbi_app) conserva
-// INSERT sobre audit_log (00_roles_unificado.sql).
+// RevokeDevice maneja DELETE /devices/{device_id}: revocación lógica, no un
+// DELETE físico debido a la clave foránea referenciada en sync_events. Se audita
+// (device.revoke) registrando la acción en audit_log.
 func (s *Service) RevokeDevice(ctx context.Context, userID, deviceID uuid.UUID) error {
 	if userID == uuid.Nil || deviceID == uuid.Nil {
 		return ErrValidation

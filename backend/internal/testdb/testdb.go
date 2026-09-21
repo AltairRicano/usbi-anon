@@ -1,26 +1,16 @@
 // Package testdb provee bases de datos Postgres reales y aisladas para
-// pruebas de integración (hallazgo de auditoría B9, heredado de ../usbi). Existe para que
-// internal/auth, internal/maintenance y internal/privacy puedan probar sus
-// caminos transaccionales y de seguridad (cancelación de cuenta, auditoría)
-// contra SQL real — nunca mockeado.
+// pruebas de integración. Permite que paquetes como internal/auth, internal/maintenance
+// e internal/privacy prueben sus caminos transaccionales y de seguridad contra SQL real.
 //
-// F7 (rediseño de identidad, plan/04_Rediseno_identidad_gustos.md) devuelve
-// este paquete a un solo esquema: entre F2 y F6 necesitaba DOS —uno por
-// migrations/identity, otro por migrations/main—, reflejando las dos bases
-// que el rediseño descartó. Ahora Setup crea un único esquema Postgres con
-// nombre aleatorio dentro de la MISMA instancia que apunta
-// TEST_DATABASE_URL, le aplica backend/migrations/0001_esquema_unificado.up.sql,
-// y lo borra en t.Cleanup — el mismo patrón de aislamiento por esquema
-// desechable que ya se usó para verificar F1/F5/F6 a mano (ver
-// estado_proyecto.md), ahora en código reutilizable.
+// Setup crea un esquema Postgres con nombre aleatorio dentro de la instancia
+// apuntada por TEST_DATABASE_URL, aplica las migraciones de backend/migrations/,
+// y lo elimina en t.Cleanup.
 //
-// Es seguro apuntar TEST_DATABASE_URL a una base de desarrollo real que ya
-// tenga datos en "public": estas pruebas nunca leen ni escriben fuera de su
-// esquema desechable.
+// Es seguro apuntar TEST_DATABASE_URL a una base de desarrollo con datos en "public":
+// estas pruebas nunca leen ni escriben fuera de su esquema desechable.
 //
-// TEST_DATABASE_URL es opt-in a propósito: si no está definida, Setup llama
-// a t.Skip para que `go test ./...` siga en verde en cualquier entorno sin
-// Postgres alcanzable (runners de CI, otras máquinas, etc). (Útil)
+// TEST_DATABASE_URL es opt-in: si no está definida, Setup llama a t.Skip para
+// que las pruebas continúen pasando en entornos sin Postgres alcanzable.
 package testdb
 
 import (
@@ -41,7 +31,7 @@ import (
 
 // DB agrupa las Queries y la conexión cruda de la base de prueba. DB solo
 // hace falta para pruebas que necesiten aserciones SQL directas, ya que
-// repository.Queries no expone un método de consulta ad-hoc. (Útil)
+// repository.Queries no expone un método de consulta ad-hoc.
 type DB struct {
 	Repo *repository.Queries
 	DB   *sql.DB
@@ -49,7 +39,7 @@ type DB struct {
 
 // migrationsDir es la raíz backend/migrations, resuelta relativa a este
 // archivo fuente (no al directorio de trabajo del llamador), así que Setup
-// funciona igual sin importar qué paquete importe testdb. (Útil)
+// funciona igual sin importar qué paquete importe testdb.
 func migrationsDir() string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
@@ -58,7 +48,7 @@ func migrationsDir() string {
 // Setup crea un esquema aislado, aplica el baseline unificado, y devuelve
 // Queries + *sql.DB. El pool queda anclado al esquema vía el parámetro de
 // conexión `options=-c search_path=...`, así que es seguro bajo consultas
-// concurrentes dentro de una misma prueba, no solo con una única conexión. (Útil)
+// concurrentes dentro de una misma prueba, no solo con una única conexión.
 func Setup(t *testing.T) *DB {
 	t.Helper()
 
@@ -91,7 +81,7 @@ func Setup(t *testing.T) *DB {
 
 // setupSchema crea un esquema con prefijo+hex aleatorio, lo registra para
 // borrarse en t.Cleanup, abre un pool anclado a él vía search_path, y le
-// aplica las migraciones *.up.sql de backend/migrations/. (Útil)
+// aplica las migraciones *.up.sql de backend/migrations/.
 func setupSchema(t *testing.T, admin *sql.DB, kvDSN, schemaPrefix string) *sql.DB {
 	t.Helper()
 
@@ -133,7 +123,7 @@ func applyMigrations(t *testing.T, db *sql.DB, dir string) {
 			files = append(files, e.Name())
 		}
 	}
-	sort.Strings(files) // filenames are zero-padded (0001_, 0002_, ...): lexical order == intended order.
+	sort.Strings(files) // los nombres de archivo tienen ceros a la izquierda (0001_, 0002_, ...): orden léxico == orden deseado.
 
 	for _, name := range files {
 		raw, err := os.ReadFile(filepath.Join(dir, name))
@@ -147,9 +137,8 @@ func applyMigrations(t *testing.T, db *sql.DB, dir string) {
 }
 
 // upOnly elimina la sección "-- +goose Down" y todo lo que sigue.
-// Ninguna migración de USBI-Anon lleva anotaciones goose (nota histórica en
-// el propio baseline), así que hoy es un no-op — se conserva por si alguna
-// migración futura sí las trajera. (Útil)
+// Ninguna migración de USBI-Anon lleva anotaciones goose, así que hoy es un no-op
+// — se conserva por si alguna migración futura las incluyera.
 func upOnly(raw string) string {
 	if idx := strings.Index(raw, "-- +goose Down"); idx != -1 {
 		return raw[:idx]
@@ -158,7 +147,7 @@ func upOnly(raw string) string {
 }
 
 // toKeywordDSN normaliza ya sea una URL postgres:// o un DSN en formato
-// keyword=value a la forma keyword=value, para que los invocadores puedan añadir ` options=...`. (Relleno)
+// keyword=value a la forma keyword=value, para que los invocadores puedan añadir ` options=...`.
 func toKeywordDSN(dsn string) (string, error) {
 	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
 		return pq.ParseURL(dsn)
@@ -173,7 +162,7 @@ func quoteIdent(name string) string {
 func randomHex(n int) string {
 	b := make([]byte, n/2)
 	if _, err := rand.Read(b); err != nil {
-		panic(err) // crypto/rand failing is unrecoverable
+		panic(err) // un fallo en crypto/rand es irrecuperable
 	}
 	return hex.EncodeToString(b)
 }

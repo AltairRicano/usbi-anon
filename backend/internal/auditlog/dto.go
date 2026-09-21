@@ -9,9 +9,7 @@ import (
 
 // EntryResponse es una fila de audit_log para el panel de administración.
 // actor_account_id viaja como UUID crudo: usbi_moderador no tiene ningún
-// GRANT sobre accounts, así que este paquete no puede resolverlo a un
-// nickname sin cruzar al pool de jugador — justo lo que la separación de
-// pools evita (estado_proyecto.md 2026-09-09, sección B1). (Relleno)
+// GRANT sobre accounts, evitando que este paquete resuelva nicknames cruzando al pool de jugador.
 type EntryResponse struct {
 	ID             uuid.UUID  `json:"id"`
 	ActorAccountID *uuid.UUID `json:"actor_account_id,omitempty"`
@@ -26,16 +24,14 @@ type EntryResponse struct {
 }
 
 // Page es la respuesta paginada de GET /admin/audit-log. NextCursor es
-// opaco: "<RFC3339Nano de created_at>_<id>" — no reveses en cursores por
-// simple id como suggestions, porque audit_log usa UUIDv4 (ver
-// repository.ListAuditLogParams). (Relleno)
+// opaco: "<RFC3339Nano de created_at>_<id>", ya que audit_log usa UUIDv4.
 type Page struct {
 	Items      []EntryResponse `json:"items"`
 	NextCursor string          `json:"next_cursor,omitempty"`
 }
 
 // Filters es el conjunto de filtros opcionales de GET /admin/audit-log,
-// todos combinables. (Relleno)
+// todos combinables.
 type Filters struct {
 	ActorAccountID uuid.UUID
 	Action         string

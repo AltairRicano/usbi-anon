@@ -1,9 +1,5 @@
 // Package audit centraliza las escrituras en audit_log para que toda operación
 // sensible registre evidencia de No-Repudio a través de una ruta única y consistente.
-// audit_log es la fusión de admin_audit_log + identity_audit_log (F7). Antes
-// de este paquete el único llamador era internal/levels; acciones tan
-// sensibles como envejecer a un menor o sembrar el primer admin no dejaban
-// rastro alguno. (Útil)
 package audit
 
 import (
@@ -17,7 +13,7 @@ import (
 
 // Entry es un único registro de auditoría. Before/After se serializan a JSON; nil
 // se convierte en un objeto vacío. IP/UserAgent tienen valores por defecto para
-// acciones internas del backend que no tienen contexto de petición HTTP. (Útil)
+// acciones internas del backend que no tienen contexto de petición HTTP.
 type Entry struct {
 	ActorID    uuid.UUID
 	Action     string
@@ -31,7 +27,7 @@ type Entry struct {
 
 // Log añade una entrada a audit_log usando el repositorio dado (posiblemente transaccional).
 // El trigger de solo-añadir en la tabla garantiza que la fila
-// nunca pueda ser actualizada o eliminada después. (Útil)
+// nunca pueda ser actualizada o eliminada después.
 func Log(ctx context.Context, repo *repository.Queries, e Entry) error {
 	before, err := marshalState(e.Before)
 	if err != nil {

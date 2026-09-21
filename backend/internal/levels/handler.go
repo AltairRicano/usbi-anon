@@ -14,11 +14,10 @@ import (
 )
 
 // Handler mantiene una referencia a cada uno de los dos Service partidos en
-// F3 (player_service.go, pool usbi_app; admin_service.go, pool
-// usbi_moderador). Para los endpoints exclusivos de un rol, el Handler solo
+// PlayerService y AdminService usan pools de base de datos distintos.ivos de un rol, el Handler solo
 // habla con su Service correspondiente; para ListLevels/GetLevel/ListSections
 // —que sirven a ambos perfiles— decide con cuál hablar usando la misma señal
-// de rol que ya existía antes del split (canManageContent). (Útil)
+// de rol que ya existía antes del split (canManageContent).
 type Handler struct {
 	player *PlayerService
 	admin  *AdminService
@@ -59,7 +58,7 @@ func (h *Handler) CreateLevel(w http.ResponseWriter, r *http.Request) {
 // usbi_moderador; cualquier otra petición autenticada solo ve lo publicado,
 // con el pool de usbi_app. La decisión de qué Service invocar vive aquí (ya
 // existía antes del split); qué datos devuelve cada uno vive en su propio
-// Service — ver PlayerService.ListLevels / AdminService.ListLevels. (Útil)
+// Service — ver PlayerService.ListLevels / AdminService.ListLevels.
 func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
@@ -115,7 +114,7 @@ func (h *Handler) ListLevels(w http.ResponseWriter, r *http.Request) {
 // GetLevel: mismo criterio de despacho que ListLevels. A diferencia de
 // ListLevels, ni PlayerService ni AdminService exponen un parámetro
 // includeUnpublished — cada uno siempre se comporta según su rol (ver
-// comentarios en player_service.go / admin_service.go). (Útil)
+// comentarios en player_service.go / admin_service.go).
 func (h *Handler) GetLevel(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 	levelID, ok := parseURLUUID(w, r, "level_id")
@@ -352,7 +351,7 @@ func (h *Handler) CreateSection(w http.ResponseWriter, r *http.Request) {
 	httpproblem.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// ListSections: mismo criterio de despacho que ListLevels/GetLevel. (Útil)
+// ListSections: mismo criterio de despacho que ListLevels/GetLevel.
 func (h *Handler) ListSections(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(domain.ClaimsKey).(*domain.JWTClaims)
 

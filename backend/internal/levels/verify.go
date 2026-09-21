@@ -1,7 +1,4 @@
-// verify.go recalcula completed/score en el servidor a partir de las
-// respuestas que manda el cliente, contra el contenido real del nivel — M1
-// Fase B (D-03). Solo cubre las plantillas donde el resultado es
-// determinísticamente verificable sin reproducir la partida completa.
+// verify.go recalcula completed/score en el servidor a partir de las respuestas del cliente.icamente verificable sin reproducir la partida completa.
 //
 // memory y snakes_ladders se quedan permanentemente sin verificar (M1.4-B3):
 // no hay forma de comprobarlas sin que el servidor genere la semilla y valide
