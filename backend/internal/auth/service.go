@@ -86,9 +86,10 @@ type Service struct {
 // NewService crea un auth.Service. Entra en pánico si cfg contiene valores cero
 // para secretos requeridos, previniendo malas configuraciones silenciosas al inicio.
 //
-// quizSvc es *quiz.PlayerService.r preguntas activas durante
-// el registro (SelectQuestionsForRegistration/GetActiveQuestionByID), nunca
-// administrar el banco.
+// quizSvc es *quiz.PlayerService, no el AdminService del banco de preguntas:
+// auth solo necesita muestrear preguntas activas durante el registro
+// (SelectQuestionsForRegistration/GetActiveQuestionByID), nunca administrar
+// el banco.
 func NewService(repo *repository.Queries, quizSvc *quiz.PlayerService, cfg Config) *Service {
 	if len(cfg.HMACSecret) == 0 {
 		panic("auth.Config: HMACSecret must not be empty")
