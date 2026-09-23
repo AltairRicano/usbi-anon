@@ -3,11 +3,15 @@
 // versionado en el repositorio, no en una constante del cliente ni en un
 // archivo cargado aparte al servidor.
 //
-// TODO(M4.3): sustituir aviso_simplificado_v1.json y aviso_integral_v1.json
-// por la redacción legal definitiva, y CurrentVersion por "v1.0" — ambos
-// archivos son, a propósito, un marcador de posición explícito hasta que se
-// cierren las decisiones institucionales pendientes (responsable del
-// tratamiento, nombre/dominio, ubicación del centro de datos).
+// TODO(M4.3): aviso_simplificado_v1.json y aviso_integral_v1.json (2026-09-23)
+// ya traen redacción sustancialmente completa (ver pruebas/04_legal/LG-04_
+// aviso_de_privacidad_v1.md), pero CurrentVersion sigue sin subir a "v1.0"
+// porque dos datos institucionales que el texto usa (responsable del
+// tratamiento = "la USBI correspondiente", centro de datos de Hostinger en
+// México) son supuestos de trabajo del equipo, no una confirmación formal
+// del área jurídica de la UV. Subir a "v1.0" solo cuando esa confirmación
+// llegue por escrito — hasta entonces, no desplegar a producción real con
+// este texto (D-06).
 package legaltext
 
 import (
@@ -26,14 +30,15 @@ var simplifiedRaw []byte
 //go:embed aviso_integral_v1.json
 var integralRaw []byte
 
-// CurrentVersion identifica el texto vigente. No se despliega a producción
-// con este valor (D-06 asume "v1.0-preliminar" desaparece antes del primer
-// despliegue) — "v0-provisional" lo deja imposible de confundir con una
-// versión real.
-const CurrentVersion = "v0-provisional"
+// CurrentVersion identifica el texto vigente. Sigue sin ser "v1.0": dos datos
+// que el texto usa (responsable del tratamiento, ubicación del centro de
+// datos) son supuestos de trabajo, no una confirmación institucional formal
+// — "v0.9-borrador" lo deja imposible de confundir con la versión legal
+// final, sin restar que el contenido ya está sustancialmente redactado.
+const CurrentVersion = "v0.9-borrador"
 
 // EffectiveDate acompaña a CurrentVersion. Formato ISO 8601 (fecha sola).
-const EffectiveDate = "2026-09-17"
+const EffectiveDate = "2026-09-23"
 
 // Section es una sección de aviso: encabezado + párrafos. JSON estructurado
 // en vez de Markdown/HTML (M2.4 punto 3): sin intérprete de Markdown en el

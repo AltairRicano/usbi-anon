@@ -1,53 +1,62 @@
 {
   "sections": [
     {
-      "heading": "Aviso de privacidad integral — TEXTO PROVISIONAL",
+      "heading": "Aviso de privacidad integral",
       "paragraphs": [
-        "Este documento es un marcador de posición estructural, no el aviso legal definitivo. Sigue la estructura recomendada en el insumo de selección de plantilla de la Universidad Veracruzana (LG-03), pero su contenido real se redacta hasta el bloque M4.3 del plan de maduración, una vez cerradas las decisiones institucionales pendientes."
+        "Este texto sustituye al marcador de posición estructural de M2 con una redacción sustancialmente completa (ver pruebas/04_legal/LG-04_aviso_de_privacidad_v1.md para el detalle de fuentes y correcciones). No es todavía el aviso legal definitivo: dos datos — qué área de la Universidad Veracruzana figura como responsable, y la ubicación exacta del centro de datos del proveedor de alojamiento — son supuestos de trabajo pendientes de confirmación formal por el área jurídica de la UV, señalados explícitamente en las secciones correspondientes."
       ]
     },
     {
       "heading": "Responsable del tratamiento",
       "paragraphs": [
-        "PENDIENTE. Bloqueado por la decisión institucional sobre qué área de la Universidad Veracruzana figura como responsable, y por el nombre y dominio definitivos del producto."
+        "La Universidad Veracruzana, a través de la USBI correspondiente (dato asumido, no confirmado formalmente por el área jurídica de la UV — falta precisar la sede exacta o si en su lugar corresponde a la dependencia que opera la infraestructura), es la responsable del tratamiento que se realice a sus datos personales, los cuales serán protegidos conforme a lo dispuesto por la Ley Número 251 de Protección de Datos Personales en Posesión de Sujetos Obligados del Estado de Veracruz de Ignacio de la Llave (Gaceta Oficial No. 258, 2025-06-30), y demás normatividad que resulte aplicable."
       ]
     },
     {
-      "heading": "Datos personales tratados",
+      "heading": "Finalidad",
       "paragraphs": [
-        "Identificador de cuenta (UUID), nickname derivado de respuestas reales al cuestionario de registro, las respuestas mismas, edad autorreportada, progreso e historial de juego, y dirección IP en bitácoras de auditoría y seguridad.",
-        "Estos datos son personales seudonimizados: mientras exista una posibilidad razonable de reidentificación, la normativa de protección de datos aplica igual que a cualquier otro dato personal. Lo que cambia frente a un sistema convencional es el volumen y el riesgo, no la obligación."
+        "Los datos personales que recabamos serán utilizados exclusivamente para: brindar el servicio educativo gamificado (minijuegos, niveles, progreso, insignias) en línea; administrar el registro y autenticación de la cuenta; generar estadísticas e informes agregados sobre uso y desempeño; realizar los ajustes razonables necesarios para garantizar el acceso a participantes en situación de vulnerabilidad; atender solicitudes de ejercicio de derechos sobre una cuenta identificada por UUID; comunicar, en su caso, incidentes de seguridad que afecten su cuenta; y dar cumplimiento a las obligaciones de transparencia derivadas de la Ley 875 de Transparencia y Acceso a la Información Pública para el Estado de Veracruz de Ignacio de la Llave."
       ]
     },
     {
-      "heading": "Finalidades del tratamiento",
+      "heading": "Datos personales recabados",
       "paragraphs": [
-        "Autenticación y operación de la cuenta de jugador; generación de progreso, insignias y estadísticas de uso educativo; seguridad e integridad del servicio (bitácoras de auditoría e incidentes); atención de solicitudes de ejercicio de derechos."
+        "Identificador de cuenta (UUID); nickname y contraseña generados por el sistema a partir de fragmentos de sus respuestas al cuestionario de registro (la contraseña se guarda como hash irreversible y se muestra en claro una sola vez); respuestas de texto libre del cuestionario de registro; edad autorreportada e historial de solicitudes de cambio de rango etario; progreso de juego (puntajes, intentos, experiencia, rachas e insignias); dispositivos vinculados y eventos de sincronización sin conexión; dirección IP y user-agent en la bitácora de auditoría (única categoría de dato personal directo del sistema, de conservación indefinida); y, en su caso, el contenido de reportes de incidentes de seguridad que involucren su cuenta, redactados sin nombrarla por diseño.",
+        "Nota legal: el identificador de cuenta (UUID) es un dato personal seudonimizado, no un dato anónimo — el nickname y la contraseña se derivan de texto que la propia persona escribió, existe una vía administrativa interna que expone ese texto asociado al UUID, y el UUID enlaza todo el historial de la persona en el tiempo. Este aviso no declara \"no recabamos datos personales\" porque sería incorrecto."
+      ]
+    },
+    {
+      "heading": "Fundamento legal",
+      "paragraphs": [
+        "Ley Número 251 de Protección de Datos Personales en Posesión de Sujetos Obligados del Estado de Veracruz de Ignacio de la Llave; Ley General de Protección de Datos Personales en Posesión de Sujetos Obligados (marco general armonizado, vigente desde 2025-03-21); Ley Orgánica de la Universidad Veracruzana, en cuanto define su naturaleza de organismo público autónomo y, por tanto, de sujeto obligado bajo la ley estatal citada. Para el tratamiento de datos de personas menores de edad, aplica además el artículo 101 Bis 3 de la Ley General de los Derechos de Niñas, Niños y Adolescentes y la Ley Número 573 de los Derechos de Niñas, Niños y Adolescentes del Estado de Veracruz de Ignacio de la Llave."
       ]
     },
     {
       "heading": "Encargado del tratamiento y transferencias",
       "paragraphs": [
-        "El alojamiento del sistema corre sobre infraestructura de un proveedor externo (Hostinger, decisión D-01 del plan de maduración), lo que constituye un encargo de tratamiento a un tercero. Si el centro de datos del proveedor está fuera de México, aplica además una cláusula de transferencia internacional de datos.",
-        "PENDIENTE: texto final del convenio de encargo y, en su caso, de la cláusula de transferencia — depende de confirmar la ubicación real del centro de datos contratado."
-      ]
-    },
-    {
-      "heading": "Derechos ARCO (acceso, rectificación, cancelación, oposición)",
-      "paragraphs": [
-        "El sistema no usa correo electrónico como canal de contacto, así que el ejercicio de derechos ARCO no puede resolverse por esa vía. El procedimiento (presencial, en la sede de la USBI correspondiente) y la forma de acreditar identidad sobre una cuenta identificada solo por UUID están pendientes de documentar en el bloque M4.3."
+        "El alojamiento de la plataforma corre sobre infraestructura del proveedor Hostinger, lo que constituye un encargo de tratamiento a un tercero. Para efectos de este aviso se asume que el centro de datos contratado está ubicado en México — supuesto de trabajo del equipo del proyecto, pendiente de confirmación documental directa con el proveedor. Bajo ese supuesto no aplicaría una cláusula de transferencia internacional de datos; si al confirmar la contratación real el centro de datos resultara estar fuera de territorio mexicano, este aviso debe actualizarse antes de cualquier despliegue en producción para incorporar dicha cláusula.",
+        "Fuera de este encargo de hospedaje, sus datos personales no son compartidos con ninguna persona, empresa u organización distinta de la responsable. Únicamente se realizarán las transferencias necesarias para atender requerimientos de información de una autoridad competente, debidamente fundados y motivados."
       ]
     },
     {
       "heading": "Menores de edad",
       "paragraphs": [
-        "El registro permite autorreportar la edad sin gate de aprobación de un tutor por correo electrónico, dado que el sistema no recopila datos de contacto de ningún tutor. La justificación completa de este diseño se documenta en el bloque M4.3."
+        "El registro de esta plataforma permite que una persona menor de edad autorreporte su condición y juegue de inmediato, sin un mecanismo de consentimiento verificable de madre, padre o tutor. Es una decisión de diseño deliberada: el sistema no recaba correo electrónico, teléfono ni ningún otro dato de contacto de un adulto responsable, precisamente para minimizar la información personal que trata.",
+        "Reconocemos que esto deja sin resolver, por el momento, el estándar de consentimiento verificable que la normativa de protección de menores en línea generalmente espera. Como medidas compensatorias, la plataforma no permite contacto directo entre personas usuarias, no recaba ni expone información de contacto de terceros, y limita el contenido a material educativo. Esta sección se mantendrá bajo revisión y se actualizará conforme el área jurídica de la Universidad Veracruzana determine el mecanismo de consentimiento o las medidas adicionales aplicables."
       ]
     },
     {
-      "heading": "Cambios a este aviso",
+      "heading": "Derechos ARCO (acceso, rectificación, cancelación, oposición)",
       "paragraphs": [
-        "Los cambios de versión del aviso se notifican de forma informativa dentro de la aplicación (decisión D-06) y no bloquean el uso del servicio."
+        "Usted tiene derecho a acceder a sus datos personales, así como solicitar la rectificación de su información en caso de que esté desactualizada, sea inexacta o incompleta; que sea cancelada de nuestros registros cuando considere que no está siendo utilizada conforme a los principios, deberes y obligaciones previstos en la ley; así como oponerse al uso de sus datos personales para fines específicos.",
+        "Cancelación: autoservicio inmediato. Puede cancelar su propia cuenta en cualquier momento desde la opción correspondiente en su perfil, sin necesidad de presentar una solicitud por escrito. Al hacerlo, el sistema borra de inmediato sus respuestas del cuestionario de registro y su progreso de juego, y revoca todas sus sesiones activas. El identificador de cuenta permanece de forma seudonimizada únicamente para no romper la integridad de la bitácora de auditoría y del historial de experiencia de otras personas usuarias.",
+        "Acceso, rectificación y oposición. Dado que el sistema le identifica únicamente por un UUID y no recaba nombre, domicilio ni correo electrónico, el procedimiento tradicional de solicitud por escrito con esos datos no aplica tal cual. PENDIENTE: falta definir y publicar el canal de contacto específico de USBI-Anon para estas solicitudes. Como vía adicional, sigue disponible la Coordinación Universitaria de Transparencia, Acceso a la Información y Protección de Datos Personales (CUTAI): domicilio Calle Guillermo Prieto número 103, colonia Dos de Abril, CP 91030, Xalapa, Veracruz; teléfono (228) 8 42 17 00 ext. 10504 o (228) 8 41 59 20; correo datospersonales@uv.mx; Plataforma Nacional de Transparencia en plataformadetransparencia.org.mx."
+      ]
+    },
+    {
+      "heading": "Modificaciones al Aviso de Privacidad",
+      "paragraphs": [
+        "Los cambios de versión de este aviso se notifican de forma informativa dentro de la propia aplicación al iniciar sesión, y no bloquean el uso del servicio (decisión D-06). También se publicará cualquier modificación en la página de internet: https://www.uv.mx/transparencia/infpublica/avisos-privacidad"
       ]
     }
   ]

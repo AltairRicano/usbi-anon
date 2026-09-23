@@ -1,22 +1,28 @@
 {
   "sections": [
     {
-      "heading": "Aviso de privacidad simplificado — TEXTO PROVISIONAL",
+      "heading": "Aviso de privacidad simplificado",
       "paragraphs": [
-        "Este es un marcador de posición, no el aviso definitivo. La redacción legal real está pendiente (plan/00_Plan_de_maduracion.md, bloque M4.3) y depende de decisiones institucionales todavía abiertas: qué área de la Universidad Veracruzana figura como responsable del tratamiento, el nombre y dominio definitivos del producto, y la ubicación del centro de datos del proveedor de alojamiento.",
-        "El sistema identifica a cada jugador únicamente por un identificador (UUID) y un nickname derivado de las respuestas a un cuestionario de gustos no sensibles — nunca se pide ni se guarda nombre, correo electrónico o teléfono."
+        "La Universidad Veracruzana, a través de la USBI correspondiente (dato asumido, pendiente de confirmación formal por el área jurídica de la UV), es responsable del tratamiento de sus datos personales conforme a la Ley Número 251 de Protección de Datos Personales en Posesión de Sujetos Obligados del Estado de Veracruz.",
+        "Esta plataforma identifica a cada persona jugadora únicamente por un identificador (UUID) y un nickname derivado de las respuestas a un cuestionario de gustos no sensibles — nunca se le pide ni se guarda su nombre, correo electrónico o teléfono. Aun así, el UUID, el nickname, sus respuestas del cuestionario y su dirección IP en bitácoras técnicas siguen siendo datos personales conforme a la ley, no datos anónimos."
       ]
     },
     {
-      "heading": "Qué datos se usan",
+      "heading": "Para qué se usan y con quién se comparten",
       "paragraphs": [
-        "Identificador de cuenta, nickname, respuestas al cuestionario de registro, edad autorreportada, progreso de juego y dirección IP en bitácoras técnicas. Aunque no incluyen nombre ni correo, siguen siendo datos personales seudonimizados conforme a la normativa aplicable, no datos anónimos."
+        "Sus datos se usan únicamente para operar su cuenta y su progreso de juego, generar estadísticas agregadas y atender solicitudes sobre sus datos. No se comparten con terceros, salvo el proveedor que aloja la plataforma (Hostinger, bajo el supuesto de que su centro de datos está en México, pendiente de confirmación) o una autoridad competente que lo requiera fundadamente."
       ]
     },
     {
-      "heading": "No se despliega a producción con este texto",
+      "heading": "Si es usted menor de edad",
       "paragraphs": [
-        "El plan de maduración (decisión D-06) establece explícitamente que el sistema no se despliega a producción con un aviso provisional. Este texto existe para que el mecanismo de servir, versionar y sellar la aceptación del aviso pueda construirse y probarse antes de que exista la redacción legal final."
+        "Puede autorreportarlo y jugar de inmediato: el sistema no le pide ningún dato de contacto de un adulto responsable, aunque esto significa que hoy no existe un mecanismo de consentimiento verificable de madre, padre o tutor — un punto que seguimos revisando con el área jurídica de la Universidad Veracruzana."
+      ]
+    },
+    {
+      "heading": "Sus derechos",
+      "paragraphs": [
+        "Puede eliminar su propia cuenta en cualquier momento desde su perfil, sin trámite alguno. Para ejercer otros derechos (acceso, rectificación u oposición) o conocer el texto completo de este aviso, consulte el Aviso de Privacidad Integral dentro de la aplicación o contacte a la Coordinación Universitaria de Transparencia (datospersonales@uv.mx)."
       ]
     }
   ]
