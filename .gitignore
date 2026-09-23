@@ -27,3 +27,7 @@ backend/deploy/postgres/rendered/
 
 # reportes de subagentes (auditoría/investigación) — operativo, no producto
 agentes/
+
+# Documentos legales
+LICENSE
+*aviso_privacidad*

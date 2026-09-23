@@ -1,0 +1,9 @@
+---
+tipo: codigo
+fecha_elaboracion: 2026-09-19
+fecha_actualizacion: 2026-09-21
+---
+
+Archivo de evidencia con la información semilla de la tabla badges. Define el catálogo inicial de insignias del sistema de gamificación, especificando los umbrales de experiencia (XP) requeridos y las claves de iconos asociados para su obtención.
+
+[[pruebas/01_base_datos/BD-04_configuracion_postgres.md|Documento de análisis BD-04]]

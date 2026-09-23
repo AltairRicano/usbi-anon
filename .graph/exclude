@@ -1,0 +1,7 @@
+# Exclusiones propias del proyecto, una por línea. Se suman a las de por defecto.
+# Nombre suelto = en cualquier nivel (admite comodines); con '/' = desde la raíz.
+
+# Core dumps root-owned (permiso denegado para calcular su hash desde el
+# usuario altair) — rompían `graph status`/`incomplete` por completo.
+frontend/core.512
+frontend/core.348

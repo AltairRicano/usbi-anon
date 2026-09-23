@@ -1,0 +1,7 @@
+index.lock
+watcher.pid
+watcher.log
+index.json.*.tmp
+index.json.corrupt-*
+*.mv-*
+.grafo-*.tmp

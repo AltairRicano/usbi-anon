@@ -1,0 +1,15 @@
+M2: aviso de privacidad pasa de marcador provisional a borrador sustancial (v0.9)
+
+Corrige los hallazgos de la revisión previa: fuentes UV alineadas con LG-03,
+quita la mención errónea a arco_requests (tabla exclusiva de ../usbi, no
+existe en este proyecto), sección ARCO distingue cancelación autoservicio de
+acceso/rectificación/oposición, fundamento legal tomado de LG-02, sección de
+menores redactada desde cero. Sigue sin ser v1.0: responsable del tratamiento
+y ubicación del centro de datos son supuestos de trabajo, no confirmación
+institucional formal — marcado explícito en el propio texto y en el TODO de
+embed.go. Fuente completa en pruebas/04_legal/LG-04_aviso_de_privacidad_v1.md
+(fuera de git).
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+Code-commit: 700c8dd25a3ce2eae794b7ee4b7d6b144313375e
