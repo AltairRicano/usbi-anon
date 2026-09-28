@@ -1,0 +1,14 @@
+# Generado por `usbictl pgconf render`. scram-sha-256 en vez de trust/md5
+# (M3.5) — el único método aceptable para credenciales que Postgres SÍ debe
+# validar. Sustituye por completo al pg_hba.conf con `trust` de la instancia
+# de stress-test de un solo contenedor.
+#
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     scram-sha-256
+host    all             all             127.0.0.1/32            scram-sha-256
+host    all             all             ::1/128                 scram-sha-256
+
+# Red interna de docker compose — nunca 0.0.0.0/0: en el compose de
+# producción (M3.2) Postgres no publica ningún puerto al host, así que esta
+# es la única superficie de red real que necesita una regla.
+host    all             all             {{.NetworkCIDR}}        scram-sha-256

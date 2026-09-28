@@ -1,0 +1,670 @@
+package transport
+
+import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/altair/usbi-anon-backend/internal/auditlog"
+	"github.com/altair/usbi-anon-backend/internal/auth"
+	"github.com/altair/usbi-anon-backend/internal/badges"
+	"github.com/altair/usbi-anon-backend/internal/crypto"
+	"github.com/altair/usbi-anon-backend/internal/devices"
+	"github.com/altair/usbi-anon-backend/internal/domain"
+	"github.com/altair/usbi-anon-backend/internal/httpproblem"
+	"github.com/altair/usbi-anon-backend/internal/httputil"
+	"github.com/altair/usbi-anon-backend/internal/incidents"
+	"github.com/altair/usbi-anon-backend/internal/interestlinks"
+	"github.com/altair/usbi-anon-backend/internal/legal"
+	"github.com/altair/usbi-anon-backend/internal/levels"
+	"github.com/altair/usbi-anon-backend/internal/quiz"
+	"github.com/altair/usbi-anon-backend/internal/repository"
+	"github.com/altair/usbi-anon-backend/internal/suggestions"
+	syncHandler "github.com/altair/usbi-anon-backend/internal/sync"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
+
+// RouterDependencies contiene todas las dependencias de configuración y handlers. Un handler nil
+// registra un stub 501 "no implementado" para sus rutas en vez de hacer panic,
+// para que el cableado parcial (ej. en tests) sea seguro.
+type RouterDependencies struct {
+	AuditLogHandler  *auditlog.Handler
+	AuthHandler      *auth.Handler
+	BadgesHandler    *badges.Handler
+	QuizHandler      *quiz.Handler
+	SyncHandler      *syncHandler.Handler
+	LevelsHandler    *levels.Handler
+	DevicesHandler   *devices.Handler
+	IncidentsHandler *incidents.Handler
+	// InterestLinksHandler/SuggestionsHandler manejan las tablas de enlaces de interés y sugerencias.
+	InterestLinksHandler *interestlinks.Handler
+	SuggestionsHandler   *suggestions.Handler
+	// LegalHandler sirve el aviso de privacidad vigente. GetPrivacyNotice es pública, Accept requiere sesión.
+	LegalHandler *legal.Handler
+	ReadyCheck   func(context.Context) error
+	TokenCfg             crypto.TokenConfig
+	// Repo valida token_version y status de la cuenta.
+	Repo *repository.Queries
+	MaxBodyBytes int64
+	AllowedOrigin string
+	// TrustProxyHeaders activa el middleware RealIP de chi, que sobrescribe
+	// r.RemoteAddr con base en los headers True-Client-IP/X-Real-IP/X-Forwarded-For.
+	// DEBE mantenerse false a menos que el proxy inverso confirme limpiar/establecer
+	// esos headers; de otra forma un cliente podría suplantar su IP
+	// para burlar rate limits y auditorías.
+	TrustProxyHeaders bool
+	// RequestTimeout bounds every request via middleware.Timeout. Defaults to 20s.
+	RequestTimeout time.Duration
+}
+
+const defaultMaxBodyBytes int64 = 6 * 1024 * 1024
+
+// ClaimsFromContext extracts the JWT claims injected by jwtAuthMiddleware.
+// Returns nil if no claims are present (public route or missing middleware).
+func ClaimsFromContext(ctx context.Context) *domain.JWTClaims {
+	if v := ctx.Value(domain.ClaimsKey); v != nil {
+		if c, ok := v.(*domain.JWTClaims); ok {
+			return c
+		}
+	}
+	return nil
+}
+
+// SetupRoutes registra todas las rutas HTTP con su cadena de middleware.
+// Devuelve una función de cleanup que detiene las goroutines de limpieza de rate limit
+// en background — quien llama debería usar defer (o invocarla en shutdown graceful);
+// no es estricamente necesario para que el servidor funcione.
+func SetupRoutes(r chi.Router, deps RouterDependencies) func() {
+	rl := newRateLimiters()
+
+	origin := deps.AllowedOrigin
+	if origin == "" {
+		origin = "https://usbi.edu.mx"
+	}
+
+	requestTimeout := deps.RequestTimeout
+	if requestTimeout <= 0 {
+		requestTimeout = 20 * time.Second
+	}
+
+	// Global middleware stack
+	r.Use(middleware.RequestID)
+	if deps.TrustProxyHeaders {
+		r.Use(middleware.RealIP)
+	}
+	r.Use(requestLogger)
+	r.Use(middleware.Recoverer)
+	// Per-request deadline (B5): cancels the request context so slow queries /
+	// blocked advisory locks release their goroutine and pool connection.
+	r.Use(middleware.Timeout(requestTimeout))
+	r.Use(securityHeaders)
+	r.Use(corsMiddleware(origin))
+	r.Use(maxBodyBytesMiddleware(deps.MaxBodyBytes))
+
+	r.Route("/api/v1", func(r chi.Router) {
+		// ── Public routes ─────────────────────────────────────────────────────
+		// Registro sin email ni flujo de tutor.
+		r.Group(func(r chi.Router) {
+			r.Use(rl.authMiddleware)
+			if deps.AuthHandler != nil {
+				r.Post("/auth/register/questions", deps.AuthHandler.RegisterQuestions)
+				r.Post("/auth/register/answers", deps.AuthHandler.RegisterAnswers)
+				r.Post("/auth/register/confirm", deps.AuthHandler.RegisterConfirm)
+				r.Post("/auth/login", deps.AuthHandler.Login)
+				r.Post("/auth/refresh", deps.AuthHandler.Refresh)
+			} else {
+				r.Post("/auth/register/questions", notImplementedHandler("auth.registerQuestions"))
+				r.Post("/auth/register/answers", notImplementedHandler("auth.registerAnswers"))
+				r.Post("/auth/register/confirm", notImplementedHandler("auth.registerConfirm"))
+				r.Post("/auth/login", notImplementedHandler("auth.login"))
+				r.Post("/auth/refresh", notImplementedHandler("auth.refresh"))
+			}
+		})
+
+		// El aviso de privacidad es público pero cuenta con rate-limit general por IP.
+		r.Group(func(r chi.Router) {
+			r.Use(rl.generalMiddleware)
+			if deps.LegalHandler != nil {
+				r.Get("/legal/privacy-notice", deps.LegalHandler.GetPrivacyNotice)
+			} else {
+				r.Get("/legal/privacy-notice", notImplementedHandler("legal.getPrivacyNotice"))
+			}
+		})
+
+		// ── Authenticated routes ──────────────────────────────────────────────
+		r.Group(func(r chi.Router) {
+			r.Use(jwtAuthMiddleware(deps.TokenCfg, deps.Repo))
+			r.Use(rl.generalMiddleware)
+
+			if deps.AuthHandler != nil {
+				r.Post("/auth/logout", deps.AuthHandler.Logout)
+				r.Get("/auth/me", deps.AuthHandler.Me)
+				r.Post("/auth/age-up", deps.AuthHandler.AgeUp)
+				r.Delete("/auth/me", deps.AuthHandler.CancelSelf)
+
+				r.Post("/admin/accounts", deps.AuthHandler.CreateAdminAccount)
+				r.Delete("/admin/accounts/{account_id}", deps.AuthHandler.DeleteAdminAccount)
+				r.Get("/admin/accounts/{account_id}/quiz-answers", deps.AuthHandler.GetAccountQuizAnswers)
+				r.Post("/admin/accounts/{account_id}/reset-password", deps.AuthHandler.ResetAccountPassword)
+			} else {
+				r.Post("/auth/logout", notImplementedHandler("auth.logout"))
+				r.Get("/auth/me", notImplementedHandler("auth.me"))
+				r.Post("/auth/age-up", notImplementedHandler("auth.ageUp"))
+				r.Delete("/auth/me", notImplementedHandler("auth.cancelSelf"))
+				r.Post("/admin/accounts", notImplementedHandler("admin.createAccount"))
+				r.Delete("/admin/accounts/{account_id}", notImplementedHandler("admin.deleteAccount"))
+				r.Get("/admin/accounts/{account_id}/quiz-answers", notImplementedHandler("admin.getAccountQuizAnswers"))
+				r.Post("/admin/accounts/{account_id}/reset-password", notImplementedHandler("admin.resetAccountPassword"))
+			}
+
+			// Banco de preguntas de registro (internal/quiz) — restringido a
+			// admin dentro del propio Handler, no aquí (bank.go: canManageQuizBank).
+			if deps.QuizHandler != nil {
+				r.Get("/admin/registration-questions", deps.QuizHandler.ListQuestions)
+				r.Post("/admin/registration-questions", deps.QuizHandler.CreateQuestion)
+				r.Patch("/admin/registration-questions/{id}", deps.QuizHandler.UpdateQuestion)
+				r.Delete("/admin/registration-questions/{id}", deps.QuizHandler.DeleteQuestion)
+				r.Get("/admin/registration-settings", deps.QuizHandler.GetSettings)
+				r.Put("/admin/registration-settings", deps.QuizHandler.UpdateSettings)
+			} else {
+				r.Get("/admin/registration-questions", notImplementedHandler("admin.listRegistrationQuestions"))
+				r.Post("/admin/registration-questions", notImplementedHandler("admin.createRegistrationQuestion"))
+				r.Patch("/admin/registration-questions/{id}", notImplementedHandler("admin.updateRegistrationQuestion"))
+				r.Delete("/admin/registration-questions/{id}", notImplementedHandler("admin.deleteRegistrationQuestion"))
+				r.Get("/admin/registration-settings", notImplementedHandler("admin.getRegistrationSettings"))
+				r.Put("/admin/registration-settings", notImplementedHandler("admin.updateRegistrationSettings"))
+			}
+
+			if deps.SyncHandler != nil {
+				r.Post("/sync", deps.SyncHandler.SyncData)
+				// Historial de sync del propio jugador (filtra por claims.UserID).
+				r.Get("/sync/events", deps.SyncHandler.ListMyHistory)
+			} else {
+				r.Post("/sync", notImplementedHandler("sync.offlineProgress"))
+				r.Get("/sync/events", notImplementedHandler("sync.listMyHistory"))
+			}
+
+			if deps.IncidentsHandler != nil {
+				r.Post("/admin/security-incidents", deps.IncidentsHandler.CreateIncident)
+				// Rutas para incidentes (leer y editar, sin ruta DELETE por seguridad).
+				r.Get("/admin/security-incidents", deps.IncidentsHandler.List)
+				r.Get("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Get)
+				r.Patch("/admin/security-incidents/{incident_id}", deps.IncidentsHandler.Update)
+			} else {
+				r.Post("/admin/security-incidents", notImplementedHandler("admin.createSecurityIncident"))
+				r.Get("/admin/security-incidents", notImplementedHandler("admin.listSecurityIncidents"))
+				r.Get("/admin/security-incidents/{incident_id}", notImplementedHandler("admin.getSecurityIncident"))
+				r.Patch("/admin/security-incidents/{incident_id}", notImplementedHandler("admin.updateSecurityIncident"))
+			}
+
+			if deps.DevicesHandler != nil {
+				r.Post("/devices", deps.DevicesHandler.RegisterDevice)
+				r.Get("/devices", deps.DevicesHandler.ListDevices)
+				r.Delete("/devices/{device_id}", deps.DevicesHandler.RevokeDevice)
+			} else {
+				r.Post("/devices", notImplementedHandler("devices.register"))
+				r.Get("/devices", notImplementedHandler("devices.list"))
+				r.Delete("/devices/{device_id}", notImplementedHandler("devices.revoke"))
+			}
+
+			// Level routes (Phase 4 — Maker module)
+			if deps.LevelsHandler != nil {
+				r.Get("/sections", deps.LevelsHandler.ListSections)
+				r.Post("/sections", deps.LevelsHandler.CreateSection)
+				// /sections/archived antes que /sections/{section_id}: chi
+				// prioriza rutas estáticas sobre parámetros dentro del mismo
+				// nivel, pero se declara en este orden por legibilidad.
+				r.Get("/sections/archived", deps.LevelsHandler.ListArchivedSections)
+				r.Patch("/sections/{section_id}", deps.LevelsHandler.UpdateSection)
+				r.Post("/sections/{section_id}/publish", deps.LevelsHandler.PublishSection)
+				r.Post("/sections/{section_id}/unpublish", deps.LevelsHandler.UnpublishSection)
+				r.Post("/sections/{section_id}/archive", deps.LevelsHandler.ArchiveSection)
+				r.Post("/sections/{section_id}/unarchive", deps.LevelsHandler.UnarchiveSection)
+				// Purga irreversible, solo sobre contenido ya archivado.
+				r.Delete("/sections/{section_id}", deps.LevelsHandler.PurgeSection)
+
+				r.Post("/levels", deps.LevelsHandler.CreateLevel)
+				r.Get("/levels", deps.LevelsHandler.ListLevels)
+				r.Get("/levels/archived", deps.LevelsHandler.ListArchivedLevels)
+				r.Get("/levels/{level_id}", deps.LevelsHandler.GetLevel)
+				r.Patch("/levels/{level_id}", deps.LevelsHandler.UpdateLevel)
+				r.Post("/levels/{level_id}/publish", deps.LevelsHandler.PublishLevel)
+				r.Post("/levels/{level_id}/unpublish", deps.LevelsHandler.UnpublishLevel)
+				r.Post("/levels/{level_id}/archive", deps.LevelsHandler.ArchiveLevel)
+				r.Post("/levels/{level_id}/unarchive", deps.LevelsHandler.UnarchiveLevel)
+				r.Post("/levels/{level_id}/complete", deps.LevelsHandler.CompleteLevel)
+				r.Delete("/levels/{level_id}", deps.LevelsHandler.PurgeLevel)
+
+				r.Get("/profile/progress", deps.LevelsHandler.GetProfileProgress)
+			} else {
+				r.Get("/sections", notImplementedHandler("sections.list"))
+				r.Post("/sections", notImplementedHandler("sections.create"))
+				r.Post("/levels", notImplementedHandler("levels.create"))
+				r.Get("/levels", notImplementedHandler("levels.list"))
+				r.Get("/profile/progress", notImplementedHandler("profile.progress"))
+			}
+
+			// Enlaces de interés y buzón de sugerencias.
+			if deps.InterestLinksHandler != nil {
+				r.Get("/interest-links", deps.InterestLinksHandler.ListInterestLinks)
+
+				r.Get("/admin/interest-link-categories", deps.InterestLinksHandler.ListCategories)
+				r.Post("/admin/interest-link-categories", deps.InterestLinksHandler.CreateCategory)
+				r.Patch("/admin/interest-link-categories/{category_id}", deps.InterestLinksHandler.UpdateCategory)
+				r.Delete("/admin/interest-link-categories/{category_id}", deps.InterestLinksHandler.DeleteCategory)
+
+				r.Get("/admin/interest-links", deps.InterestLinksHandler.ListLinks)
+				r.Post("/admin/interest-links", deps.InterestLinksHandler.CreateLink)
+				r.Patch("/admin/interest-links/{link_id}", deps.InterestLinksHandler.UpdateLink)
+				r.Delete("/admin/interest-links/{link_id}", deps.InterestLinksHandler.DeleteLink)
+			} else {
+				r.Get("/interest-links", notImplementedHandler("interestLinks.list"))
+				r.Get("/admin/interest-link-categories", notImplementedHandler("admin.listInterestLinkCategories"))
+				r.Post("/admin/interest-link-categories", notImplementedHandler("admin.createInterestLinkCategory"))
+				r.Patch("/admin/interest-link-categories/{category_id}", notImplementedHandler("admin.updateInterestLinkCategory"))
+				r.Delete("/admin/interest-link-categories/{category_id}", notImplementedHandler("admin.deleteInterestLinkCategory"))
+				r.Get("/admin/interest-links", notImplementedHandler("admin.listInterestLinks"))
+				r.Post("/admin/interest-links", notImplementedHandler("admin.createInterestLink"))
+				r.Patch("/admin/interest-links/{link_id}", notImplementedHandler("admin.updateInterestLink"))
+				r.Delete("/admin/interest-links/{link_id}", notImplementedHandler("admin.deleteInterestLink"))
+			}
+
+			if deps.SuggestionsHandler != nil {
+				r.Post("/suggestions", deps.SuggestionsHandler.Submit)
+				r.Get("/admin/suggestions", deps.SuggestionsHandler.List)
+				r.Delete("/admin/suggestions/{suggestion_id}", deps.SuggestionsHandler.Delete)
+			} else {
+				r.Post("/suggestions", notImplementedHandler("suggestions.submit"))
+				r.Get("/admin/suggestions", notImplementedHandler("admin.listSuggestions"))
+				r.Delete("/admin/suggestions/{suggestion_id}", notImplementedHandler("admin.deleteSuggestion"))
+			}
+
+			// Banner de cambio de versión del aviso de privacidad (informativo, no bloquea).
+			if deps.LegalHandler != nil {
+				r.Post("/legal/accept", deps.LegalHandler.Accept)
+			} else {
+				r.Post("/legal/accept", notImplementedHandler("legal.accept"))
+			}
+
+			// Catálogo de insignias (CRUD de admin). La lectura del jugador usa GET /profile/progress.
+			if deps.BadgesHandler != nil {
+				r.Get("/admin/badges", deps.BadgesHandler.List)
+				r.Post("/admin/badges", deps.BadgesHandler.Create)
+				r.Patch("/admin/badges/{badge_id}", deps.BadgesHandler.Update)
+				r.Delete("/admin/badges/{badge_id}", deps.BadgesHandler.Delete)
+			} else {
+				r.Get("/admin/badges", notImplementedHandler("admin.listBadges"))
+				r.Post("/admin/badges", notImplementedHandler("admin.createBadge"))
+				r.Patch("/admin/badges/{badge_id}", notImplementedHandler("admin.updateBadge"))
+				r.Delete("/admin/badges/{badge_id}", notImplementedHandler("admin.deleteBadge"))
+			}
+
+			// Lectura de audit_log. Cada consulta se audita a sí misma dentro de AdminService.
+			if deps.AuditLogHandler != nil {
+				r.Get("/admin/audit-log", deps.AuditLogHandler.List)
+			} else {
+				r.Get("/admin/audit-log", notImplementedHandler("admin.listAuditLog"))
+			}
+		})
+	})
+
+	// Health check — unauthenticated, unversioned
+	r.Get("/health", healthHandler)
+	r.Get("/health/live", healthHandler)
+	r.Get("/health/ready", readyHandler(deps.ReadyCheck))
+
+	return rl.Close
+}
+
+func maxBodyBytesMiddleware(maxBytes int64) func(http.Handler) http.Handler {
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxBodyBytes
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// requestLogger emite un registro estructurado (slog) por cada petición: método, ruta,
+// estado, bytes, latencia, ID de petición e IP del cliente (B4). Reemplaza el middleware
+// Logger de texto de chi para que sea parseable por máquina, y sus campos de estado
+// y duración sirven como métricas base de peticiones.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+		slog.Info("http_request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", ww.Status(),
+			"bytes", ww.BytesWritten(),
+			"duration_ms", time.Since(start).Milliseconds(),
+			"request_id", middleware.GetReqID(r.Context()),
+			"remote_ip", httputil.ClientIP(r),
+		)
+	})
+}
+
+// healthHandler returns a simple liveness probe response.
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"ok","service":"usbi-anon-backend"}`))
+}
+
+// readyHandler expone en el body cuál dependencia falló sin filtrar el error crudo del driver.
+func readyHandler(check func(context.Context) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if check == nil {
+			healthHandler(w, r)
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := check(ctx); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			body, _ := json.Marshal(map[string]string{
+				"status":  "unavailable",
+				"service": "usbi-anon-backend",
+				"detail":  err.Error(),
+			})
+			_, _ = w.Write(body)
+			return
+		}
+
+		healthHandler(w, r)
+	}
+}
+
+// notImplementedHandler returns a 501 stub for routes pending implementation.
+func notImplementedHandler(operation string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		httpproblem.WriteProblem(w, r, http.StatusNotImplemented, "not-implemented",
+			"Not Implemented",
+			"Operation '"+operation+"' is pending implementation.")
+	}
+}
+
+// securityHeaders sets conservative security response headers on every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		// Only assert HSTS when this process terminates TLS itself; behind a
+		// reverse proxy, the TLS terminator (Nginx) owns this header.
+		if r.TLS != nil {
+			h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// corsMiddleware applies CORS headers. The origin is configurable to support
+// both production (https://usbi.edu.mx) and local LAN development.
+// corsMiddleware enforces an allowlist parsed from a comma-separated list of
+// origins (e.g. "https://usbi.edu.mx,http://localhost:5173"). A literal "*"
+// entry opts into allowing any origin (discouraged outside local development).
+// Unlike a naive reflect-any-origin implementation, a request whose Origin
+// does not match gets no Access-Control-Allow-Origin header at all, so
+// browsers block the cross-origin response as intended.
+func corsMiddleware(allowedOrigins string) func(http.Handler) http.Handler {
+	origins := make(map[string]struct{})
+	wildcard := false
+	for _, o := range strings.Split(allowedOrigins, ",") {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		if o == "*" {
+			wildcard = true
+			continue
+		}
+		origins[o] = struct{}{}
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Vary", "Origin")
+
+			reqOrigin := r.Header.Get("Origin")
+			if reqOrigin != "" {
+				if wildcard {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				} else if _, ok := origins[reqOrigin]; ok {
+					w.Header().Set("Access-Control-Allow-Origin", reqOrigin)
+				}
+			}
+
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
+			w.Header().Set("Access-Control-Max-Age", "86400")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// jwtAuthMiddleware validates the JWT and injects claims into the request context.
+// Downstream handlers retrieve claims via ClaimsFromContext(r.Context()).
+// repo revalida token_version y status contra accounts.
+func jwtAuthMiddleware(cfg crypto.TokenConfig, repo *repository.Queries) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if len(authHeader) < 8 || authHeader[:7] != "Bearer " {
+				httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+					"Unauthorized", "Missing or malformed Authorization header")
+				return
+			}
+
+			tokenStr := authHeader[7:]
+
+			// Reject if JWT secret is not configured (zero-value cfg).
+			if len(cfg.Secret) == 0 {
+				httpproblem.WriteProblem(w, r, http.StatusServiceUnavailable, "misconfigured",
+					"Service Unavailable", "Authentication service is not configured")
+				return
+			}
+
+			claims, err := crypto.ValidateToken(tokenStr, cfg)
+			if err != nil {
+				httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+					"Unauthorized", "Invalid or expired token")
+				return
+			}
+
+			// Verify token_version and status against the database if repo is
+			// provided. This enables immediate token revocation on
+			// logout/password reset/cancellation, and rejects a still-valid
+			// JWT for an account suspended after it was issued.
+			if repo != nil {
+				account, err := repo.GetAccountByID(r.Context(), claims.UserID)
+				if err != nil || int(account.TokenVersion) != claims.TokenVersion || account.Status != string(domain.StatusActive) {
+					httpproblem.WriteProblem(w, r, http.StatusUnauthorized, "unauthorized",
+						"Unauthorized", "Token has been revoked or is invalid")
+					return
+				}
+			}
+
+			// Inject claims into context for downstream handlers.
+			ctx := context.WithValue(r.Context(), domain.ClaimsKey, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+type visitor struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+// Stricter limiter for public auth routes (register/login/refresh/tutor-consent),
+// where the cost of a request (Argon2id hashing) makes even modest per-IP rates
+// attractive for credential stuffing / brute force. ~1 attempt every 2s with a
+// burst of 5 comfortably covers a legitimate user mistyping a password.
+const (
+	authRateRPS   rate.Limit = 0.5
+	authRateBurst            = 5
+)
+
+// generalRateRPS/generalRateBurst govern the general authenticated-route limiter.
+const (
+	generalRateRPS   rate.Limit = 10
+	generalRateBurst            = 20
+)
+
+// proxyMisconfigWarnThreshold is how many requests must be observed before the
+// single-IP-diversity check below fires (avoids a false positive from the first
+// few requests at cold start).
+const proxyMisconfigWarnThreshold = 50
+
+// visitorTracker is one bucket of per-IP token-bucket limiters. It owns its
+// own lock, so distinct trackers (general vs. auth routes) never contend.
+type visitorTracker struct {
+	mu           sync.Mutex
+	visitors     map[string]*visitor
+	requestCount int
+	rps          rate.Limit
+	burst        int
+}
+
+func newVisitorTracker(rps rate.Limit, burst int) *visitorTracker {
+	return &visitorTracker{visitors: make(map[string]*visitor), rps: rps, burst: burst}
+}
+
+func (t *visitorTracker) getLimiter(ip string) *rate.Limiter {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	v, exists := t.visitors[ip]
+	if !exists {
+		v = &visitor{limiter: rate.NewLimiter(t.rps, t.burst), lastSeen: time.Now()}
+		t.visitors[ip] = v
+	} else {
+		v.lastSeen = time.Now()
+	}
+	t.requestCount++
+	return v.limiter
+}
+
+func (t *visitorTracker) expireIdle(maxIdle time.Duration) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for ip, v := range t.visitors {
+		if time.Since(v.lastSeen) > maxIdle {
+			delete(t.visitors, ip)
+		}
+	}
+}
+
+func (t *visitorTracker) snapshot() (distinctIPs, requests int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.visitors), t.requestCount
+}
+
+// rateLimiters owns both per-IP limiter buckets (general + auth) and the
+// goroutine that expires idle entries. Stoppable via Close().
+type rateLimiters struct {
+	general            *visitorTracker
+	auth               *visitorTracker
+	proxyMisconfigOnce sync.Once
+	stop               chan struct{}
+}
+
+func newRateLimiters() *rateLimiters {
+	rl := &rateLimiters{
+		general: newVisitorTracker(generalRateRPS, generalRateBurst),
+		auth:    newVisitorTracker(authRateRPS, authRateBurst),
+		stop:    make(chan struct{}),
+	}
+	go rl.runCleanup()
+	return rl
+}
+
+// Close stops the background cleanup goroutine. Safe to call once.
+func (rl *rateLimiters) Close() {
+	close(rl.stop)
+}
+
+func (rl *rateLimiters) runCleanup() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			rl.general.expireIdle(3 * time.Minute)
+			rl.auth.expireIdle(3 * time.Minute)
+		case <-rl.stop:
+			return
+		}
+	}
+}
+
+// warnIfLikelyProxyMisconfigured logs once if every request so far has come
+// from the same IP, which usually means TRUST_PROXY_HEADERS=false is used behind a reverse proxy.
+func (rl *rateLimiters) warnIfLikelyProxyMisconfigured() {
+	distinctGeneral, generalCount := rl.general.snapshot()
+	distinctAuth, authCount := rl.auth.snapshot()
+
+	total := generalCount + authCount
+	if total < proxyMisconfigWarnThreshold {
+		return
+	}
+	if distinctGeneral > 1 || distinctAuth > 1 {
+		return
+	}
+	rl.proxyMisconfigOnce.Do(func() {
+		slog.Warn("rate limiter has seen only one distinct client IP after many requests; "+
+			"if this server sits behind a reverse proxy, TRUST_PROXY_HEADERS is probably "+
+			"false when it should be true (see DEPLOYMENT.md)",
+			"requests_observed", total)
+	})
+}
+
+func (rl *rateLimiters) generalMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limiter := rl.general.getLimiter(httputil.ClientIP(r))
+		rl.warnIfLikelyProxyMisconfigured()
+		if !limiter.Allow() {
+			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "rate-limit-exceeded",
+				"Too Many Requests", "Rate limit exceeded")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// authMiddleware applies a much stricter per-IP limit to the public authentication routes.
+func (rl *rateLimiters) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limiter := rl.auth.getLimiter(httputil.ClientIP(r))
+		rl.warnIfLikelyProxyMisconfigured()
+		if !limiter.Allow() {
+			httpproblem.WriteProblem(w, r, http.StatusTooManyRequests, "rate-limit-exceeded",
+				"Too Many Requests", "Rate limit exceeded")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}

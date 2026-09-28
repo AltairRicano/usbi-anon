@@ -1,0 +1,29 @@
+{
+  "sections": [
+    {
+      "heading": "Aviso de privacidad simplificado",
+      "paragraphs": [
+        "La Universidad Veracruzana, a través de la USBI correspondiente (dato asumido, pendiente de confirmación formal por el área jurídica de la UV), es responsable del tratamiento de sus datos personales conforme a la Ley Número 251 de Protección de Datos Personales en Posesión de Sujetos Obligados del Estado de Veracruz.",
+        "Esta plataforma identifica a cada persona jugadora únicamente por un identificador (UUID) y un nickname derivado de las respuestas a un cuestionario de gustos no sensibles — nunca se le pide ni se guarda su nombre, correo electrónico o teléfono. Aun así, el UUID, el nickname, sus respuestas del cuestionario y su dirección IP en bitácoras técnicas siguen siendo datos personales conforme a la ley, no datos anónimos."
+      ]
+    },
+    {
+      "heading": "Para qué se usan y con quién se comparten",
+      "paragraphs": [
+        "Sus datos se usan únicamente para operar su cuenta y su progreso de juego, generar estadísticas agregadas y atender solicitudes sobre sus datos. No se comparten con terceros, salvo el proveedor que aloja la plataforma (Hostinger, bajo el supuesto de que su centro de datos está en México, pendiente de confirmación) o una autoridad competente que lo requiera fundadamente."
+      ]
+    },
+    {
+      "heading": "Si es usted menor de edad",
+      "paragraphs": [
+        "Puede autorreportarlo y jugar de inmediato: el sistema no le pide ningún dato de contacto de un adulto responsable, aunque esto significa que hoy no existe un mecanismo de consentimiento verificable de madre, padre o tutor — un punto que seguimos revisando con el área jurídica de la Universidad Veracruzana."
+      ]
+    },
+    {
+      "heading": "Sus derechos",
+      "paragraphs": [
+        "Puede eliminar su propia cuenta en cualquier momento desde su perfil, sin trámite alguno. Para ejercer otros derechos (acceso, rectificación u oposición) o conocer el texto completo de este aviso, consulte el Aviso de Privacidad Integral dentro de la aplicación o contacte a la Coordinación Universitaria de Transparencia (datospersonales@uv.mx)."
+      ]
+    }
+  ]
+}

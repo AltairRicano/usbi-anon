@@ -1,0 +1,26 @@
+# Generado por `usbictl pgconf render` — NUNCA sobrescribe postgresql.conf
+# completo (M3.7): se monta como archivo de overrides incluido vía
+# include_dir desde el postgresql.conf real de la imagen oficial, así que
+# los valores por defecto de cada versión de Postgres siguen llegando y solo
+# queda versionado lo que realmente se decidió cambiar.
+#
+# Calculado para un VPS total de {{.TotalRAMMB}} MB de RAM, compartido en el
+# mismo compose con los servicios api y web (M3.2) — no solo con Postgres.
+# Recalcula con `usbictl pgconf render --total-ram-mb N` en cuanto se
+# confirme el tamaño real del plan contratado.
+
+shared_buffers = {{.SharedBuffersMB}}MB
+effective_cache_size = {{.EffectiveCacheSizeMB}}MB
+work_mem = {{.WorkMemMB}}MB
+maintenance_work_mem = {{.MaintenanceWorkMemMB}}MB
+max_connections = {{.MaxConnections}}
+
+# TLS lo termina nginx (servicio web) en el borde público — Postgres solo
+# recibe tráfico de la red interna de compose, nunca expuesta (M3.2).
+ssl = off
+
+# Bitácora: suficiente para depurar consultas lentas sin llenar el disco de
+# 20 GB en un VPS de este tamaño.
+log_min_duration_statement = 250
+log_line_prefix = '%m [%p] %q%u@%d '
+log_checkpoints = on

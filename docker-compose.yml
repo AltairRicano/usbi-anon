@@ -1,0 +1,145 @@
+# docker-compose.yml — despliegue de 3 servicios (M3.2 del plan de
+# maduración), versionado en el repositorio: quien lo clona puede desplegar
+# sin secretos en la nube ni runner con acceso SSH (D-04). Reemplaza,
+# conceptualmente, a la instancia de un solo contenedor de prueba de
+# esfuerzo (/home/altair/usbi-anon/docker-compose.yml, fuera de este repo,
+# que NO se toca ni se borra) — ese sigue siendo el entorno de referencia
+# para desarrollo hasta que este compose se ensaye en el VPS real (M3.10).
+#
+# Puertos y tamaño del VPS: todo lo que sigue asume el VPS de referencia del
+# plan (1 vCPU, 1 GB RAM, 20 GB disco) y los puertos que ya se usan hoy en
+# desarrollo (8092/8093/5435) — ninguno de los dos está confirmado como
+# definitivo. Todo se lee de .env (ver .env.example) para poder cambiarlo
+# sin tocar este archivo: copia .env.example a .env, ajusta lo que haga
+# falta, y self-actualiza cuando se cierren esas decisiones.
+
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    mem_limit: 250m
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:?configura DB_SUPERUSER_PASSWORD en .env — usbictl secrets init lo genera}
+      # Los cuatro roles de aplicación los crea backend/sql/00_init_cluster.sh
+      # (docker-entrypoint-initdb.d), UNA sola vez al inicializar el volumen.
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?}
+      DB_MODERADOR_PASSWORD: ${DB_MODERADOR_PASSWORD:?}
+      DB_MIGRATE_PASSWORD: ${DB_MIGRATE_PASSWORD:?}
+      DB_DBMAINT_PASSWORD: ${DB_DBMAINT_PASSWORD:?}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/sql/00_roles_unificado.sql:/docker-entrypoint-initdb.d/00_roles_unificado.sql.src:ro
+      - ./backend/sql/00_init_cluster.sh:/docker-entrypoint-initdb.d/00_init_cluster.sh:ro
+      # scram-sha-256 en vez de trust/md5 (M3.5). Generado a mano o con
+      # `usbictl pgconf render --out-dir ./backend/deploy/postgres/rendered`
+      # — nunca copia postgresql.conf completo, solo esta plantilla propia.
+      - ./backend/deploy/postgres/rendered/pg_hba.conf:/etc/postgresql-hba/pg_hba.conf:ro
+    # Los valores de memoria (shared_buffers, etc.) van como -c sueltos, no
+    # como archivo de overrides: para el compose alcanza con parámetros por
+    # línea de comandos, ya expuestos como variables de .env con la misma
+    # fórmula que usa `usbictl pgconf render` (M3.7) — cámbialos ahí, no
+    # aquí, en cuanto se confirme el tamaño real del VPS contratado.
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql-hba/pg_hba.conf
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-89MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-268MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-4MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-44MB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-20}
+    # Publicado por ahora porque hoy ya se inspecciona desde fuera del
+    # contenedor (psql/DBeaver) en el entorno de desarrollo (puerto 5435) —
+    # ver la advertencia en .env.example. ANTES de cualquier despliegue con
+    # IP pública real, comenta este bloque `ports`: nada dentro de la red
+    # `internal` necesita que este puerto salga al host.
+    ports:
+      - "${HOST_DB_PORT:-5435}:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    mem_limit: 250m
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8088"
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:${HOST_WEB_PORT:-8092}}
+      JWT_SECRET: ${JWT_SECRET:?configura JWT_SECRET en .env — usbictl secrets init lo genera}
+      HMAC_SECRET: ${HMAC_SECRET:?configura HMAC_SECRET en .env}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
+
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: usbi_app
+      DB_PASSWORD: ${DB_APP_PASSWORD:?}
+      DB_NAME: usbi_anon_db
+      DB_SSLMODE: disable
+
+      DB_MODERATOR_HOST: db
+      DB_MODERATOR_PORT: "5432"
+      DB_MODERATOR_USER: usbi_moderador
+      DB_MODERATOR_PASSWORD: ${DB_MODERADOR_PASSWORD:?}
+      DB_MODERATOR_NAME: usbi_anon_db
+      DB_MODERATOR_SSLMODE: disable
+
+      DB_DBMAINT_HOST: db
+      DB_DBMAINT_PORT: "5432"
+      DB_DBMAINT_USER: usbi_dbmaint
+      DB_DBMAINT_PASSWORD: ${DB_DBMAINT_PASSWORD:?}
+      DB_DBMAINT_NAME: usbi_anon_db
+      DB_DBMAINT_SSLMODE: disable
+
+      # Solo usado por `docker compose run --rm api usbictl migrate ...`
+      # (M3.3) — el servidor HTTP (entrypoint de esta imagen) nunca lee
+      # estas variables ni aplica migraciones por su cuenta.
+      DB_MIGRATE_HOST: db
+      DB_MIGRATE_PORT: "5432"
+      DB_MIGRATE_USER: usbi_migrate
+      DB_MIGRATE_PASSWORD: ${DB_MIGRATE_PASSWORD:?}
+      DB_MIGRATE_NAME: usbi_anon_db
+      DB_MIGRATE_SSLMODE: disable
+    # Publicado hoy para poder probar la API directo (curl/Postman) igual
+    # que en desarrollo (puerto 8093). M3.2 recomienda NO publicarlo en
+    # producción real: el frontend (servicio `web`) ya proxya /api sobre el
+    # mismo origen. Comenta este bloque cuando eso deje de hacer falta.
+    ports:
+      - "${HOST_API_PORT:-8093}:8088"
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    mem_limit: 250m
+    depends_on:
+      - api
+    ports:
+      - "${HOST_WEB_PORT:-8092}:80"
+    networks:
+      - internal
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: ${COMPOSE_NETWORK_CIDR:-172.28.0.0/16}
+
+volumes:
+  db_data:

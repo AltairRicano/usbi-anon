@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+/* Tailwind v4 activa dark: por prefers-color-scheme salvo que se redefina
+   la variante — este proyecto alterna dark/light a mano con la clase .dark
+   en <html> (useSettingsStore.ts), no con la preferencia del SO. Sin esta
+   línea, cualquier utilidad dark: nunca coincide con el toggle real. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   SISTEMA DE DISEÑO INSTITUCIONAL – USBI / Universidad Veracruzana
+   Fuente de verdad: plan/Convenciones_de_color_UV.md
+   Heredado sin cambios de ../usbi/frontend/src/index.css
+   (plan/03_Frontend.md §3: "components/ui/, styles/, identidad visual UV —
+   sin cambios. Siguen aplicando plan/Convenciones_de_color_UV.md").
+   Contraste verificado WCAG 2.2:
+     - primary (azul UV #18529D) sobre blanco → 7.69:1 ✓  (modo claro)
+     - primary (azul claro #6f9fe0) sobre tarjeta oscura #1e293b → 5.37:1 ✓ (modo oscuro)
+     - secondary (verde UV #28AD56) sobre negro → 7.20:1 ✓
+     - secondary sobre blanco → 2.92:1 ✗ → usar solo como acento
+   ============================================================ */
+
+:root {
+  --theme-bg: #FFFFFF;
+  --theme-fg: #000000;
+  --theme-surface: #F5F5F5;
+  --theme-muted: #4A4A4A;
+  --theme-border: #D1D5DB;
+  --theme-card: #FFFFFF;
+  --theme-text-card: #0f172a;
+  --theme-primary: #18529D;
+  --theme-primary-hover: #0f3d76;
+  --theme-primary-foreground: #FFFFFF;
+}
+
+html.dark {
+  --theme-bg: #020617;
+  --theme-fg: #f8fafc;
+  --theme-surface: #0f172a;
+  --theme-muted: #94a3b8;
+  --theme-border: #475569;
+  --theme-card: #1e293b;
+  --theme-text-card: #f8fafc;
+  --theme-primary: #6f9fe0;
+  --theme-primary-hover: #7fb0e8;
+  --theme-primary-foreground: #0f172a;
+}
+
+@theme {
+  /* ── Paleta institucional UV ─────────────────────────────── */
+  --color-primary:            var(--theme-primary);
+  --color-primary-hover:      var(--theme-primary-hover);
+  --color-primary-foreground: var(--theme-primary-foreground);
+
+  --color-secondary:          #28AD56;
+  --color-secondary-dark:     #006633;
+  --color-secondary-foreground: #000000;
+
+  /* ── Neutros (dinámicos por tema) ────────────────────────── */
+  --color-background:   var(--theme-bg);
+  --color-foreground:   var(--theme-fg);
+  --color-surface:      var(--theme-surface);
+  --color-muted:        var(--theme-muted);
+  --color-border:       var(--theme-border);
+  --color-card:         var(--theme-card);
+  --color-text-card:    var(--theme-text-card);
+
+  /* ── Estado (accesibles WCAG) ────────────────────────────── */
+  --color-success:      #006633;
+  --color-warning:      #7A4E00;
+  --color-error:        #B00020;
+  --color-info:         #18529D;
+
+  /* ── Tipografía ──────────────────────────────────────────── */
+  --font-sans: 'Inter', 'Avenir', 'Helvetica', 'Arial', sans-serif;
+
+  /* ── Accesibilidad motriz ────────────────────────────────── */
+  --spacing-touch: 44px; /* Área mínima de clic WCAG 2.5.5 */
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Área de clic mínima 44×44px (WCAG 2.5.5). */
+  button, [role="button"], a, input, select, textarea {
+    min-height: var(--spacing-touch);
+  }
+  button, [role="button"] {
+    min-width: var(--spacing-touch);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-primary);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  a:hover {
+    color: var(--color-primary-hover);
+  }
+
+  button a {
+    color: inherit;
+    text-decoration: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ── Filtros de accesibilidad daltónica ──────────────────────
+   Toggle en features/settings/SettingsPage.tsx (F10.5), vía
+   useSettingsStore / clases en <html>.
+
+   El filtro se aplica en <html>, NUNCA en #root ni en ningún wrapper
+   interno. `filter` distinto de `none` convierte al elemento que lo lleva
+   en containing block de sus descendientes `position: fixed`/`absolute`
+   (spec de CSS Filter Effects) — si el filtro se pone en #root (un <div>
+   dentro de <body>), todo elemento fixed de la app (el panel lateral del
+   dashboard, sus modales de confirmación, etc.) deja de posicionarse
+   respecto al viewport real y pasa a posicionarse respecto a la caja de
+   #root. <html> es el elemento raíz: su caja ya coincide con el containing
+   block inicial (el viewport), así que aplicar el filtro ahí no genera un
+   containing block nuevo/distinto y los `position: fixed` siguen anclados
+   al viewport como es debido.
+
+   Deliberadamente SOLO funciones nativas de `filter` (contrast/saturate/
+   hue-rotate), sin `url(#id-de-un-<filter>-SVG)`. Versión anterior (heredada
+   de ../usbi) encadenaba un filtro SVG (matriz de corrección Daltonize) por
+   encima de esto, protegido por `@supports (filter: url(...))`. Esa
+   feature-query solo confirma que el navegador entiende la SINTAXIS
+   `url()` en `filter` — no que la referencia se resuelva. En Firefox la
+   sintaxis SÍ es soportada (la media query da true) pero la referencia al
+   <filter> del SVG no se resuelve en runtime, y por spec una referencia
+   `url()` inválida invalida la cadena de filtro COMPLETA (no solo ese
+   término) — el resultado observado era "activo el filtro y no cambia
+   nada" en Firefox, mientras Chrome/Opera sí renderizaban la matriz SVG
+   con normalidad. Que el filtro se note de forma **consistente en
+   cualquier navegador** vale más que la precisión extra de la matriz
+   Daltonize, así que se eliminó la rama SVG entera (y sus defs en
+   index.html) en vez de intentar parchear la detección — un solo mecanismo,
+   con soporte universal desde hace más de una década, sin dependencia
+   cruzada HTML→SVG que pueda volver a romperse en un tercer navegador.
+   Valores un poco más marcados que antes para que la corrección se
+   distinga con claridad usando solo estas funciones. Ver estado_proyecto.md. */
+html.deuteranopia {
+  filter: contrast(1.1) saturate(0.65) hue-rotate(-16deg);
+}
+html.protanopia {
+  filter: contrast(1.12) saturate(0.7) hue-rotate(12deg);
+}
+html.tritanopia {
+  filter: contrast(1.1) saturate(0.75) hue-rotate(32deg);
+}
+
+/* ── Reducir movimiento ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Animación del carrusel de "Enlaces de interés" (MoreTab) ───────────
+   Direccional: la tarjeta entra desde la derecha al avanzar (›) y desde la
+   izquierda al retroceder (‹), simulando pasar una ficha. Usa `animation`
+   (no `transition`) porque la tarjeta se remonta por `key` en cada cambio
+   de índice — no hace falta condicionar por reduce-motion aquí: las reglas
+   de arriba ya fuerzan `animation-duration: 0.01ms !important` sobre todo
+   elemento cuando ese modo está activo, así que la animación se vuelve
+   instantánea sin código adicional. */
+@keyframes interest-card-enter-next {
+  from { transform: translateX(28px) scale(0.97); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+@keyframes interest-card-enter-prev {
+  from { transform: translateX(-28px) scale(0.97); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+.interest-card-enter-next {
+  animation: interest-card-enter-next 220ms ease-out;
+}
+.interest-card-enter-prev {
+  animation: interest-card-enter-prev 220ms ease-out;
+}
+
+/* ── Tamaño de texto ajustable ────────────────────────────────────────── */
+html.text-scale-large {
+  font-size: 18px;
+}
+html.text-scale-larger {
+  font-size: 20px;
+}

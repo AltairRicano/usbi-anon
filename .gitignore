@@ -1,0 +1,33 @@
+CLAUDE.md
+SKILLS.md
+estado_proyecto.md
+
+# Fase de pruebas de integración final: entregables operativos del equipo,
+# no artefactos del producto. Se comparten fuera de git (copia local → Word).
+pruebas/
+
+# Planes anteriores al Plan de maduración (2026-09-14) y bitácora pre-purga.
+# Se conservan en disco como respaldo consultable, no como referencia activa.
+plan/_historico/
+
+# Core dumps generados dentro del contenedor (límite de 500 MB de RAM).
+core.*
+
+# Archivos de entorno y credenciales
+.env
+.env.*
+!.env.example
+
+# Plantillas de Postgres ya rellenadas con valores concretos del servidor de
+# destino (usbictl pgconf render, M3.7) — se regeneran, no se versionan.
+backend/deploy/postgres/rendered/
+
+# grafo de contexto para IA (repo anidado, personal por máquina)
+.graph/
+
+# reportes de subagentes (auditoría/investigación) — operativo, no producto
+agentes/
+
+# Documentos legales
+LICENSE
+*aviso_privacidad*
