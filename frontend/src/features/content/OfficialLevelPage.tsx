@@ -96,10 +96,20 @@ export function OfficialLevelPage() {
   );
 
   const finishLevel = useCallback(async (gameResult: GameResult) => {
-    if (!levelId || submittedRef.current || !level?.is_published) return;
+    if (!levelId || submittedRef.current) return;
     submittedRef.current = true;
     setGameResult(gameResult);
     setSaveError(null);
+
+    if (!level?.is_published) {
+      // Vista previa de borrador: no hay servidor que validar el intento
+      // (CompleteLevel exige nivel publicado), así que el resultado que se
+      // muestra abajo es únicamente el local del motor de juego — nunca XP
+      // ni progreso oficial, como ya advierte el aviso "Vista previa de
+      // borrador" de esta misma página.
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { data } = await apiClient.post(`/levels/${levelId}/complete`, {
@@ -139,6 +149,11 @@ export function OfficialLevelPage() {
   if (!level) {
     return <main className="min-h-screen p-6">Cargando nivel...</main>;
   }
+
+  // Vista previa de borrador: finishLevel nunca llama al servidor (CompleteLevel
+  // exige nivel publicado), así que `result` se queda en null para siempre y no
+  // hay otra fuente de verdad — mostramos el resultado local del motor de juego.
+  const previewResult = !level.is_published ? gameResult : null;
 
   return (
     <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
@@ -195,9 +210,26 @@ export function OfficialLevelPage() {
             Vista previa de borrador. Este intento no modifica XP ni progreso oficial.
           </section>
         )}
+
+        {previewResult && (
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm border border-[var(--color-border)]">
+            <h2 className="text-xl font-semibold">
+              {previewResult.completed ? '¡Nivel superado!' : 'Nivel no superado'}
+            </h2>
+            <p className="text-sm text-[var(--color-muted)]">
+              Puntuación: {previewResult.score} de {previewResult.maxScore}
+              {!previewResult.completed && ', necesitas más para superarlo'}.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button variant="primary" onClick={retryLevel}>Volver a jugar</Button>
+              <HomeButton />
+            </div>
+          </section>
+        )}
+
         {saveError && <p className="rounded border border-[var(--color-error)] bg-[var(--color-card)] p-3 text-[var(--color-error)]">{saveError}</p>}
 
-        {!result && !isSubmitting && (
+        {!result && !isSubmitting && !previewResult && (
         <Suspense fallback={<GameFallback />}>
           {level.template_type === 'trivia' && triviaQuestions.length > 0 && (
             <TriviaGame key={attemptKey} questions={triviaQuestions} onFinish={finishLevel} />

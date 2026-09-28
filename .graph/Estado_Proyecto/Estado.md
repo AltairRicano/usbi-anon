@@ -154,6 +154,29 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
      Verificado visualmente (claro y oscuro) en: niveles trivia/crossword/
      fake_news, home/dashboard, `/settings`. Reconstruido y desplegado en
      `web` tres veces (una por cada capa del bug) hasta confirmar cada una.
+- **Regresión real encontrada por `/ultrareview` (2026-09-28) y corregida el
+  mismo día**: el fix de "pantalla duplicada de trivia" de arriba (`return
+  null` en `TriviaGame.tsx` cuando `state.isFinished`) rompió la vista previa
+  de un nivel **sin publicar**. `OfficialLevelPage.finishLevel` corta en seco
+  con `if (!level?.is_published) return;` porque `POST .../complete` exige
+  nivel publicado — así que para un borrador `result` nunca se fija y la
+  página nunca pinta su propia pantalla de resultado. Antes del fix de
+  trivia, eso se disimulaba porque `TriviaGame` pintaba su propia tarjeta
+  "Trivia Completada" como resultado de facto; al quitarla, un admin que
+  reproduce un borrador de trivia (`/levels/<id>/play` con `is_published:
+  false`) se quedaba con una pantalla en blanco sin puntuación ni botón de
+  reintentar. Corrección en `OfficialLevelPage.tsx`: `finishLevel` ya no
+  corta en seco para borradores — guarda el `GameResult` local y sale antes
+  de tocar el servidor; se agregó una sección `previewResult` (mismo formato
+  que la de niveles publicados, pero con los datos locales del motor, nunca
+  del servidor) que se muestra cuando el nivel no está publicado. Verificado
+  creando un nivel de trivia borrador vía API, jugándolo y confirmando la
+  pantalla de resultado + reintento funcional; **queda un residuo:** ese
+  nivel de prueba (`PRUEBA borrador - verificación regresión`,
+  `01a0e881-d560-7179-be34-12aedbbb0e4f`) se archivó pero no se pudo purgar
+  — mismo bug 500 de `DELETE /levels/{id}` ya documentado arriba (permisos
+  de `usbi_moderador` sobre `player_progress`). Queda archivado, fuera de
+  listados activos, hasta que se corrija esa migración.
 
 ## En curso
 
