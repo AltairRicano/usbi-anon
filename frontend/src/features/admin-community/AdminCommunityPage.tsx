@@ -201,21 +201,21 @@ export default function AdminCommunityPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Comunidad</h1>
-            <p className="text-sm text-[--color-muted]">Enlaces de interés del carrusel y buzón de sugerencias anónimo.</p>
+            <p className="text-sm text-[var(--color-muted)]">Enlaces de interés del carrusel y buzón de sugerencias anónimo.</p>
           </div>
           <HomeButton />
         </header>
 
-        <div className="flex bg-[--color-card] rounded-full p-1 border border-[--color-border] w-max shadow-inner">
+        <div className="flex bg-[var(--color-card)] rounded-full p-1 border border-[var(--color-border)] w-max shadow-inner">
           <button
             onClick={() => setTab('links')}
-            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'links' ? 'bg-[--color-primary] text-[--color-primary-foreground]' : 'text-[--color-muted]'}`}
+            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'links' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : 'text-[var(--color-muted)]'}`}
           >
             Enlaces de interés
           </button>
           <button
             onClick={openSuggestionsTab}
-            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'suggestions' ? 'bg-[--color-primary] text-[--color-primary-foreground]' : 'text-[--color-muted]'}`}
+            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'suggestions' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : 'text-[var(--color-muted)]'}`}
           >
             Buzón de sugerencias
           </button>
@@ -229,7 +229,7 @@ export default function AdminCommunityPage() {
               </p>
             )}
 
-            <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+            <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
               <h2 className="mb-4 text-xl font-semibold">Categorías</h2>
               <form onSubmit={createCategory} className="mb-4 grid gap-3 md:grid-cols-[1fr_120px_auto] md:items-end">
                 <Input id="new-category-name" label="Nombre" value={newCategoryName} onChange={(e) => setNewCategoryName(e.currentTarget.value)} required maxLength={200} />
@@ -238,7 +238,7 @@ export default function AdminCommunityPage() {
               </form>
 
               {editingCategory && (
-                <form onSubmit={saveCategory} className="mb-4 grid gap-3 rounded-lg border border-[--color-border] p-4 md:grid-cols-[1fr_120px_auto] md:items-end">
+                <form onSubmit={saveCategory} className="mb-4 grid gap-3 rounded-lg border border-[var(--color-border)] p-4 md:grid-cols-[1fr_120px_auto] md:items-end">
                   <Input id="edit-category-name" label="Nombre" value={editingCategory.name} onChange={(e) => setEditingCategory({ ...editingCategory, name: e.currentTarget.value })} required />
                   <Input id="edit-category-order" label="Orden" type="number" value={editingCategory.display_order} onChange={(e) => setEditingCategory({ ...editingCategory, display_order: Number(e.currentTarget.value) })} />
                   <div className="flex gap-2">
@@ -248,21 +248,21 @@ export default function AdminCommunityPage() {
                 </form>
               )}
 
-              <div className="divide-y divide-[--color-border]">
+              <div className="divide-y divide-[var(--color-border)]">
                 {categories.map((c) => (
                   <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-                    <p className="font-medium">{c.name} <span className="text-xs text-[--color-muted]">(orden {c.display_order})</span></p>
+                    <p className="font-medium">{c.name} <span className="text-xs text-[var(--color-muted)]">(orden {c.display_order})</span></p>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => setEditingCategory({ id: c.id, name: c.name, display_order: c.display_order })}>Editar</Button>
-                      <Button size="sm" variant="outline" className="border-[--color-error] text-[--color-error]" onClick={() => void deleteCategory(c.id)}>Eliminar</Button>
+                      <Button size="sm" variant="outline" className="border-[var(--color-error)] text-[var(--color-error)]" onClick={() => void deleteCategory(c.id)}>Eliminar</Button>
                     </div>
                   </div>
                 ))}
-                {categories.length === 0 && <p className="py-4 text-sm text-[--color-muted]">No hay categorías.</p>}
+                {categories.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">No hay categorías.</p>}
               </div>
             </section>
 
-            <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+            <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
               <h2 className="mb-4 text-xl font-semibold">Tarjetas del carrusel</h2>
               <form onSubmit={createLink} className="mb-4 grid gap-3 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
@@ -272,7 +272,7 @@ export default function AdminCommunityPage() {
                     value={newLink.category_id}
                     onChange={(e) => setNewLink({ ...newLink, category_id: e.currentTarget.value })}
                     required
-                    className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                    className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
                   >
                     <option value="" disabled>Elige una categoría</option>
                     {categories.map((c) => (
@@ -288,7 +288,7 @@ export default function AdminCommunityPage() {
               </form>
 
               {editingLink && (
-                <form onSubmit={saveLink} className="mb-4 grid gap-3 rounded-lg border border-[--color-border] p-4 md:grid-cols-2">
+                <form onSubmit={saveLink} className="mb-4 grid gap-3 rounded-lg border border-[var(--color-border)] p-4 md:grid-cols-2">
                   <div className="flex flex-col gap-1">
                     <label htmlFor="edit-link-category" className="text-sm font-medium">Categoría</label>
                     <select
@@ -296,7 +296,7 @@ export default function AdminCommunityPage() {
                       value={editingLink.category_id}
                       onChange={(e) => setEditingLink({ ...editingLink, category_id: e.currentTarget.value })}
                       required
-                      className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                      className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
                     >
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -314,12 +314,12 @@ export default function AdminCommunityPage() {
                 </form>
               )}
 
-              <div className="divide-y divide-[--color-border]">
+              <div className="divide-y divide-[var(--color-border)]">
                 {links.map((l) => (
                   <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                     <div>
-                      <p className="font-medium">{l.title} <span className="text-xs text-[--color-muted]">({categoryName(l.category_id)})</span></p>
-                      <p className="text-xs text-[--color-muted]">{l.description} · {l.url}</p>
+                      <p className="font-medium">{l.title} <span className="text-xs text-[var(--color-muted)]">({categoryName(l.category_id)})</span></p>
+                      <p className="text-xs text-[var(--color-muted)]">{l.description} · {l.url}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -329,19 +329,19 @@ export default function AdminCommunityPage() {
                       >
                         Editar
                       </Button>
-                      <Button size="sm" variant="outline" className="border-[--color-error] text-[--color-error]" onClick={() => void deleteLink(l.id)}>Eliminar</Button>
+                      <Button size="sm" variant="outline" className="border-[var(--color-error)] text-[var(--color-error)]" onClick={() => void deleteLink(l.id)}>Eliminar</Button>
                     </div>
                   </div>
                 ))}
-                {links.length === 0 && <p className="py-4 text-sm text-[--color-muted]">No hay tarjetas.</p>}
+                {links.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">No hay tarjetas.</p>}
               </div>
             </section>
           </div>
         )}
 
         {tab === 'suggestions' && (
-          <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border] space-y-4">
-            <p className="text-sm text-[--color-muted]">
+          <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)] space-y-4">
+            <p className="text-sm text-[var(--color-muted)]">
               Sugerencias enviadas de forma anónima: no llevan identidad del autor, solo un snapshot de su progreso al momento de enviarla.
             </p>
 
@@ -351,19 +351,19 @@ export default function AdminCommunityPage() {
               </p>
             )}
 
-            <div className="divide-y divide-[--color-border]">
+            <div className="divide-y divide-[var(--color-border)]">
               {suggestions.map((s) => (
                 <div key={s.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                   <div>
                     <p>{s.description}</p>
-                    <p className="text-xs text-[--color-muted]">
+                    <p className="text-xs text-[var(--color-muted)]">
                       {new Date(s.submitted_at).toLocaleString()} · {s.levels_completed_snapshot} niveles completados · {s.xp_snapshot} XP
                     </p>
                   </div>
-                  <Button size="sm" variant="outline" className="border-[--color-error] text-[--color-error]" onClick={() => void deleteSuggestion(s.id)}>Eliminar</Button>
+                  <Button size="sm" variant="outline" className="border-[var(--color-error)] text-[var(--color-error)]" onClick={() => void deleteSuggestion(s.id)}>Eliminar</Button>
                 </div>
               ))}
-              {suggestions.length === 0 && !suggestionsLoading && <p className="py-4 text-sm text-[--color-muted]">Buzón vacío.</p>}
+              {suggestions.length === 0 && !suggestionsLoading && <p className="py-4 text-sm text-[var(--color-muted)]">Buzón vacío.</p>}
             </div>
 
             {suggestionsCursor && (

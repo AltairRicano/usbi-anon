@@ -149,7 +149,7 @@ export const SnakeLadderGame: React.FC<SnakeLadderGameProps> = ({ level, onFinis
          {!isGameOver ? (
              <>
                  <div
-                     className="relative w-full overflow-hidden rounded-lg border border-[--color-border] bg-[--color-card] shadow-sm"
+                     className="relative w-full overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
                      style={{ maxWidth: 'min(92vw, 720px)', aspectRatio: '720 / 780' }}
                  >
                      <PhaserGame

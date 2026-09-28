@@ -20,7 +20,7 @@ export default function HomePage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Hola, {user?.display_alias ?? user?.nickname}</h1>
-            <p className="text-sm text-[--color-muted]">Rol: {user?.role}</p>
+            <p className="text-sm text-[var(--color-muted)]">Rol: {user?.role}</p>
           </div>
           <div className="flex items-center gap-2">
             <SettingsEntry />
@@ -33,7 +33,7 @@ export default function HomePage() {
             <CardTitle>Progreso y minijuegos</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-[--color-muted]">
+            <p className="text-sm text-[var(--color-muted)]">
               Esta pantalla es un punto de aterrizaje mínimo para probar el registro y el login de punta a punta.
               El dashboard de progreso y los niveles jugables todavía no se han portado a este proyecto.
             </p>
@@ -45,7 +45,7 @@ export default function HomePage() {
             <CardTitle>Maker local</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className="text-sm text-[--color-muted]">
+            <p className="text-sm text-[var(--color-muted)]">
               Crea niveles de prueba y guárdalos en este navegador, o expórtalos como archivo JSON.
             </p>
             <Button variant="outline">

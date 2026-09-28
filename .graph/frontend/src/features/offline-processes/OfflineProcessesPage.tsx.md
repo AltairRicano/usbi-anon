@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Vista de administración de procesos fuera de línea que permite visualizar los dispositivos cliente registrados por el usuario, consultar el historial paginado de eventos de sincronización mediante cursores y revocar registros de dispositivos advirtiendo sobre el impacto en la sincronización local.

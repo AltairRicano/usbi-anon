@@ -135,7 +135,7 @@ function LevelMakerFormInner({ initialData, sections, onSave, onCancel }: LevelM
   const PreviewComponent = registryEntry.PreviewComponent as ComponentType<{ value: unknown }>;
 
   return (
-    <div className="bg-[--color-card] text-[--color-text-card] p-6 rounded-lg shadow-sm">
+    <div className="bg-[var(--color-card)] text-[var(--color-text-card)] p-6 rounded-lg shadow-sm">
       <h2 className="text-2xl font-bold mb-6">{isEditing ? 'Editar Nivel' : 'Crear Nuevo Nivel'}</h2>
 
       <LevelMetadataForm
@@ -152,7 +152,7 @@ function LevelMakerFormInner({ initialData, sections, onSave, onCancel }: LevelM
         <button
           type="button"
           onClick={() => setShowPreview(!showPreview)}
-          className="text-sm text-[--color-primary] underline"
+          className="text-sm text-[var(--color-primary)] underline"
         >
           {showPreview ? 'Ocultar Previsualización' : 'Mostrar Previsualización'}
         </button>

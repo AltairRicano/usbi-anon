@@ -63,16 +63,16 @@ export function WordSearchGame({ words, width = 10, height = 10, seed = 1234, on
            />
         </div>
       </CardContent>
-      <div className="w-full md:w-64 p-6 border-l border-[--color-border] flex flex-col gap-4">
+      <div className="w-full md:w-64 p-6 border-l border-[var(--color-border)] flex flex-col gap-4">
         <CardTitle className="text-xl">Palabras a buscar</CardTitle>
         {/* aria-live mirrors the score already shown here (C5), so a screen
             reader announces it changing without the user navigating to it. */}
-        <p aria-live="polite" className="font-bold text-[--color-primary]">Score: {state.score}</p>
+        <p aria-live="polite" className="font-bold text-[var(--color-primary)]">Score: {state.score}</p>
         <ul className="flex flex-col gap-2">
           {state.words.map((word, i) => (
             <li 
               key={i}
-              className={`text-lg font-semibold transition-colors ${state.foundWords.includes(word) ? 'text-[--color-muted] line-through' : 'text-[--color-text]'}`}
+              className={`text-lg font-semibold transition-colors ${state.foundWords.includes(word) ? 'text-[var(--color-muted)] line-through' : 'text-[var(--color-text)]'}`}
             >
               {word}
             </li>

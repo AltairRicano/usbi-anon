@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página pública de accesibilidad y configuración de apariencia. Permite modificar temas (claro/oscuro), escala de texto, filtros de daltonización (deuteranopía, protanopía, tritanopía), reducción de animaciones y sonido de juego sin requerir un inicio de sesión previo.

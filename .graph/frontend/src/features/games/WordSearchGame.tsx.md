@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente contenedor React para la sopa de letras. Se encarga de instanciar el `WordSearchEngine`, integrar el componente `PhaserGame` asignando la escena `WordSearchScene`, y desplegar un panel accesible que refleja en tiempo real las palabras encontradas y la puntuación.

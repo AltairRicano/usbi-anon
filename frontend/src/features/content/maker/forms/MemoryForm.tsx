@@ -40,7 +40,7 @@ export function MemoryForm({ value, onChange }: { value: MemoryFormValue; onChan
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 rounded-lg border border-[--color-border] p-4 md:grid-cols-[1fr_180px]">
+      <div className="grid gap-4 rounded-lg border border-[var(--color-border)] p-4 md:grid-cols-[1fr_180px]">
         <Input
           label="Color del dorso"
           type="color"
@@ -49,13 +49,13 @@ export function MemoryForm({ value, onChange }: { value: MemoryFormValue; onChan
           required
         />
         <div
-          className="h-24 rounded-lg border border-[--color-border]"
+          className="h-24 rounded-lg border border-[var(--color-border)]"
           style={getMemoryBackCardStyle(backColor)}
           aria-label="Vista previa del dorso común"
         />
       </div>
       {pairs.map((p, idx) => (
-        <div key={p.id} className="grid gap-4 rounded-lg border border-[--color-border] p-4 md:grid-cols-[1fr_1fr_220px_auto]">
+        <div key={p.id} className="grid gap-4 rounded-lg border border-[var(--color-border)] p-4 md:grid-cols-[1fr_1fr_220px_auto]">
           <div className="flex-1 space-y-2">
             <Input label={`Tarjeta A (Par ${idx + 1})`} value={p.content1} onChange={(event: ChangeEvent<HTMLInputElement>) => updatePair(idx, 'content1', event.target.value)} required />
           </div>
@@ -66,14 +66,14 @@ export function MemoryForm({ value, onChange }: { value: MemoryFormValue; onChan
             Color del par
             <div className="flex items-center gap-2">
               <span
-                className="h-10 w-10 shrink-0 rounded-lg border border-[--color-border]"
+                className="h-10 w-10 shrink-0 rounded-lg border border-[var(--color-border)]"
                 style={{ backgroundColor: p.color }}
                 aria-hidden="true"
               />
               <select
                 value={p.color}
                 onChange={(event) => updateColor(idx, event.currentTarget.value)}
-                className="min-h-[44px] w-full rounded-lg border border-[--color-border] bg-[--color-background] px-3"
+                className="min-h-[44px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3"
               >
                 {palette
                   .filter((color) => color === p.color || !pairs.some((pair, pairIdx) => pairIdx !== idx && pair.color === color))
@@ -84,7 +84,7 @@ export function MemoryForm({ value, onChange }: { value: MemoryFormValue; onChan
                   ))}
               </select>
             </div>
-            <span className="text-xs text-[--color-muted]">Cada color se reserva para un solo par.</span>
+            <span className="text-xs text-[var(--color-muted)]">Cada color se reserva para un solo par.</span>
           </label>
           {pairs.length > 4 && (
             <Button type="button" variant="outline" className="mt-6 text-red-500" onClick={() => removePair(idx)}>
@@ -96,7 +96,7 @@ export function MemoryForm({ value, onChange }: { value: MemoryFormValue; onChan
       <Button type="button" variant="outline" onClick={addPair}>
         + Agregar Par
       </Button>
-      <p className="text-xs text-[--color-muted]">Mínimo 4 pares requeridos.</p>
+      <p className="text-xs text-[var(--color-muted)]">Mínimo 4 pares requeridos.</p>
     </div>
   );
 }

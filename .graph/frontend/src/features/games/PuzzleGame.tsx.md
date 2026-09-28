@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente React para el juego de rompecabezas de palabras ("Mensaje Secreto"). Utiliza la biblioteca `framer-motion` (`Reorder`) para permitir al usuario arrastrar y reordenar visualmente fragmentos de texto en un eje horizontal hasta recomponer la frase original.

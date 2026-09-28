@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente contenedor React para el juego de Serpientes y Escaleras. Combina la escena del tablero en Phaser (`SnakeLadderScene`) con un sistema de preguntas condicionales de opción múltiple; acertar una pregunta permite tirar el dado, mientras que fallarla coloca la pregunta al final de la cola y cede el turno a la IA.

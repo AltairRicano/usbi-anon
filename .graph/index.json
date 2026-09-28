@@ -1260,13 +1260,13 @@
       "id": "frontend/src/App.tsx.md",
       "nombre": "App.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "42df78bec9c96402be47f62a43cbb58d211752fd502a9f9538ac8bfd9525f71a"
+      "last_synced_hash": "14c522fd4ef606f2c5aae053a1529e047fb1da0b84b6b3b43f9dd6f24c0d7231"
     },
     {
       "id": "frontend/src/features/admin-accounts/AdminAccountsPage.tsx.md",
       "nombre": "AdminAccountsPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "e6f0f5413a6207b93d6544438d7d8b506d0f2d7a9dc1dfba8a0a54237ae4d5ae"
+      "last_synced_hash": "57c14e3383ca0c681f9caeece07d599e28dbdc2abc6e01897396fa07007553b1"
     },
     {
       "id": "frontend/src/features/admin-accounts/admin-accounts.md",
@@ -1283,7 +1283,7 @@
       "id": "frontend/src/features/admin-badges/AdminBadgesPage.tsx.md",
       "nombre": "AdminBadgesPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "ae39264ad4b7b6b21fb691e81544a61971fa2783e9e74bc3314ee87cda8ef08e"
+      "last_synced_hash": "9aa16e488c8f8a3ccbe3cdc45fa994e8672e257d604ad79966eacc66ad191f65"
     },
     {
       "id": "frontend/src/features/admin-badges/admin-badges.md",
@@ -1300,7 +1300,7 @@
       "id": "frontend/src/features/admin-community/AdminCommunityPage.tsx.md",
       "nombre": "AdminCommunityPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "7a9218b047443d3304b5edcf25e64ed48511a41a67f78d0a6d4714c2d474f90b"
+      "last_synced_hash": "bd7c214c8b319e1157e867549eed0c32e4d97b1aa1a3094b75641f493d207faf"
     },
     {
       "id": "frontend/src/features/admin-community/admin-community.md",
@@ -1317,7 +1317,7 @@
       "id": "frontend/src/features/admin-quiz-bank/AdminQuizBankPage.tsx.md",
       "nombre": "AdminQuizBankPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "49cb1f1fc745a2270d077709793f56656fe70d7e510ade1fb9d372d56005c703"
+      "last_synced_hash": "bd8a7c17755d2d62d70faa5b8e7e2f98f9087f6ef000dae7d527523ec0e0bb7d"
     },
     {
       "id": "frontend/src/features/admin-quiz-bank/MinQuestionsModal.tsx.md",
@@ -1340,7 +1340,7 @@
       "id": "frontend/src/features/admin-security/AdminSecurityPage.tsx.md",
       "nombre": "AdminSecurityPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "87f3fa72e9b6473002ffdd87c9c15fadfeba235f2df941f79cd00c4d8e7bb9fe"
+      "last_synced_hash": "113271b4db19941916b7ac6ebcd563c5fdf8f6634ff048fa30313451940a26d4"
     },
     {
       "id": "frontend/src/features/admin-security/admin-security.md",
@@ -1357,7 +1357,7 @@
       "id": "frontend/src/features/auth/LoginPage.tsx.md",
       "nombre": "LoginPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "e52ae080cd74fecb2ec7b82aedda2b2d7ba07e00b2ee999b169d1fc294803f07"
+      "last_synced_hash": "a388c5ef148b28f9edef42e1486698a85f1b1450debe418bec6367a27ce18b15"
     },
     {
       "id": "frontend/src/features/auth/ProtectedRoute.tsx.md",
@@ -1369,7 +1369,7 @@
       "id": "frontend/src/features/auth/RegisterPage.tsx.md",
       "nombre": "RegisterPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "44766ab5d4dde662495aabbd6e3c846d397fe7d88ac7f082380f3ed801eb3e31"
+      "last_synced_hash": "350358e6f137fe88e7288676e22b0c053e750a9dc5da7c9dc0529993540be886"
     },
     {
       "id": "frontend/src/features/auth/auth.md",
@@ -1392,25 +1392,25 @@
       "id": "frontend/src/features/content/AdminContentPage.tsx.md",
       "nombre": "AdminContentPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "20dc7cc0f4a6c15d2da44e25b515c2a00467aaaec6c523f923b8f0295ca893c3"
+      "last_synced_hash": "084aec8bbd4e191410e378aab12408fe07ca566226d16c3e0a9220d0e99274b3"
     },
     {
       "id": "frontend/src/features/content/LocalLevelPage.tsx.md",
       "nombre": "LocalLevelPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "fca9c58306a317ce1b5002a79c0e0bdca6b1fb1df862df515b387b0555b41253"
+      "last_synced_hash": "0b9ea9ac92da29f8877f94c215be68f11c99f4ab18f4950245f3782b3c573964"
     },
     {
       "id": "frontend/src/features/content/OfficialLevelPage.tsx.md",
       "nombre": "OfficialLevelPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "2e370756e06add8963cde2460a6417337839527eb4ebe5fafc36be860d0cfd02"
+      "last_synced_hash": "09f0d57a2712305dd93344763fe8d20a37da075ebd767424f7017599aa459878"
     },
     {
       "id": "frontend/src/features/content/SectionLevelsPage.tsx.md",
       "nombre": "SectionLevelsPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "9b221689abf54ee5d1475fbe0ebb7c081c8a9864d71c51e31ca84297494916a8"
+      "last_synced_hash": "a89abb79a6b2fa6ee31a64bc008a15754918dc9e4fef4480a2d253dccbe0af9f"
     },
     {
       "id": "frontend/src/features/content/content.md",
@@ -1427,19 +1427,19 @@
       "id": "frontend/src/features/content/maker/LevelMakerForm.tsx.md",
       "nombre": "LevelMakerForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "383fd5fd9360fcca846330aa1c04a50112260f9bb650172cf4806be532d2d1aa"
+      "last_synced_hash": "762767ffad64128fd04db510bac34c171140292a82f9dabc674708b29e1073e9"
     },
     {
       "id": "frontend/src/features/content/maker/LevelMetadataForm.tsx.md",
       "nombre": "LevelMetadataForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "40533e0c25e0556820f8cdf58ca0b2006992f76fa351713cf166cb8757b78835"
+      "last_synced_hash": "372ce16da72b1199029e4ae00d7df6da04ef7a2d4f04c9ea948526025c41119a"
     },
     {
       "id": "frontend/src/features/content/maker/forms/CrosswordForm.tsx.md",
       "nombre": "CrosswordForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "058c76500d7973fbcb780aac8836ede67c37efa62d8d80e4c425478b5af06ac4"
+      "last_synced_hash": "610e40b24949cfd0d415ad90b1b800980c593f7850e37b679173476030e366ee"
     },
     {
       "id": "frontend/src/features/content/maker/forms/FakeNewsForm.tsx.md",
@@ -1451,25 +1451,25 @@
       "id": "frontend/src/features/content/maker/forms/MemoryForm.tsx.md",
       "nombre": "MemoryForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "903f49cefd59f176e8dc527e80d78bd8f66fdf8788ac3f6694275dc60dd987f0"
+      "last_synced_hash": "45cfe1cc4bc32e76a1a6291eeec00a5470cccfac345d5d952390ab2c9b4686f9"
     },
     {
       "id": "frontend/src/features/content/maker/forms/PuzzleForm.tsx.md",
       "nombre": "PuzzleForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "52c71fae84ee53e7fab0376c8a65f21e31dae01a4089d762dc7884e772a24613"
+      "last_synced_hash": "658871d021c0c67542e1ebeee1e845ae2b1793ebbb78d789ec0343c00c6ed773"
     },
     {
       "id": "frontend/src/features/content/maker/forms/SnakeLadderForm.tsx.md",
       "nombre": "SnakeLadderForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "822d126e11d542b4eab687cf72eef4b9d48d7f3c93a0b488661a1f3c50fb5aa1"
+      "last_synced_hash": "60dca719fe52fb2a9f9c8868be24dc08634b5c6ff0f08b72272005504c22b82b"
     },
     {
       "id": "frontend/src/features/content/maker/forms/TriviaForm.tsx.md",
       "nombre": "TriviaForm.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "cb56d569807d58a5d18f7226a89d5ed6a4a4bba8a059e2907b4180f63427b3bc"
+      "last_synced_hash": "c1056424a78cc41e9a2147171957611f0f75a7cf9e2f63bb688dfa03960b2363"
     },
     {
       "id": "frontend/src/features/content/maker/forms/WordSearchForm.tsx.md",
@@ -1503,19 +1503,19 @@
       "id": "frontend/src/features/content/maker/previews/MemoryPreview.tsx.md",
       "nombre": "MemoryPreview.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "7e55515db0521f5da2e2b09109b8739fd499dcdf6bc58f3cff9e997110d452e5"
+      "last_synced_hash": "75fbbcb37a1d05b83d90f0e192468af2761221ba83779a7494da14b1531f7a68"
     },
     {
       "id": "frontend/src/features/content/maker/previews/PuzzlePreview.tsx.md",
       "nombre": "PuzzlePreview.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "42d2cdaca095fcf3f4e31c76bc53c368160fa993246afdb13a5f7c5ffc23464c"
+      "last_synced_hash": "da7c2c9d920b3f4049d676d3f5c730629dd2be1b5517b57acadec0cbe52abf04"
     },
     {
       "id": "frontend/src/features/content/maker/previews/SnakeLadderPreview.tsx.md",
       "nombre": "SnakeLadderPreview.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "e46c2a65e0e416503ed8db0b1167fddb1efc40bcdbaf14e410a6b82c2de67884"
+      "last_synced_hash": "c2aebe37306fd54c8534fd4885be16347243b6b2c1a981b2f2e5554e0a009fb8"
     },
     {
       "id": "frontend/src/features/content/maker/previews/TriviaPreview.tsx.md",
@@ -1568,19 +1568,19 @@
       "id": "frontend/src/features/dashboard/DashboardPage.tsx.md",
       "nombre": "DashboardPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "5566ff38177cfcdc1bcae592c79fa9f324644236530d86a5aafed5b3a7d73e1b"
+      "last_synced_hash": "ef6dc60c5369786505f065b3c74848729f634e703273b4c69a8d6bc9c6f1e8f5"
     },
     {
       "id": "frontend/src/features/dashboard/InterestLinkCarousel.tsx.md",
       "nombre": "InterestLinkCarousel.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "67e0ab04dffe5d42a77c5cd10fe9c6e1456cdb5a171e4fbadbc258b0cad395d4"
+      "last_synced_hash": "fbf91c6b10e52005f72408aef9815e4ede39e9cdca319f90a1c126e15601b892"
     },
     {
       "id": "frontend/src/features/dashboard/MoreTab.tsx.md",
       "nombre": "MoreTab.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "4317a127943ce5322a9a457737e56c7e7c76cd769c81cec869c40184d97f8f02"
+      "last_synced_hash": "952e1a2eef020d8ec539ff6813175f87a9e809ff77a92b44b63542038144b2d0"
     },
     {
       "id": "frontend/src/features/dashboard/dashboard.md",
@@ -1602,7 +1602,7 @@
       "id": "frontend/src/features/games/CrosswordGame.tsx.md",
       "nombre": "CrosswordGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "72d9bf71e85d7976cf179165dbd00cccce971c79abf16b9c3d91d3e4d37839fb"
+      "last_synced_hash": "24f05d66cc05f87ad0a90604bef75aac81d0ca6e5970276c5366995efc62c59e"
     },
     {
       "id": "frontend/src/features/games/CrosswordScene.ts.md",
@@ -1614,19 +1614,19 @@
       "id": "frontend/src/features/games/PuzzleGame.tsx.md",
       "nombre": "PuzzleGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "79b674f54a7bb3c6f387a7064ad61145399df46b9e302e521cc4894e8f1acca3"
+      "last_synced_hash": "51bdee2f70f558db28dc446ed36919da386cd127583e2c5a81db04ba50a46bb9"
     },
     {
       "id": "frontend/src/features/games/TriviaGame.tsx.md",
       "nombre": "TriviaGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "2ec39242c5b52d1df8fa3e228056d1124a487e7bccef9d07a7cb8667a7415b56"
+      "last_synced_hash": "a281dcc716e81aa0d0d04527367bc789dfebc46465240812c20b1b28843c759f"
     },
     {
       "id": "frontend/src/features/games/WordSearchGame.tsx.md",
       "nombre": "WordSearchGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "6e662cdeca4c4dad6f314682c17257772afa5e76fda5d3e103ce377e52df2dc9"
+      "last_synced_hash": "eb0396f9e709a3e705ff3b8e4ecfada1f68479146d9b87cd4ca82290278a2ba6"
     },
     {
       "id": "frontend/src/features/games/WordSearchScene.ts.md",
@@ -1638,7 +1638,7 @@
       "id": "frontend/src/features/games/components/FakeNewsGame.tsx.md",
       "nombre": "FakeNewsGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "88da9f8f11d8c47f1bd7f915654d5339ec8441c4112a5e59b0bf8aaaeedf1b4f"
+      "last_synced_hash": "5d26d32bc4e2f874de30ee5b81bec9f26b66dc4da7fe951fbd100d81b45447d1"
     },
     {
       "id": "frontend/src/features/games/components/MemoryGame.tsx.md",
@@ -1650,7 +1650,7 @@
       "id": "frontend/src/features/games/components/SnakeLadderGame.tsx.md",
       "nombre": "SnakeLadderGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "174d15fbb74ded0ba0be170c1904274fcf959dfe76db15950e1f24bc79aa36d3"
+      "last_synced_hash": "6dc4eed3f46252002d7575c32f5994b765463eccc99916adb910b0b5fdef212a"
     },
     {
       "id": "frontend/src/features/games/components/components.md",
@@ -1677,7 +1677,7 @@
       "id": "frontend/src/features/home/HomePage.tsx.md",
       "nombre": "HomePage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "14d9e5eb35443c561a61efd0e37c716c5d791038c3c5ed698c53daf860fdfe22"
+      "last_synced_hash": "728c5e1c5c5a824c53af1db568f9c1f6147ec477b296a312eeb1f2efb1bef847"
     },
     {
       "id": "frontend/src/features/home/home.md",
@@ -1688,19 +1688,19 @@
       "id": "frontend/src/features/legal/NoticeSections.tsx.md",
       "nombre": "NoticeSections.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "bed2a70a460ddd8c3a90344b831295bf2e326587a76f3a2c6d5c329aceb0ea09"
+      "last_synced_hash": "2639becaea9b87c9a6322ef0c8d529286761dfd83f457a19f3366ae04fd08f36"
     },
     {
       "id": "frontend/src/features/legal/PrivacyNoticeInline.tsx.md",
       "nombre": "PrivacyNoticeInline.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "88b468d4727bdaaf2573b0900deaf7133801a11c8717a53b67c00ebb3a08ce97"
+      "last_synced_hash": "8875b132b7b67175b8fbdb8a7109b9f5c85113f2c7ccfa2251153875e05c5092"
     },
     {
       "id": "frontend/src/features/legal/PrivacyPage.tsx.md",
       "nombre": "PrivacyPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "295bc31ead368e78c6a0c87a8cd655cce623e8c1aee4214c944995c8d1b488a7"
+      "last_synced_hash": "d525be5de4fb664b12858eadb893482b9d82e8f87e9f2a8c037d997788e5a4af"
     },
     {
       "id": "frontend/src/features/legal/PrivacyVersionBanner.tsx.md",
@@ -1758,7 +1758,7 @@
       "id": "frontend/src/features/offline-processes/OfflineProcessesPage.tsx.md",
       "nombre": "OfflineProcessesPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "d9a4d373e33ee9c5ee2697d33832b0d77d19bf3fc5b8a8752ec4347a189a1aa4"
+      "last_synced_hash": "731ab466e1747fd12dd63d359d9b6bbb16c8f2ec36e8d38a15a6e78833fff1b1"
     },
     {
       "id": "frontend/src/features/offline-processes/deviceIdentity.ts.md",
@@ -1781,7 +1781,7 @@
       "id": "frontend/src/features/profile/ProfilePage.tsx.md",
       "nombre": "ProfilePage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "7de6cdd1c4fab0a375263148364175c1098ca001b69614d3f9e442ebb27bdf4a"
+      "last_synced_hash": "cf523478c46cd2a0aa46fd5cd2aaa34ceffbc4aeb9216add2fc3f31e613b0707"
     },
     {
       "id": "frontend/src/features/profile/profile.md",
@@ -1792,7 +1792,7 @@
       "id": "frontend/src/features/settings/SettingsPage.tsx.md",
       "nombre": "SettingsPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "144a5b5c0a85aa934f15036faa1beceda2ffe2020d8ee3f965cabc132f8f2134"
+      "last_synced_hash": "de896553cb2b9ff98fbce68a05dc118a9cad196425245d9ebae03d7a7dbcf1c1"
     },
     {
       "id": "frontend/src/features/settings/settings.md",
@@ -1809,7 +1809,7 @@
       "id": "frontend/src/index.css.md",
       "nombre": "index.css",
       "tipo": "codigo",
-      "last_synced_hash": "46270054d5f6e82e513adf93289a8168580b42c8c37152d3332e1811c8004df6"
+      "last_synced_hash": "8850936d140d02673ed45496b79cec0254784a0e36777b87ef0ccfa1a08d82f0"
     },
     {
       "id": "frontend/src/main.tsx.md",
@@ -1856,7 +1856,7 @@
       "id": "frontend/src/shared/components/ui/Card.tsx.md",
       "nombre": "Card.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "58fbb0068b9efe45f140acd7fca5b2548c4db7f8a06a589dd085986ccb338ecb"
+      "last_synced_hash": "e9472e341bd79c7797bb0f0ffef1885f09f1616ccd639a8643c1ae854519c099"
     },
     {
       "id": "frontend/src/shared/components/ui/HomeButton.tsx.md",
@@ -1868,7 +1868,7 @@
       "id": "frontend/src/shared/components/ui/Input.tsx.md",
       "nombre": "Input.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "50805b5a7b947ece5dfe9a09f1161ff3b192a5bf6f5e71573ece543a7aaa98d3"
+      "last_synced_hash": "b30be1724767a8a0322a81a0cdeaf1f6caac8a54906b79a6db126e22ddd1daf3"
     },
     {
       "id": "frontend/src/shared/components/ui/LinkButton.tsx.md",
@@ -1902,7 +1902,7 @@
       "id": "frontend/src/shared/utils.ts.md",
       "nombre": "utils.ts",
       "tipo": "codigo",
-      "last_synced_hash": "191aed983db449698d43be7ea2cd13bbf2a1ec413c8faa44ac32296cbc4c3d7c"
+      "last_synced_hash": "7e76a1c4f3f29bece170ebeac982f0c8fdc3b56add4ba6d83d20033d23bd7e43"
     },
     {
       "id": "frontend/src/src.md",

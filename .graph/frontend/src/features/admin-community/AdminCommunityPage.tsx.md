@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página de administración dividida en pestañas para gestionar las categorías y tarjetas del carrusel de enlaces de interés, así como el buzón de sugerencias anónimas. Garantiza que las categorías con enlaces no se eliminen directamente (error 409 category-has-links) y soporta paginación por cursor en el buzón.

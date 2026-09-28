@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de registro anónimo por pasos que evita solicitar datos personales. Genera nicknames a partir de un cuestionario de gustos, exige la aceptación obligatoria del aviso de privacidad y muestra las credenciales emitidas por única vez para su resguardo.

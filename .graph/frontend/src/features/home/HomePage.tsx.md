@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página de bienvenida post-autenticación. Muestra el alias o nickname y rol del usuario, permite cerrar sesión o acceder a configuración, ofrece acceso al maker local de niveles y despliega enlaces administrativos únicamente para usuarios con rol admin.

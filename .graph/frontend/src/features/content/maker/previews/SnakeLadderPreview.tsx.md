@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de previsualización para el tablero de Serpientes y Escaleras. Dibuja la cuadrícula de celdas marcando inicio, meta y conexiones SVG (líneas rectas para escaleras verdes y curvas de Bézier para serpientes rojas) calculadas en porcentaje.

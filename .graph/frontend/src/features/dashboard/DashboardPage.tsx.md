@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página principal del panel de usuario que articula el acceso a secciones oficiales, niveles locales y pestañas adicionales. Incluye un menú lateral accesible mediante atajo Escape y un control de importación de niveles locales con validación de seguridad de tamaño máximo de 5MB por archivo JSON.

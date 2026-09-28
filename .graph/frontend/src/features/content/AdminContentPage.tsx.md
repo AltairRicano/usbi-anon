@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página principal de administración de contenido donde los administradores gestionan secciones y niveles oficiales (creación, edición, publicación, ocultamiento, archivado y purga). Incorpora mecanismos de seguridad como doble confirmación tipeando el título exacto para la purga irreversible de entidades y adapta el formato JSON para la importación y exportación de niveles desde el creador local.

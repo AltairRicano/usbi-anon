@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Formulario para crear niveles de tipo Puzzle (frase o mensaje secreto). Permite redactar el texto del mensaje a desvelar, limitar la cantidad de piezas desordenadas entre un rango de 3 a 20 y establecer o generar de manera aleatoria la semilla (seed) para la generación determinista del juego.

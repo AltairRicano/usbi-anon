@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de formulario para los metadatos generales de un nivel (sección, título, dificultad, color y tipo de plantilla). Implementa la regla de negocio de heredar automáticamente el color de la sección seleccionada y restringe la modificación de la sección y del tipo de plantilla al editar un nivel existente.

@@ -7,12 +7,12 @@ import type { PrivacyNoticeResponse } from './schemas';
 export function PrivacyNoticeInline({ notice }: { notice: PrivacyNoticeResponse }) {
   return (
     <div className="space-y-2">
-      <div className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-[--color-border] p-3 text-sm">
+      <div className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-[var(--color-border)] p-3 text-sm">
         {notice.simplified.map((section, i) => (
           <div key={i}>
             <h3 className="font-semibold">{section.heading}</h3>
             {section.paragraphs.map((paragraph, j) => (
-              <p key={j} className="mt-1 text-[--color-muted]">{paragraph}</p>
+              <p key={j} className="mt-1 text-[var(--color-muted)]">{paragraph}</p>
             ))}
           </div>
         ))}

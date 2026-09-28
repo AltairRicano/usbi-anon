@@ -164,7 +164,7 @@ export default function AdminQuizBankPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Banco de preguntas de registro</h1>
-            <p className="text-sm text-[--color-muted]">
+            <p className="text-sm text-[var(--color-muted)]">
               {activeCount} pregunta{activeCount === 1 ? '' : 's'} activa{activeCount === 1 ? '' : 's'} (mínimo 4).
             </p>
           </div>
@@ -180,7 +180,7 @@ export default function AdminQuizBankPage() {
           </p>
         )}
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Cuántas preguntas ve cada registro</h2>
           <form onSubmit={saveSettings} className="flex flex-wrap items-end gap-3">
             <Input
@@ -197,12 +197,12 @@ export default function AdminQuizBankPage() {
               {savingSettings ? 'Guardando…' : 'Guardar'}
             </Button>
             {maxQuestionsShown !== null && (
-              <span className="text-sm text-[--color-muted]">Valor actual: {maxQuestionsShown}</span>
+              <span className="text-sm text-[var(--color-muted)]">Valor actual: {maxQuestionsShown}</span>
             )}
           </form>
         </section>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Nueva pregunta</h2>
           <form onSubmit={createQuestion} className="grid gap-3 md:grid-cols-[1fr_140px_auto] md:items-end">
             <Input
@@ -224,11 +224,11 @@ export default function AdminQuizBankPage() {
           </form>
         </section>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Preguntas existentes</h2>
 
           {editing && (
-            <form onSubmit={saveEdit} className="mb-5 rounded-lg border border-[--color-border] p-4">
+            <form onSubmit={saveEdit} className="mb-5 rounded-lg border border-[var(--color-border)] p-4">
               <h3 className="mb-3 font-semibold">Editar pregunta</h3>
               <div className="grid gap-3 md:grid-cols-[1fr_100px_auto] md:items-end">
                 <Input
@@ -263,7 +263,7 @@ export default function AdminQuizBankPage() {
             </form>
           )}
 
-          <div className="divide-y divide-[--color-border]">
+          <div className="divide-y divide-[var(--color-border)]">
             {questions
               .slice()
               .sort((a, b) => a.display_order - b.display_order)
@@ -283,7 +283,7 @@ export default function AdminQuizBankPage() {
                         {q.is_active ? 'Activa' : 'Inactiva'}
                       </span>
                     </p>
-                    <p className="text-xs text-[--color-muted]">Orden {q.display_order}</p>
+                    <p className="text-xs text-[var(--color-muted)]">Orden {q.display_order}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -301,7 +301,7 @@ export default function AdminQuizBankPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white"
+                      className="border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white"
                       onClick={() => void deleteQuestion(q.id)}
                     >
                       Eliminar
@@ -309,7 +309,7 @@ export default function AdminQuizBankPage() {
                   </div>
                 </div>
               ))}
-            {questions.length === 0 && <p className="py-4 text-sm text-[--color-muted]">No hay preguntas.</p>}
+            {questions.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">No hay preguntas.</p>}
           </div>
         </section>
       </div>

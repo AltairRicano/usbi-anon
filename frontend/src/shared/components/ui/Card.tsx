@@ -11,7 +11,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'bg-[--color-card] text-[--color-text-card] rounded-2xl shadow-lg border border-[--color-border]',
+          'bg-[var(--color-card)] text-[var(--color-text-card)] rounded-2xl shadow-lg border border-[var(--color-border)]',
           'overflow-hidden transition-shadow hover:shadow-xl',
           {
             'p-0': padding === 'none',
@@ -32,14 +32,14 @@ Card.displayName = 'Card';
 
 export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col space-y-1.5 pb-4 border-b border-[--color-border]', className)} {...props} />
+    <div ref={ref} className={cn('flex flex-col space-y-1.5 pb-4 border-b border-[var(--color-border)]', className)} {...props} />
   )
 );
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={cn('text-xl font-bold leading-none tracking-tight text-[--color-primary]', className)} {...props}>
+    <h3 ref={ref} className={cn('text-xl font-bold leading-none tracking-tight text-[var(--color-primary)]', className)} {...props}>
       {children}
     </h3>
   )

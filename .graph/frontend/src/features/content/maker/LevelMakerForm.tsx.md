@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Formulario principal del creador de niveles que coordina la definición de metadatos, la selección de plantillas, la edición de contenido y la previsualización en vivo. Contiene errores de renderizado dentro de un `FormErrorBoundary` para evitar la caída del panel administrativo y valida los esquemas Zod en tiempo real antes de permitir el guardado.

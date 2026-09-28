@@ -136,7 +136,7 @@ export default function AdminAccountsPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Administración de cuentas</h1>
-            <p className="text-sm text-[--color-muted]">Alta de staff, borrado, respuestas del cuestionario y reseteo de contraseña.</p>
+            <p className="text-sm text-[var(--color-muted)]">Alta de staff, borrado, respuestas del cuestionario y reseteo de contraseña.</p>
           </div>
           <div className="flex gap-2">
             <HomeButton />
@@ -144,9 +144,9 @@ export default function AdminAccountsPage() {
           </div>
         </header>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Crear cuenta de staff</h2>
-          <p className="mb-4 text-sm text-[--color-muted]">
+          <p className="mb-4 text-sm text-[var(--color-muted)]">
             Sin cuestionario de gustos: nickname y contraseña se fijan aquí directamente.
           </p>
 
@@ -159,10 +159,10 @@ export default function AdminAccountsPage() {
           {created && (
             <dl className="mb-4 space-y-1 rounded-lg border p-4 text-sm" style={{ borderColor: 'var(--color-secondary-dark)' }}>
               <p className="font-semibold" style={{ color: 'var(--color-secondary-dark)' }}>Cuenta creada.</p>
-              <div><dt className="inline text-[--color-muted]">ID: </dt><dd className="inline font-mono">{created.id}</dd></div>
-              <div><dt className="inline text-[--color-muted]">Nickname: </dt><dd className="inline font-mono">{created.nickname}</dd></div>
-              <div><dt className="inline text-[--color-muted]">Rol: </dt><dd className="inline">{created.role}</dd></div>
-              <div><dt className="inline text-[--color-muted]">Alias: </dt><dd className="inline">{created.display_alias}</dd></div>
+              <div><dt className="inline text-[var(--color-muted)]">ID: </dt><dd className="inline font-mono">{created.id}</dd></div>
+              <div><dt className="inline text-[var(--color-muted)]">Nickname: </dt><dd className="inline font-mono">{created.nickname}</dd></div>
+              <div><dt className="inline text-[var(--color-muted)]">Rol: </dt><dd className="inline">{created.role}</dd></div>
+              <div><dt className="inline text-[var(--color-muted)]">Alias: </dt><dd className="inline">{created.display_alias}</dd></div>
             </dl>
           )}
 
@@ -185,12 +185,12 @@ export default function AdminAccountsPage() {
               minLength={8}
             />
             <div className="flex flex-col gap-1">
-              <label htmlFor="new-account-role" className="text-sm font-medium text-[--color-foreground]">Rol</label>
+              <label htmlFor="new-account-role" className="text-sm font-medium text-[var(--color-foreground)]">Rol</label>
               <select
                 id="new-account-role"
                 value={newRole}
                 onChange={(e) => setNewRole(e.currentTarget.value as UserRole)}
-                className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
               >
                 {STAFF_ROLES.map((role) => (
                   <option key={role} value={role}>{role}</option>
@@ -205,7 +205,7 @@ export default function AdminAccountsPage() {
           </form>
         </section>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Gestionar cuenta existente</h2>
           <Input
             id="target-account-id"
@@ -231,7 +231,7 @@ export default function AdminAccountsPage() {
               Eliminar cuenta
             </Button>
           </div>
-          <p className="mt-2 text-xs text-[--color-muted]">
+          <p className="mt-2 text-xs text-[var(--color-muted)]">
             Una cuenta con rol admin no puede eliminarse desde aquí ni desde ningún otro camino — el servidor lo
             rechaza siempre, sin excepción.
           </p>
@@ -257,11 +257,11 @@ export default function AdminAccountsPage() {
           {quizAnswers && (
             <div className="mt-4 space-y-2">
               <h3 className="font-semibold">Respuestas del cuestionario</h3>
-              {quizAnswers.length === 0 && <p className="text-sm text-[--color-muted]">Sin respuestas registradas.</p>}
+              {quizAnswers.length === 0 && <p className="text-sm text-[var(--color-muted)]">Sin respuestas registradas.</p>}
               {quizAnswers.map((row, idx) => (
                 <div key={idx} className="rounded-lg border p-3 text-sm" style={{ borderColor: 'var(--color-border)' }}>
                   <p className="font-medium">{row.question_text_snapshot}</p>
-                  <p className="text-[--color-muted]">{row.answer_text}</p>
+                  <p className="text-[var(--color-muted)]">{row.answer_text}</p>
                 </div>
               ))}
             </div>

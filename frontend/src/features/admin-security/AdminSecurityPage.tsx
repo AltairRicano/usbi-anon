@@ -148,28 +148,28 @@ export default function AdminSecurityPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Seguridad y bitácora</h1>
-            <p className="text-sm text-[--color-muted]">Registro de auditoría y bitácora de incidentes de seguridad.</p>
+            <p className="text-sm text-[var(--color-muted)]">Registro de auditoría y bitácora de incidentes de seguridad.</p>
           </div>
           <HomeButton />
         </header>
 
-        <div className="flex bg-[--color-card] rounded-full p-1 border border-[--color-border] w-max shadow-inner">
+        <div className="flex bg-[var(--color-card)] rounded-full p-1 border border-[var(--color-border)] w-max shadow-inner">
           <button
             onClick={() => setTab('audit')}
-            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'audit' ? 'bg-[--color-primary] text-[--color-primary-foreground]' : 'text-[--color-muted]'}`}
+            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'audit' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : 'text-[var(--color-muted)]'}`}
           >
             Bitácora
           </button>
           <button
             onClick={openIncidentsTab}
-            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'incidents' ? 'bg-[--color-primary] text-[--color-primary-foreground]' : 'text-[--color-muted]'}`}
+            className={`px-6 py-2 rounded-full font-bold transition-all duration-200 ${tab === 'incidents' ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]' : 'text-[var(--color-muted)]'}`}
           >
             Incidentes
           </button>
         </div>
 
         {tab === 'audit' && (
-          <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border] space-y-4">
+          <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)] space-y-4">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -188,18 +188,18 @@ export default function AdminSecurityPage() {
               </p>
             )}
 
-            <div className="divide-y divide-[--color-border]">
+            <div className="divide-y divide-[var(--color-border)]">
               {entries.map((entry) => (
                 <div key={entry.id} className="py-3 text-sm">
                   <p className="font-medium">
-                    {entry.action} <span className="text-[--color-muted]">· {entry.entity_type}</span>
+                    {entry.action} <span className="text-[var(--color-muted)]">· {entry.entity_type}</span>
                   </p>
-                  <p className="text-xs text-[--color-muted]">
+                  <p className="text-xs text-[var(--color-muted)]">
                     {new Date(entry.created_at).toLocaleString()} · actor {entry.actor_account_id ?? '—'} · {entry.ip_address}
                   </p>
                 </div>
               ))}
-              {entries.length === 0 && !auditLoading && <p className="py-4 text-sm text-[--color-muted]">Sin entradas.</p>}
+              {entries.length === 0 && !auditLoading && <p className="py-4 text-sm text-[var(--color-muted)]">Sin entradas.</p>}
             </div>
 
             <div className="flex justify-center gap-3">
@@ -219,7 +219,7 @@ export default function AdminSecurityPage() {
 
         {tab === 'incidents' && (
           <div className="space-y-6">
-            <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+            <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
               <h2 className="mb-4 text-xl font-semibold">Registrar incidente</h2>
               <form onSubmit={createIncident} className="grid gap-3 md:grid-cols-2">
                 <div className="flex flex-col gap-1">
@@ -228,7 +228,7 @@ export default function AdminSecurityPage() {
                     id="new-incident-severity"
                     value={newIncident.severity}
                     onChange={(e) => setNewIncident({ ...newIncident, severity: e.currentTarget.value })}
-                    className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                    className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
                   >
                     {SEVERITIES.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -274,7 +274,7 @@ export default function AdminSecurityPage() {
               </form>
             </section>
 
-            <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border] space-y-4">
+            <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)] space-y-4">
               <h2 className="text-xl font-semibold">Incidentes registrados</h2>
 
               {incidentsError && (
@@ -283,18 +283,18 @@ export default function AdminSecurityPage() {
                 </p>
               )}
 
-              <div className="divide-y divide-[--color-border]">
+              <div className="divide-y divide-[var(--color-border)]">
                 {incidents.map((inc) => (
                   <div key={inc.id} className="py-3">
                     {editingID === inc.id && editForm ? (
-                      <form onSubmit={saveEdit} className="grid gap-3 rounded-lg border border-[--color-border] p-4">
+                      <form onSubmit={saveEdit} className="grid gap-3 rounded-lg border border-[var(--color-border)] p-4">
                         <div className="flex flex-col gap-1">
                           <label htmlFor={`edit-severity-${inc.id}`} className="text-sm font-medium">Severidad</label>
                           <select
                             id={`edit-severity-${inc.id}`}
                             value={editForm.severity}
                             onChange={(e) => setEditForm({ ...editForm, severity: e.currentTarget.value })}
-                            className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                            className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
                           >
                             {SEVERITIES.map((s) => (
                               <option key={s} value={s}>{s}</option>
@@ -329,8 +329,8 @@ export default function AdminSecurityPage() {
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-[--color-muted]">{inc.description}</p>
-                          <p className="text-xs text-[--color-muted]">
+                          <p className="text-sm text-[var(--color-muted)]">{inc.description}</p>
+                          <p className="text-xs text-[var(--color-muted)]">
                             Detectado {new Date(inc.detected_at).toLocaleString()}
                             {inc.resolved_at ? ` · resuelto ${new Date(inc.resolved_at).toLocaleString()}` : ' · sin resolver'}
                           </p>
@@ -340,7 +340,7 @@ export default function AdminSecurityPage() {
                     )}
                   </div>
                 ))}
-                {incidents.length === 0 && !incidentsLoading && <p className="py-4 text-sm text-[--color-muted]">Sin incidentes registrados.</p>}
+                {incidents.length === 0 && !incidentsLoading && <p className="py-4 text-sm text-[var(--color-muted)]">Sin incidentes registrados.</p>}
               </div>
 
               {incidentsCursor && (

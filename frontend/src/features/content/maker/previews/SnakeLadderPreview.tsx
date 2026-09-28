@@ -15,7 +15,7 @@ export function SnakeLadderBoardPreview({ value }: { value: SnakeLadderContent }
   return (
     <div className="space-y-3">
       <div
-        className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-lg border border-[--color-border] bg-[--color-card] shadow-sm"
+        className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] shadow-sm"
         style={{ aspectRatio: `${boardWidth} / ${boardHeight}` }}
         aria-label="Vista previa del tablero de serpientes y escaleras"
       >
@@ -52,7 +52,7 @@ export function SnakeLadderBoardPreview({ value }: { value: SnakeLadderContent }
                 ].join(' ')}
               >
                 <span>{cell}</span>
-                {isStart && <span className="absolute bottom-1 left-1 text-[10px] text-[--color-primary]">Inicio</span>}
+                {isStart && <span className="absolute bottom-1 left-1 text-[10px] text-[var(--color-primary)]">Inicio</span>}
                 {isEnd && <span className="absolute bottom-1 left-1 text-[10px] text-green-700">Meta</span>}
                 {hasSnake && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600" />}
                 {hasLadder && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-600" />}
@@ -62,7 +62,7 @@ export function SnakeLadderBoardPreview({ value }: { value: SnakeLadderContent }
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-3 text-xs text-[--color-muted]">
+      <div className="flex flex-wrap justify-center gap-3 text-xs text-[var(--color-muted)]">
         <span>Serpientes: {snakes.length}</span>
         <span>Escaleras: {ladders.length}</span>
         <span>Seed: {value.seed ?? 'sin definir'}</span>

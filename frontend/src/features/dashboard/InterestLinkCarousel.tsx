@@ -64,7 +64,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
   };
 
   return (
-    <section className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm">
+    <section className="rounded-lg bg-[var(--color-card)] text-[var(--color-text-card)] p-6 shadow-sm">
       <h2 className="mb-6 text-center text-2xl font-semibold">{group.category.name}</h2>
 
       <div className="flex items-center justify-center gap-1 sm:gap-3">
@@ -73,7 +73,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
           onClick={goPrev}
           disabled={count < 2}
           aria-label="Tarjeta anterior"
-          className="flex shrink-0 items-center justify-center rounded-full text-2xl font-bold text-[--color-primary] hover:text-[--color-primary-hover] disabled:opacity-30"
+          className="flex shrink-0 items-center justify-center rounded-full text-2xl font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] disabled:opacity-30"
           style={{ minWidth: 'var(--spacing-touch)', minHeight: 'var(--spacing-touch)' }}
         >
           ‹
@@ -123,7 +123,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
           onClick={goNext}
           disabled={count < 2}
           aria-label="Tarjeta siguiente"
-          className="flex shrink-0 items-center justify-center rounded-full text-2xl font-bold text-[--color-primary] hover:text-[--color-primary-hover] disabled:opacity-30"
+          className="flex shrink-0 items-center justify-center rounded-full text-2xl font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] disabled:opacity-30"
           style={{ minWidth: 'var(--spacing-touch)', minHeight: 'var(--spacing-touch)' }}
         >
           ›
@@ -131,7 +131,7 @@ export function InterestLinkCarousel({ group }: { group: CategoryWithLinks }) {
       </div>
 
       {count > 1 && (
-        <p className="mt-3 text-center text-xs text-[--color-muted]">
+        <p className="mt-3 text-center text-xs text-[var(--color-muted)]">
           {index + 1} / {count}
         </p>
       )}

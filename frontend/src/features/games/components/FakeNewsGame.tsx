@@ -49,15 +49,15 @@ export const FakeNewsGame: React.FC<FakeNewsGameProps> = ({ news, onFinish }) =>
               handleSwipe(true); // Swiped right -> FALSO
             }
           }}
-          className="bg-[--color-card] p-6 rounded-2xl shadow-xl w-full text-center border-2 border-slate-200 cursor-grab active:cursor-grabbing"
+          className="bg-[var(--color-card)] p-6 rounded-2xl shadow-xl w-full text-center border-2 border-slate-200 cursor-grab active:cursor-grabbing"
         >
           {currentItem.imageUrl && (
             <img src={currentItem.imageUrl} alt={currentItem.title} className="w-full h-48 object-cover rounded-lg mb-4" />
           )}
-          <h3 className="text-2xl font-bold text-slate-800 mb-2">{currentItem.title}</h3>
+          <h3 className="text-2xl font-bold text-[var(--color-text-card)] mb-2">{currentItem.title}</h3>
           <p className="text-slate-600 mb-4">{currentItem.content}</p>
           {/* text-slate-400 on white was 2.56:1 (audit C8); --color-muted is verified AA. */}
-          <div className="text-sm text-[--color-muted] italic">Desliza izquierda para VERDADERO, derecha para FALSO</div>
+          <div className="text-sm text-[var(--color-muted)] italic">Desliza izquierda para VERDADERO, derecha para FALSO</div>
         </motion.div>
       </AnimatePresence>
 

@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de acordeón que despliega las secciones de un aviso de privacidad mediante elementos HTML nativos `<details>` y `<summary>`. Esta elección garantiza accesibilidad por teclado y compatibilidad con modos de alto contraste sin depender de modales o librerías externas.

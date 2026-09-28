@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página administrativa para inspeccionar la bitácora de auditoría y gestionar incidentes de seguridad. Preserva la privacidad sin exponer nicknames para actor_account_id y alerta visualmente si un incidente posee evidencia alterada (evidence_valid es falso).

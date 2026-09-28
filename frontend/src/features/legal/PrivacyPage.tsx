@@ -26,8 +26,8 @@ export default function PrivacyPage() {
           </Link>
         </header>
 
-        {loading && <p className="text-sm text-[--color-muted]" aria-live="polite">Cargando aviso de privacidad…</p>}
-        {error && <p className="text-sm text-[--color-error]" role="alert">{error}</p>}
+        {loading && <p className="text-sm text-[var(--color-muted)]" aria-live="polite">Cargando aviso de privacidad…</p>}
+        {error && <p className="text-sm text-[var(--color-error)]" role="alert">{error}</p>}
 
         {notice && (
           <>
@@ -41,12 +41,12 @@ export default function PrivacyPage() {
               <NoticeSections sections={notice.full} />
             </section>
 
-            <p className="text-xs text-[--color-muted]">
+            <p className="text-xs text-[var(--color-muted)]">
               Versión vigente: {notice.version} · {notice.effective_date}
             </p>
 
             {isAuthenticated && status && (
-              <p className="rounded-lg border border-[--color-border] bg-[--color-card] p-3 text-sm text-[--color-muted]">
+              <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-sm text-[var(--color-muted)]">
                 Tu cuenta aceptó la versión <strong>{status.privacy_notice_version}</strong>
                 {status.privacy_notice_version !== status.current_privacy_notice_version && (
                   <> — hay una versión más reciente disponible arriba.</>

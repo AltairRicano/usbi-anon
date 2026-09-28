@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Ofrece una estructura modular de tarjetas (`Card`, `CardHeader`, `CardTitle`, `CardContent`) para organizar el contenido visual. Incluye estilos para bordes, sombras elevadas y niveles de relleno configurables alineados con el tema activo.

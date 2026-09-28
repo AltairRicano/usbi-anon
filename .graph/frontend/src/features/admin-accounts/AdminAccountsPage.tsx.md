@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Proporciona la interfaz de administración para crear cuentas de staff, consultar el historial del cuestionario de registro por UUID, restablecer contraseñas y eliminar cuentas. En la gestión por UUID no existe un listado previo de cuentas, y las cuentas administrativas no pueden eliminarse (el backend devuelve 403 ErrCannotDeleteAdmin, reflejado directamente en la UI).

@@ -116,34 +116,44 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
      ahora se reduce (Phaser `Scale.FIT` lo escala sin problema) y el panel
      conserva sus 384 px, totalmente legible. Verificado visualmente tras
      reconstruir `web`.
-  2. **Sin corregir, requiere decisión del usuario — bug de contraste/tema
-     oscuro, sitewide, no exclusivo de los niveles**: cientos de clases
-     Tailwind con la sintaxis `bg-[--color-card]`, `text-[--color-muted]`,
-     `border-[--color-border]`, etc. (llaves sin `var(...)`) compilan a CSS
-     **inválido** — `background-color:--color-card` en vez de
-     `background-color:var(--color-card)` — que el navegador descarta en
-     silencio. Confirmado leyendo el CSS servido
+  2. **Corregido (2026-09-28): bug de contraste/tema oscuro, sitewide, no
+     exclusivo de los niveles.** Cientos de clases Tailwind con la sintaxis
+     `bg-[--color-card]`, `text-[--color-muted]`, `border-[--color-border]`,
+     etc. (llaves sin `var(...)`) compilaban a CSS **inválido** —
+     `background-color:--color-card` en vez de
+     `background-color:var(--color-card)` — que el navegador descartaba en
+     silencio. Confirmado leyendo el CSS servido antes del fix
      (`.bg-\[--color-card\]{background-color:--color-card}` vs. la forma
-     correcta que sí existe en el mismo archivo,
-     `.bg-\[var\(--color-card\)\]{background-color:var(--color-card)}`).
-     Con Tailwind v4 (`4.3.3`), `bg-[--color-x]` NO es azúcar sintáctico
-     para `var()` — solo `bg-(--color-x)` (paréntesis) o
-     `bg-[var(--color-x)]` lo son. Conteo en `frontend/src`:
-     `grep -rEoh '(bg|text|border|ring|fill|stroke)-\[--color-[a-zA-Z-]+\]' src | wc -l`
-     → **cientos de usos** (132× `text-[--color-muted]`, 78×
-     `border-[--color-border]`, 77× `bg-[--color-card]`, y así para ~16
-     variables de color distintas, en decenas de archivos). Efecto
-     observado: en modo claro suele verse "bien" por accidente (el color de
-     texto heredado por defecto es oscuro); en **modo oscuro** el texto cae
-     en un color casi blanco heredado sobre fondos que no cambiaron a
-     oscuro — confirmado ilegible en la tarjeta de instrucciones de
-     `FakeNewsGame` ("Desliza izquierda para VERDADERO...") y en la caja de
-     "Puntuación" de `CrosswordGame` (que además se queda con fondo blanco
-     fijo en oscuro porque `dark:bg-[--color-card]` también es inválido, así
-     que nunca sobreescribe el `bg-white` base). No se tocó — es una
-     corrección mecánica pero de alcance muy amplio (que también incluye
-     `ring-[--color-primary]`, focos de accesibilidad), mejor con luz verde
-     explícita antes de tocar decenas de archivos de una sola vez.
+     correcta que sí existía en el mismo archivo,
+     `.bg-\[var\(--color-card\)\]{background-color:var(--color-card)}`). Con
+     Tailwind v4 (`4.3.3`), `bg-[--color-x]` no es azúcar sintáctico para
+     `var()` — solo `bg-(--color-x)` (paréntesis) o `bg-[var(--color-x)]` lo
+     son. Reemplazo mecánico 1:1 de `[--color-x]` → `[var(--color-x)]` en
+     `bg`/`text`/`border`/`ring`/`divide` (467 clases, 41 archivos de
+     `frontend/src`, 297 líneas — sin cambio de lógica, confirmado con
+     `git diff --stat` simétrico y `tsc --noEmit` limpio).
+     Aparecieron dos bugs más al verificar visualmente el fix en modo
+     oscuro, ambos corregidos en la misma pasada:
+     - `text-slate-800` hardcodeado en el título de `FakeNewsGame` (invisible
+       una vez que la tarjeta sí pasó a fondo oscuro real) → cambiado a
+       `text-[var(--color-text-card)]`, la variable que ya usa `Card.tsx`.
+     - `text-[var(--color-text-muted)]` en `CrosswordGame` referenciaba una
+       variable **que nunca se definió** en `index.css` (typo; la variable
+       real es `--color-muted`) → corregido.
+     - **Causa raíz de que la caja "Puntuación" del crucigrama siguiera
+       blanca incluso con `var()` bien escrito**: Tailwind v4 activa `dark:`
+       por `prefers-color-scheme` del SO por defecto, pero esta app alterna
+       claro/oscuro a mano con la clase `.dark` en `<html>`
+       (`useSettingsStore.ts`), sin declarar
+       `@custom-variant dark (&:where(.dark, .dark *));` en `index.css` —
+       así que **ninguna** utilidad `dark:` del sitio (14 usos en 8 archivos)
+       coincidía nunca con el toggle real de `/settings`. Se agregó esa
+       declaración en `frontend/src/index.css`. Corrige de paso, sin tocarlos,
+       otros `dark:` ya existentes en `DashboardPage`, `PuzzleGame`,
+       `LocalLevelPage`, `AdminContentPage` y `MakerPage`.
+     Verificado visualmente (claro y oscuro) en: niveles trivia/crossword/
+     fake_news, home/dashboard, `/settings`. Reconstruido y desplegado en
+     `web` tres veces (una por cada capa del bug) hasta confirmar cada una.
 
 ## En curso
 
@@ -190,11 +200,6 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   máquinas de estados, manual de operación, ADR) + 10 documentos legales, en
   dos paquetes impresos (UV / operación en la USBI). Ver
   [[Plan#m4_documentacion_tecnica_y_legal|Plan]].
-- **Decisión pendiente del usuario: ¿corregir el bug sitewide de clases
-  Tailwind `[--color-x]` sin `var()`?** (ver Hecho, 2026-09-28, hallazgo 2).
-  Corrección mecánica (cambiar `[--color-x]` por `[var(--color-x)]` o
-  `(--color-x)`) pero de alcance muy amplio — cientos de usos en decenas de
-  archivos — por eso no se tocó sin luz verde explícita.
 - **Verificación manual del camino de derrota** ("perder" un nivel, no solo
   ganar) en las plantillas donde aplica — la ronda del 2026-09-28 confirmó
   ganar en las 7 plantillas y la pantalla de resultado, pero no forzó

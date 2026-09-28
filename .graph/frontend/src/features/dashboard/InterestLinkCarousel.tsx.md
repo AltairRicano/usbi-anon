@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Renderiza un carrusel circular en abanico para explorar tarjetas de enlaces de interés por categoría. Garantiza el cumplimiento de accesibilidad de contraste (WCAG 2.2) al calcular dinámicamente el color del texto y bordes según la luminancia del color de fondo configurado por el administrador.

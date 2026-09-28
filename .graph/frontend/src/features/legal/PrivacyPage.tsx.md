@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página pública que expone las versiones simplificada e integral del aviso de privacidad. Si el usuario cuenta con sesión activa, muestra la versión del aviso aceptada por su cuenta y notifica si existe una actualización pendiente.

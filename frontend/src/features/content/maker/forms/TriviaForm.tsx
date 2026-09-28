@@ -78,7 +78,7 @@ export function TriviaForm({
           )}
         </div>
       ))}
-      <p className="text-sm text-[--color-muted]">Mínimo 3 preguntas para sostener partidas repetidas.</p>
+      <p className="text-sm text-[var(--color-muted)]">Mínimo 3 preguntas para sostener partidas repetidas.</p>
       <Button type="button" variant="outline" onClick={addQuestion}>+ Agregar Pregunta</Button>
     </div>
   );

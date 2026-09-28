@@ -30,14 +30,14 @@ export default function SettingsPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Configuración</h1>
-            <p className="text-sm text-[--color-muted]">Ajusta la apariencia y accesibilidad de la aplicación.</p>
+            <p className="text-sm text-[var(--color-muted)]">Ajusta la apariencia y accesibilidad de la aplicación.</p>
           </div>
           <HomeButton />
         </header>
 
-        <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+        <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
           <h2 className="mb-1 text-xl font-semibold">Apariencia</h2>
-          <p className="mb-4 text-sm text-[--color-muted]">Tema de color y tamaño de texto.</p>
+          <p className="mb-4 text-sm text-[var(--color-muted)]">Tema de color y tamaño de texto.</p>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <fieldset>
@@ -69,9 +69,9 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+        <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
           <h2 className="mb-1 text-xl font-semibold">Accesibilidad visual</h2>
-          <p className="mb-4 text-sm text-[--color-muted]">
+          <p className="mb-4 text-sm text-[var(--color-muted)]">
             Filtro de daltonización: redistribuye el color hacia tonos que sí distingas (no es un simulador).
           </p>
           <label className="block max-w-sm">
@@ -89,9 +89,9 @@ export default function SettingsPage() {
           </label>
         </section>
 
-        <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+        <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
           <h2 className="mb-1 text-xl font-semibold">Movimiento</h2>
-          <p className="mb-4 text-sm text-[--color-muted]">
+          <p className="mb-4 text-sm text-[var(--color-muted)]">
             La aplicación ya respeta la preferencia "reducir movimiento" de tu sistema operativo. Actívalo aquí
             si tu dispositivo no expone esa opción o prefieres anularla manualmente.
           </p>
@@ -102,9 +102,9 @@ export default function SettingsPage() {
           />
         </section>
 
-        <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+        <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
           <h2 className="mb-1 text-xl font-semibold">Sonido</h2>
-          <p className="mb-4 text-sm text-[--color-muted]">
+          <p className="mb-4 text-sm text-[var(--color-muted)]">
             Controla el sonido de los minijuegos (efectos de dados, temporizadores, etc.).
           </p>
           <ToggleRow

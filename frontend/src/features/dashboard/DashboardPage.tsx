@@ -93,9 +93,9 @@ function LocalContentSection({ navigate }: { navigate: NavigateFunction }) {
   };
 
   return (
-    <section className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm border border-[--color-border]">
+    <section className="rounded-lg bg-[var(--color-card)] text-[var(--color-text-card)] p-6 shadow-sm border border-[var(--color-border)]">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-[--color-primary]">Tus niveles locales (Maker)</h2>
+        <h2 className="text-xl font-semibold text-[var(--color-primary)]">Tus niveles locales (Maker)</h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate('/maker')}>
             + Crear nuevo
@@ -107,13 +107,13 @@ function LocalContentSection({ navigate }: { navigate: NavigateFunction }) {
       </div>
 
       {localLevels.length === 0 ? (
-        <p className="text-[--color-muted] text-sm bg-black/5 dark:bg-white/5 p-4 rounded-lg">
+        <p className="text-[var(--color-muted)] text-sm bg-black/5 dark:bg-white/5 p-4 rounded-lg">
           No tienes niveles locales. Puedes crear uno o importar un archivo JSON.
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {localLevels.map((lvl) => (
-            <div key={lvl.metadata.id} className="border border-[--color-border] p-4 rounded-lg flex flex-col gap-2 relative bg-black/5 dark:bg-white/5">
+            <div key={lvl.metadata.id} className="border border-[var(--color-border)] p-4 rounded-lg flex flex-col gap-2 relative bg-black/5 dark:bg-white/5">
               <Button
                 type="button"
                 variant="ghost"
@@ -131,7 +131,7 @@ function LocalContentSection({ navigate }: { navigate: NavigateFunction }) {
                 </div>
                 <h3 className="font-bold truncate pr-6" title={lvl.metadata.title}>{lvl.metadata.title}</h3>
               </div>
-              <p className="text-xs text-[--color-muted]">Tipo: {templateTypeLabel(lvl.metadata.template_type)} | Dif: {lvl.metadata.difficulty}</p>
+              <p className="text-xs text-[var(--color-muted)]">Tipo: {templateTypeLabel(lvl.metadata.template_type)} | Dif: {lvl.metadata.difficulty}</p>
               <Button size="sm" variant="primary" className="mt-2 w-full" onClick={() => navigate(`/local-levels/${lvl.metadata.id}/play`)}>
                 Jugar local
               </Button>
@@ -234,12 +234,12 @@ function SectionAccordionItem({ section, navigate }: { section: SectionDTO; navi
   }, [isExpanded, loaded, section.id]);
 
   return (
-    <article className="rounded-xl bg-[--color-card] text-[--color-text-card] overflow-hidden shadow-md transition-all duration-300">
+    <article className="rounded-xl bg-[var(--color-card)] text-[var(--color-text-card)] overflow-hidden shadow-md transition-all duration-300">
       <div
         role="button"
         tabIndex={0}
         aria-expanded={isExpanded}
-        className="flex items-center justify-between p-5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-primary] focus-visible:ring-inset"
+        className="flex items-center justify-between p-5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset"
         onClick={() => setIsExpanded(!isExpanded)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -255,11 +255,11 @@ function SectionAccordionItem({ section, navigate }: { section: SectionDTO; navi
           <div className="min-w-0">
             <h3 className="text-2xl font-bold truncate">{section.title}</h3>
             {section.description && (
-              <p className="text-sm text-[--color-muted] mt-1 truncate">{section.description}</p>
+              <p className="text-sm text-[var(--color-muted)] mt-1 truncate">{section.description}</p>
             )}
           </div>
         </div>
-        <div className="text-[--color-muted]">
+        <div className="text-[var(--color-muted)]">
           <svg className={`w-8 h-8 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -267,13 +267,13 @@ function SectionAccordionItem({ section, navigate }: { section: SectionDTO; navi
       </div>
 
       {isExpanded && (
-        <div className="p-8 pb-12 bg-[--color-card]">
+        <div className="p-8 pb-12 bg-[var(--color-card)]">
           {loading ? (
-            <p className="text-center text-[--color-muted]">Cargando niveles...</p>
+            <p className="text-center text-[var(--color-muted)]">Cargando niveles...</p>
           ) : loadError ? (
-            <p className="text-center text-[--color-error]">Error al cargar los niveles.</p>
+            <p className="text-center text-[var(--color-error)]">Error al cargar los niveles.</p>
           ) : levels.length === 0 ? (
-            <p className="text-center text-[--color-muted]">No hay niveles publicados en esta sección.</p>
+            <p className="text-center text-[var(--color-muted)]">No hay niveles publicados en esta sección.</p>
           ) : (
             <div className="flex flex-col gap-10 items-center w-full">
               {levels.map((level, index) => {
@@ -370,11 +370,11 @@ export default function DashboardPage() {
               />
 
               <div
-                className={`fixed top-0 left-0 bottom-0 w-72 border-r border-[--color-border] shadow-2xl z-50 p-6 flex flex-col gap-4 transform transition-transform duration-300 ease-in-out overflow-y-auto ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                className={`fixed top-0 left-0 bottom-0 w-72 border-r border-[var(--color-border)] shadow-2xl z-50 p-6 flex flex-col gap-4 transform transition-transform duration-300 ease-in-out overflow-y-auto ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 style={{ backgroundColor: 'var(--color-card)', color: 'var(--theme-text-card)' }}
               >
                 <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold text-[--color-primary]">Menú</h2>
+                  <h2 className="text-2xl font-bold text-[var(--color-primary)]">Menú</h2>
                   <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(false)} className="!px-2" aria-label="Cerrar menú">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
                       <line x1="18" x2="6" y1="6" y2="18" />
@@ -398,7 +398,7 @@ export default function DashboardPage() {
                   </Button>
                   {isAdmin && (
                     <>
-                      <p className="mt-2 px-1 text-xs font-semibold uppercase text-[--color-muted]">Administración</p>
+                      <p className="mt-2 px-1 text-xs font-semibold uppercase text-[var(--color-muted)]">Administración</p>
                       <Button variant="primary" onClick={() => { setIsMenuOpen(false); navigate('/admin/content'); }} className="justify-start w-full text-lg py-6">
                         Contenido
                       </Button>
@@ -436,15 +436,15 @@ export default function DashboardPage() {
           <SettingsEntry />
         </header>
 
-        {loadError && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{loadError}</p>}
+        {loadError && <p className="rounded border border-[var(--color-error)] bg-[var(--color-card)] p-3 text-[var(--color-error)]">{loadError}</p>}
 
-        <div className="flex bg-[--color-surface] rounded-full p-1 border border-[--color-border] w-max shadow-inner mx-auto mb-8">
+        <div className="flex bg-[var(--color-surface)] rounded-full p-1 border border-[var(--color-border)] w-max shadow-inner mx-auto mb-8">
           <button
             onClick={() => setActiveTab('public')}
             className={`px-8 py-2 rounded-full font-bold transition-all duration-200 ${
               activeTab === 'public'
-                ? 'bg-[--color-primary] text-[--color-primary-foreground] shadow-md'
-                : 'text-[--color-muted] hover:text-[--color-foreground]'
+                ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] shadow-md'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
             }`}
           >
             Públicos
@@ -453,8 +453,8 @@ export default function DashboardPage() {
             onClick={() => setActiveTab('local')}
             className={`px-8 py-2 rounded-full font-bold transition-all duration-200 ${
               activeTab === 'local'
-                ? 'bg-[--color-primary] text-[--color-primary-foreground] shadow-md'
-                : 'text-[--color-muted] hover:text-[--color-foreground]'
+                ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] shadow-md'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
             }`}
           >
             Míos
@@ -463,8 +463,8 @@ export default function DashboardPage() {
             onClick={() => setActiveTab('more')}
             className={`px-8 py-2 rounded-full font-bold transition-all duration-200 ${
               activeTab === 'more'
-                ? 'bg-[--color-primary] text-[--color-primary-foreground] shadow-md'
-                : 'text-[--color-muted] hover:text-[--color-foreground]'
+                ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] shadow-md'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-foreground)]'
             }`}
           >
             Más
@@ -474,7 +474,7 @@ export default function DashboardPage() {
         {activeTab === 'more' ? (
           <MoreTab />
         ) : activeTab === 'public' ? (
-          <section className="rounded-lg bg-[--color-card] text-[--color-text-card] p-6 shadow-sm" aria-label="Secciones oficiales">
+          <section className="rounded-lg bg-[var(--color-card)] text-[var(--color-text-card)] p-6 shadow-sm" aria-label="Secciones oficiales">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Secciones oficiales</h2>
               {isAdmin && (
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                 <SectionAccordionItem key={section.id} section={section} navigate={navigate} />
               ))}
               {sections.length === 0 && (
-                <p className="rounded-lg border border-[--color-border] bg-[--color-card] p-5 text-[--color-muted]">
+                <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-muted)]">
                   No hay secciones publicadas.
                 </p>
               )}

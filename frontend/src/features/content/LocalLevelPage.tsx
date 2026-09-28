@@ -124,8 +124,8 @@ export function LocalLevelPage() {
   if (isError) {
     return (
       <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
-        <div className="mx-auto max-w-3xl rounded-lg bg-[--color-card] p-5">
-          <p className="text-[--color-error]">No se pudo cargar el nivel local.</p>
+        <div className="mx-auto max-w-3xl rounded-lg bg-[var(--color-card)] p-5">
+          <p className="text-[var(--color-error)]">No se pudo cargar el nivel local.</p>
           <HomeButton className="mt-4" />
         </div>
       </main>
@@ -142,17 +142,17 @@ export function LocalLevelPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">{level.title}</h1>
-            <p className="text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
+            <p className="text-sm text-[var(--color-muted)]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
           </div>
           <HomeButton />
         </header>
 
         {result && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border]">
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm border border-[var(--color-border)]">
             <h2 className="text-xl font-semibold">
               {result.completed ? '¡Nivel superado!' : 'Nivel no superado'}
             </h2>
-            <p className="text-sm text-[--color-muted] mt-2">
+            <p className="text-sm text-[var(--color-muted)] mt-2">
               Puntuación: {result.score} de {result.maxScore}
               {!result.completed && ', necesitas más para superarlo'}.
             </p>
@@ -199,8 +199,8 @@ export function LocalLevelPage() {
         </Suspense>
         )}
         {!hasPlayableContent(level) && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
-            <p className="text-[--color-muted]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
+            <p className="text-[var(--color-muted)]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>
           </section>
         )}
       </div>
@@ -210,8 +210,8 @@ export function LocalLevelPage() {
 
 function GameFallback() {
   return (
-    <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
-      <p className="text-[--color-muted]">Cargando juego...</p>
+    <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
+      <p className="text-[var(--color-muted)]">Cargando juego...</p>
     </section>
   );
 }

@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Vista correspondiente a la pestaña "Más" del panel de control. Presenta los carruseles de enlaces de interés agrupados por categoría y un buzón para el envío de sugerencias anónimas que no quedan vinculadas a la cuenta del usuario.

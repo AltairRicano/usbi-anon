@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente principal de la aplicación que organiza el enrutamiento mediante React Router y la carga diferida de páginas. Aplica configuraciones globales de accesibilidad en el documento y gestiona la redirección por desautorización mediante un puente de eventos.

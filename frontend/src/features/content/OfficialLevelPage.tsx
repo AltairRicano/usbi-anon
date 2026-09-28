@@ -128,8 +128,8 @@ export function OfficialLevelPage() {
   if (levelError) {
     return (
       <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
-        <div className="mx-auto max-w-3xl rounded-lg bg-[--color-card] p-5">
-          <p className="text-[--color-error]">No se pudo cargar el nivel.</p>
+        <div className="mx-auto max-w-3xl rounded-lg bg-[var(--color-card)] p-5">
+          <p className="text-[var(--color-error)]">No se pudo cargar el nivel.</p>
           <HomeButton className="mt-4" />
         </div>
       </main>
@@ -146,38 +146,38 @@ export function OfficialLevelPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">{level.title}</h1>
-            <p className="text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
+            <p className="text-sm text-[var(--color-muted)]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
           </div>
           <HomeButton />
         </header>
 
         {isSubmitting && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border] flex justify-center items-center h-32">
-            <p className="text-[--color-muted] animate-pulse">Guardando resultados...</p>
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm border border-[var(--color-border)] flex justify-center items-center h-32">
+            <p className="text-[var(--color-muted)] animate-pulse">Guardando resultados...</p>
           </section>
         )}
 
         {result && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border]">
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm border border-[var(--color-border)]">
             <h2 className="text-xl font-semibold">
               {result.completed ? '¡Nivel superado!' : 'Nivel no superado'}
             </h2>
             {gameResult && (
-              <p className="text-sm text-[--color-muted]">
+              <p className="text-sm text-[var(--color-muted)]">
                 {result.completed
                   ? `Puntuación: ${gameResult.score} de ${gameResult.maxScore}.`
                   : `Puntuación: ${gameResult.score} de ${gameResult.maxScore}, necesitas más para superarlo.`}
               </p>
             )}
             {result.completed && (
-              <p className="text-sm text-[--color-muted]">
+              <p className="text-sm text-[var(--color-muted)]">
                 XP otorgada: {result.xp_awarded} · intento {result.attempt_number} · XP total: {result.total_xp} · racha: {result.current_streak}
               </p>
             )}
             {(result.badges_awarded ?? []).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {(result.badges_awarded ?? []).map((badge) => (
-                  <span key={badge.id} className="rounded-full border border-[--color-border] px-3 py-1 text-sm">
+                  <span key={badge.id} className="rounded-full border border-[var(--color-border)] px-3 py-1 text-sm">
                     {badge.name}
                   </span>
                 ))}
@@ -191,11 +191,11 @@ export function OfficialLevelPage() {
         )}
 
         {!level.is_published && (
-          <section className="rounded-lg bg-[--color-card] p-4 text-sm text-[--color-muted] shadow-sm">
+          <section className="rounded-lg bg-[var(--color-card)] p-4 text-sm text-[var(--color-muted)] shadow-sm">
             Vista previa de borrador. Este intento no modifica XP ni progreso oficial.
           </section>
         )}
-        {saveError && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{saveError}</p>}
+        {saveError && <p className="rounded border border-[var(--color-error)] bg-[var(--color-card)] p-3 text-[var(--color-error)]">{saveError}</p>}
 
         {!result && !isSubmitting && (
         <Suspense fallback={<GameFallback />}>
@@ -230,8 +230,8 @@ export function OfficialLevelPage() {
         </Suspense>
         )}
         {!hasPlayableContent(level) && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
-            <p className="text-[--color-muted]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
+            <p className="text-[var(--color-muted)]">El contenido de este nivel no cumple el contrato mínimo de su plantilla.</p>
           </section>
         )}
       </div>
@@ -241,8 +241,8 @@ export function OfficialLevelPage() {
 
 function GameFallback() {
   return (
-    <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
-      <p className="text-[--color-muted]">Cargando juego...</p>
+    <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
+      <p className="text-[var(--color-muted)]">Cargando juego...</p>
     </section>
   );
 }

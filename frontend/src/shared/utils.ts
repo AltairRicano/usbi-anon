@@ -18,7 +18,7 @@ export function buttonClasses(variant: ButtonVariant, size: ButtonSize, classNam
     'disabled:pointer-events-none disabled:opacity-50',
     'min-h-[44px] min-w-[44px]',
     'focus-visible:outline-none focus-visible:ring-2',
-    'focus-visible:ring-[--color-primary] focus-visible:ring-offset-2',
+    'focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2',
     {
       'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md':
         variant === 'primary',
@@ -28,7 +28,7 @@ export function buttonClasses(variant: ButtonVariant, size: ButtonSize, classNam
         variant === 'outline',
       'bg-[var(--color-error)] text-white shadow-sm hover:opacity-90 hover:shadow-md':
         variant === 'danger',
-      'text-[--color-foreground] hover:bg-black/5 dark:hover:bg-white/10':
+      'text-[var(--color-foreground)] hover:bg-black/5 dark:hover:bg-white/10':
         variant === 'ghost',
     },
     {

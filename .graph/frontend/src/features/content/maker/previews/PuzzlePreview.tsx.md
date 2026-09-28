@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de vista previa para el minijuego de rompecabezas. Utiliza carga diferida (lazy loading) del componente `PuzzleGame` para brindar una previsualización interactiva en tiempo real si se ha definido una frase válida.

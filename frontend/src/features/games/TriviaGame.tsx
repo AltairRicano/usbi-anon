@@ -48,7 +48,7 @@ export function TriviaGame({ questions, onFinish }: TriviaGameProps) {
   return (
     <Card className="w-full max-w-2xl mx-auto mt-8 relative overflow-hidden">
       <div 
-        className="absolute top-0 left-0 h-2 bg-[--color-primary] transition-all duration-1000"
+        className="absolute top-0 left-0 h-2 bg-[var(--color-primary)] transition-all duration-1000"
         style={{ width: `${(state.timeLeft / 30) * 100}%` }}
       />
       <CardHeader>
@@ -56,7 +56,7 @@ export function TriviaGame({ questions, onFinish }: TriviaGameProps) {
           <CardTitle>Pregunta {state.currentQuestionIndex + 1} de {state.questions.length}</CardTitle>
           <span className="font-bold text-lg">{state.score} pts</span>
         </div>
-        <p className="text-[--color-muted] text-sm">Tiempo restante: {state.timeLeft}s</p>
+        <p className="text-[var(--color-muted)] text-sm">Tiempo restante: {state.timeLeft}s</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="text-xl font-medium text-center py-4">

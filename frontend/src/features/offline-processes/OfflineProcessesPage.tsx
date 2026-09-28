@@ -94,7 +94,7 @@ export default function OfflineProcessesPage() {
     <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
       {confirmingRevoke && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="max-w-md rounded-2xl bg-[--color-card] p-6 shadow-2xl border border-[--color-border] space-y-4">
+          <div className="max-w-md rounded-2xl bg-[var(--color-card)] p-6 shadow-2xl border border-[var(--color-border)] space-y-4">
             <h2 className="text-xl font-bold" style={{ color: 'var(--color-error)' }}>¿Eliminar este dispositivo?</h2>
             <p className="text-sm">{REVOKE_WARNING}</p>
             <div className="flex justify-end gap-2">
@@ -111,7 +111,7 @@ export default function OfflineProcessesPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Procesos Offline</h1>
-            <p className="text-sm text-[--color-muted]">Tus dispositivos y el historial de sincronización de cada uno.</p>
+            <p className="text-sm text-[var(--color-muted)]">Tus dispositivos y el historial de sincronización de cada uno.</p>
           </div>
           <HomeButton />
         </header>
@@ -122,14 +122,14 @@ export default function OfflineProcessesPage() {
           </p>
         )}
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Dispositivos</h2>
-          <div className="divide-y divide-[--color-border]">
+          <div className="divide-y divide-[var(--color-border)]">
             {devices.map((d) => (
               <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div>
                   <p className="font-medium">{DEVICE_KIND_LABEL[d.device_kind]} · {d.platform}</p>
-                  <p className="text-xs text-[--color-muted]">
+                  <p className="text-xs text-[var(--color-muted)]">
                     Última actividad {new Date(d.last_seen_at).toLocaleString()} · registrado {new Date(d.registered_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -140,7 +140,7 @@ export default function OfflineProcessesPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white"
+                    className="border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white"
                     onClick={() => setConfirmingRevoke(d)}
                   >
                     Eliminar
@@ -148,11 +148,11 @@ export default function OfflineProcessesPage() {
                 </div>
               </div>
             ))}
-            {devices.length === 0 && <p className="py-4 text-sm text-[--color-muted]">Aún no tienes dispositivos registrados.</p>}
+            {devices.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">Aún no tienes dispositivos registrados.</p>}
           </div>
         </section>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border] space-y-4">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Historial de sincronización</h2>
             <div className="flex flex-col gap-1">
@@ -161,7 +161,7 @@ export default function OfflineProcessesPage() {
                 id="device-filter"
                 value={selectedDeviceID}
                 onChange={(e) => setSelectedDeviceID(e.currentTarget.value)}
-                className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[--color-border] bg-[--color-background]"
+                className="min-h-[44px] rounded-lg border px-4 py-2 text-base border-[var(--color-border)] bg-[var(--color-background)]"
               >
                 <option value={ALL_DEVICES}>Todos los dispositivos</option>
                 {devices.map((d) => (
@@ -177,7 +177,7 @@ export default function OfflineProcessesPage() {
             </p>
           )}
 
-          <div className="divide-y divide-[--color-border]">
+          <div className="divide-y divide-[var(--color-border)]">
             {events.map((ev) => (
               <div key={ev.id} className="py-3 text-sm">
                 <p className="font-medium">
@@ -188,14 +188,14 @@ export default function OfflineProcessesPage() {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-[--color-muted]">
+                <p className="text-xs text-[var(--color-muted)]">
                   {new Date(ev.received_at).toLocaleString()}
                   {ev.processed_at && ` · procesado ${new Date(ev.processed_at).toLocaleString()}`}
                   {ev.rejection_reason && ` · ${ev.rejection_reason}`}
                 </p>
               </div>
             ))}
-            {events.length === 0 && !eventsLoading && <p className="py-4 text-sm text-[--color-muted]">Sin eventos de sincronización todavía.</p>}
+            {events.length === 0 && !eventsLoading && <p className="py-4 text-sm text-[var(--color-muted)]">Sin eventos de sincronización todavía.</p>}
           </div>
 
           {eventsCursor && (

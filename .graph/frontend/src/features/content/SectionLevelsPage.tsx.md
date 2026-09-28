@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Vista pública del catálogo de niveles pertenecientes a una sección específica. Se encarga de solicitar al servidor únicamente las secciones y niveles oficiales que se encuentran en estado publicado para presentarlos al jugador.

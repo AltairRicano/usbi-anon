@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Módulo de utilidades generales para la gestión y concatenación de clases CSS. Ofrece soporte para la combinación limpia de Tailwind CSS y la generación unificada de estilos para botones y enlaces.

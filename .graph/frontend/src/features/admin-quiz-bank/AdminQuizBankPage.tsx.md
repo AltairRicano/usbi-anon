@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Provee la vista de administración para gestionar el banco de preguntas de registro y configurar el número de preguntas que se muestran a nuevos usuarios. Garantiza que existan al menos 4 preguntas activas capturando errores de conflicto (HTTP 409) para desplegar un modal de advertencia obligatoria.

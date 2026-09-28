@@ -8,7 +8,7 @@ const PuzzleGame = lazy(() => import('../../../games/PuzzleGame').then((mod) => 
 export function PuzzlePreview({ value }: { value: Partial<Puzzle> }) {
   if (!value.phrase) {
     return (
-      <div className="p-4 bg-gray-50 border rounded-md text-[--color-muted] text-center">
+      <div className="p-4 bg-gray-50 border rounded-md text-[var(--color-muted)] text-center">
         Ingresa una frase para ver la vista previa.
       </div>
     );
@@ -17,7 +17,7 @@ export function PuzzlePreview({ value }: { value: Partial<Puzzle> }) {
   return (
     <Suspense
       fallback={
-        <div className="p-4 bg-gray-50 border rounded-md text-center text-[--color-muted]">
+        <div className="p-4 bg-gray-50 border rounded-md text-center text-[var(--color-muted)]">
           Cargando previsualización...
         </div>
       }

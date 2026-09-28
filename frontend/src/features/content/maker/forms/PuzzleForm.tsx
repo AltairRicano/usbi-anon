@@ -16,7 +16,7 @@ export function PuzzleForm({
         <label htmlFor="puzzle-phrase" className="text-sm font-medium block mb-1 text-gray-700">Frase o mensaje secreto</label>
         <textarea
           id="puzzle-phrase"
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-[--color-primary] focus:border-[--color-primary]"
+          className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]"
           rows={3}
           value={value.phrase || ''}
           onChange={(e: ChangeEvent<HTMLTextAreaElement>) => onChange({ ...value, phrase: e.target.value })}

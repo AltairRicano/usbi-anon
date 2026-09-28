@@ -99,13 +99,13 @@ export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {
            />
         </div>
       </CardContent>
-      <div className="w-full md:w-96 md:flex-shrink-0 p-6 border-t md:border-t-0 md:border-l border-[--color-border] flex flex-col gap-4 overflow-y-auto md:max-h-[720px]">
+      <div className="w-full md:w-96 md:flex-shrink-0 p-6 border-t md:border-t-0 md:border-l border-[var(--color-border)] flex flex-col gap-4 overflow-y-auto md:max-h-[720px]">
         <CardTitle className="text-xl">Crucigrama</CardTitle>
         {/* aria-live mirrors the same score/completion text rendered below (C5):
             a screen reader user gets it announced without navigating to it. */}
-        <div aria-live="polite" className="flex flex-col gap-2 bg-white dark:bg-[--color-card] p-4 rounded-xl border border-[--color-border]">
-          <p className="text-sm text-[--color-text-muted]">Puntuación</p>
-          <p className="font-bold text-2xl text-[--color-primary]">{state.score}</p>
+        <div aria-live="polite" className="flex flex-col gap-2 bg-white dark:bg-[var(--color-card)] p-4 rounded-xl border border-[var(--color-border)]">
+          <p className="text-sm text-[var(--color-muted)]">Puntuación</p>
+          <p className="font-bold text-2xl text-[var(--color-primary)]">{state.score}</p>
           {state.isFinished && <p className="sr-only">Crucigrama completado.</p>}
         </div>
         {state.isFinished && (
@@ -114,18 +114,18 @@ export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {
           </div>
         )}
         {unplacedWords.length > 0 && (
-          <div className="mt-2 rounded-xl border border-[--color-error] bg-red-50 p-3 text-sm text-[--color-error]">
+          <div className="mt-2 rounded-xl border border-[var(--color-error)] bg-red-50 p-3 text-sm text-[var(--color-error)]">
             Hay palabras que no se pudieron cruzar: {unplacedWords.map((word) => word.word).join(', ')}.
           </div>
         )}
         <div className="mt-4 flex flex-col gap-4">
           <div>
-            <h4 className="font-bold text-lg border-b border-[--color-border] pb-2 mb-3">Horizontales</h4>
+            <h4 className="font-bold text-lg border-b border-[var(--color-border)] pb-2 mb-3">Horizontales</h4>
             <ul className="flex flex-col gap-2">
               {horizontals.map((pw, i) => (
                 <li
                   key={`h-${i}`}
-                  className={`text-sm flex items-start gap-2 ${isWordSolved(pw) ? 'text-green-600 line-through' : 'text-[--color-text]'}`}
+                  className={`text-sm flex items-start gap-2 ${isWordSolved(pw) ? 'text-green-600 line-through' : 'text-[var(--color-text)]'}`}
                 >
                   <span className="font-bold shrink-0">{pw.num}.</span>
                   <span>{pw.clue}</span>
@@ -135,12 +135,12 @@ export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {
             </ul>
           </div>
           <div>
-            <h4 className="font-bold text-lg border-b border-[--color-border] pb-2 mb-3">Verticales</h4>
+            <h4 className="font-bold text-lg border-b border-[var(--color-border)] pb-2 mb-3">Verticales</h4>
             <ul className="flex flex-col gap-2">
               {verticals.map((pw, i) => (
                 <li
                   key={`v-${i}`}
-                  className={`text-sm flex items-start gap-2 ${isWordSolved(pw) ? 'text-green-600 line-through' : 'text-[--color-text]'}`}
+                  className={`text-sm flex items-start gap-2 ${isWordSolved(pw) ? 'text-green-600 line-through' : 'text-[var(--color-text)]'}`}
                 >
                   <span className="font-bold shrink-0">{pw.num}.</span>
                   <span>{pw.clue}</span>

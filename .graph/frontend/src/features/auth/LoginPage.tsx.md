@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente de vista para el inicio de sesión de usuarios mediante nickname y contraseña. Valida la respuesta del servidor contra un esquema Zod, registra el dispositivo en almacenamiento local para soporte offline y actualiza la tienda de autenticación antes de redirigir al usuario.

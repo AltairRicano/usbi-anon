@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Campo de entrada de texto reutilizable con soporte para etiquetas visuales, iconos laterales y mensajes de error. Integra atributos de accesibilidad como `aria-describedby` y `aria-invalid` e impone dimensiones mínimas para interacción táctil.

@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Vista previa interactiva para la plantilla de memorama (juego de memoria). Normaliza y renderiza tanto la muestra del dorso común como los pares de tarjetas de contenido, calculando dinámicamente colores de texto legibles según el fondo de cada tarjeta.

@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente React estilo tarjetas deslizables para evaluar noticias falsas o verdaderas mediante animaciones de `framer-motion`. Permite al usuario calificar artículos arrastrando las tarjetas horizontalmente (izquierda para Verdadero, derecha para Falso) o mediante botones dedicados.

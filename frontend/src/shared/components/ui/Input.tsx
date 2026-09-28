@@ -14,13 +14,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     return (
       <div className="flex flex-col gap-1 w-full">
-        <label htmlFor={inputId} className="text-sm font-medium text-[--color-foreground]">
+        <label htmlFor={inputId} className="text-sm font-medium text-[var(--color-foreground)]">
           {label}
         </label>
 
         <div className="relative flex items-center">
           {leftIcon && (
-            <span className="absolute left-3 text-[--color-muted]" aria-hidden="true">
+            <span className="absolute left-3 text-[var(--color-muted)]" aria-hidden="true">
               {leftIcon}
             </span>
           )}
@@ -33,12 +33,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               'w-full rounded-lg border px-4 py-2 text-base',
               'min-h-[44px]',
-              'border-[--color-border] bg-[--color-background]',
-              'placeholder:text-[--color-muted]',
+              'border-[var(--color-border)] bg-[var(--color-background)]',
+              'placeholder:text-[var(--color-muted)]',
               'focus-visible:outline-none focus-visible:ring-2',
-              'focus-visible:ring-[--color-primary] focus-visible:ring-offset-2',
+              'focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2',
               'transition-colors',
-              error && 'border-[--color-error] focus-visible:ring-[--color-error]',
+              error && 'border-[var(--color-error)] focus-visible:ring-[var(--color-error)]',
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
               className
@@ -46,11 +46,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
 
-          {rightIcon && <span className="absolute right-3 text-[--color-muted]">{rightIcon}</span>}
+          {rightIcon && <span className="absolute right-3 text-[var(--color-muted)]">{rightIcon}</span>}
         </div>
 
         {error && (
-          <p id={`${inputId}-error`} role="alert" className="text-sm text-[--color-error] flex items-center gap-1">
+          <p id={`${inputId}-error`} role="alert" className="text-sm text-[var(--color-error)] flex items-center gap-1">
             <span aria-hidden="true">⚠</span>
             {error}
           </p>

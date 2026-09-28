@@ -97,7 +97,7 @@ export default function AdminBadgesPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Catálogo de insignias</h1>
-            <p className="text-sm text-[--color-muted]">{badges.length} insignia{badges.length === 1 ? '' : 's'} definida{badges.length === 1 ? '' : 's'}.</p>
+            <p className="text-sm text-[var(--color-muted)]">{badges.length} insignia{badges.length === 1 ? '' : 's'} definida{badges.length === 1 ? '' : 's'}.</p>
           </div>
           <HomeButton />
         </header>
@@ -108,7 +108,7 @@ export default function AdminBadgesPage() {
           </p>
         )}
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Nueva insignia</h2>
           <form onSubmit={createBadge} className="grid gap-3 md:grid-cols-[1fr_140px_1fr_auto] md:items-end">
             <Input
@@ -139,11 +139,11 @@ export default function AdminBadgesPage() {
           </form>
         </section>
 
-        <section className="rounded-2xl bg-[--color-card] p-5 shadow-lg border border-[--color-border]">
+        <section className="rounded-2xl bg-[var(--color-card)] p-5 shadow-lg border border-[var(--color-border)]">
           <h2 className="mb-4 text-xl font-semibold">Insignias existentes</h2>
 
           {editing && (
-            <form onSubmit={saveEdit} className="mb-5 rounded-lg border border-[--color-border] p-4">
+            <form onSubmit={saveEdit} className="mb-5 rounded-lg border border-[var(--color-border)] p-4">
               <h3 className="mb-3 font-semibold">Editar insignia</h3>
               <div className="grid gap-3 md:grid-cols-[1fr_140px_1fr_auto] md:items-end">
                 <Input
@@ -178,12 +178,12 @@ export default function AdminBadgesPage() {
             </form>
           )}
 
-          <div className="divide-y divide-[--color-border]">
+          <div className="divide-y divide-[var(--color-border)]">
             {badges.map((b) => (
               <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div>
                   <p className="font-medium">{b.name}</p>
-                  <p className="text-xs text-[--color-muted]">Umbral {b.xp_threshold} XP · icono <code>{b.icon_key}</code></p>
+                  <p className="text-xs text-[var(--color-muted)]">Umbral {b.xp_threshold} XP · icono <code>{b.icon_key}</code></p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -196,7 +196,7 @@ export default function AdminBadgesPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white"
+                    className="border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white"
                     onClick={() => void deleteBadge(b.id)}
                   >
                     Eliminar
@@ -204,7 +204,7 @@ export default function AdminBadgesPage() {
                 </div>
               </div>
             ))}
-            {badges.length === 0 && <p className="py-4 text-sm text-[--color-muted]">No hay insignias.</p>}
+            {badges.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">No hay insignias.</p>}
           </div>
         </section>
       </div>

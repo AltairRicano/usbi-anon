@@ -50,12 +50,12 @@ export function CrosswordForm({
         </div>
       ))}
       {!canBuildCrossword && (
-        <p className="rounded-lg border border-[--color-error] bg-red-50 p-3 text-sm text-[--color-error]">
+        <p className="rounded-lg border border-[var(--color-error)] bg-red-50 p-3 text-sm text-[var(--color-error)]">
           Las palabras completas no generan un crucigrama conectado. Agrega palabras con letras en común o cambia alguna respuesta.
         </p>
       )}
       {hasDuplicateAnswers && (
-        <p className="rounded-lg border border-[--color-error] bg-red-50 p-3 text-sm text-[--color-error]">
+        <p className="rounded-lg border border-[var(--color-error)] bg-red-50 p-3 text-sm text-[var(--color-error)]">
           Hay respuestas repetidas. Cada palabra del crucigrama debe ser distinta.
         </p>
       )}

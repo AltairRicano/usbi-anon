@@ -192,7 +192,7 @@ export default function App() {
 function RouteFallback() {
   return (
     <main className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
-      <p className="text-[--color-muted]">Cargando...</p>
+      <p className="text-[var(--color-muted)]">Cargando...</p>
     </main>
   );
 }

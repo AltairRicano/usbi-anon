@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Formulario de configuración para el juego de Serpientes y Escaleras. Permite ajustar dimensiones del tablero, cantidad de elementos calculados según el tamaño disponible, nivel de la IA, semilla matemática y exige un mínimo de 8 preguntas con exactamente dos alternativas cada una para evitar repeticiones aceleradas en la partida.

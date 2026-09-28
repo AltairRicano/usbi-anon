@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Interfaz para gestionar el catálogo global de insignias, permitiendo crear, editar y eliminar insignias por ID. Si al menos una cuenta de usuario ya ganó una insignia, el backend rechaza su eliminación con HTTP 409 (badge-has-holder), lo cual se presenta como un mensaje de error en la UI.

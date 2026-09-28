@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind v4 activa dark: por prefers-color-scheme salvo que se redefina
+   la variante — este proyecto alterna dark/light a mano con la clase .dark
+   en <html> (useSettingsStore.ts), no con la preferencia del SO. Sin esta
+   línea, cualquier utilidad dark: nunca coincide con el toggle real. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================================
    SISTEMA DE DISEÑO INSTITUCIONAL – USBI / Universidad Veracruzana
    Fuente de verdad: plan/Convenciones_de_color_UV.md

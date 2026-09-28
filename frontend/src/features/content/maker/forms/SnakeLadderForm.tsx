@@ -115,7 +115,7 @@ export function SnakeLadderForm({
         Dificultad de IA
         <select
           id="snakes-ai-difficulty"
-          className="min-h-[44px] rounded-lg border border-[--color-border] bg-[--color-background] px-3"
+          className="min-h-[44px] rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3"
           value={value.ai_config?.difficulty ?? 'MEDIUM'}
           onChange={(event) => onChange({ ...previewValue, ai_config: { difficulty: event.currentTarget.value as 'EASY' | 'MEDIUM' | 'HARD' } })}
         >
@@ -129,7 +129,7 @@ export function SnakeLadderForm({
         <div className="flex justify-between items-center mb-4">
           <div>
             <h4 className="text-xl font-bold">Preguntas de Cultura General</h4>
-            <p className="text-sm text-[--color-muted]">
+            <p className="text-sm text-[var(--color-muted)]">
               Cada pregunta debe tener exactamente dos opciones. Mínimo {MIN_QUESTIONS} preguntas ({questions.length}/{MIN_QUESTIONS}).
             </p>
           </div>

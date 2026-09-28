@@ -314,7 +314,7 @@ export function AdminContentPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Administración de Contenido</h1>
-            <p className="text-sm text-[--color-muted]">Secciones y niveles oficiales.</p>
+            <p className="text-sm text-[var(--color-muted)]">Secciones y niveles oficiales.</p>
           </div>
           <div className="flex gap-2">
             <HomeButton />
@@ -322,7 +322,7 @@ export function AdminContentPage() {
           </div>
         </header>
 
-        {error && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{error}</p>}
+        {error && <p className="rounded border border-[var(--color-error)] bg-[var(--color-card)] p-3 text-[var(--color-error)]">{error}</p>}
 
         {showMaker ? (
           <LevelMakerForm
@@ -337,7 +337,7 @@ export function AdminContentPage() {
           />
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+            <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
               <h2 className="mb-4 text-xl font-semibold">Nueva sección</h2>
               <form onSubmit={createSection} className="space-y-4">
                 <Input label="Título de sección" value={sectionTitle} onChange={(e) => setSectionTitle(e.currentTarget.value)} required />
@@ -347,14 +347,14 @@ export function AdminContentPage() {
               </form>
             </section>
 
-            <section className="rounded-lg bg-[--color-card] p-5 shadow-sm flex flex-col justify-center items-center">
+            <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm flex flex-col justify-center items-center">
               <h2 className="mb-4 text-xl font-semibold">Nuevo Nivel Oficial</h2>
-              <p className="text-sm text-[--color-muted] mb-4 text-center">Usa el editor visual para configurar niveles con validación completa.</p>
+              <p className="text-sm text-[var(--color-muted)] mb-4 text-center">Usa el editor visual para configurar niveles con validación completa.</p>
               <div className="flex gap-4 mb-6">
                 <Button onClick={() => setShowMaker(true)}>Abrir Creador de Niveles</Button>
                 <Button variant="outline" onClick={handleImportCommunityLevel}>Importar Nivel (JSON)</Button>
               </div>
-              <div className="text-xs text-[--color-muted] text-center max-w-sm">
+              <div className="text-xs text-[var(--color-muted)] text-center max-w-sm">
                 <p className="mb-1"><strong>Aviso:</strong> Los niveles que sean expuestos al público son responsabilidad de la institución.</p>
                 <p>Se copiarán los datos válidos del archivo del maker local y se te pedirá añadir la sección a la que corresponde.</p>
               </div>
@@ -364,14 +364,14 @@ export function AdminContentPage() {
         )}
 
         {!showMaker && importedFileWarning && (
-          <p className="rounded border border-[--color-warning] bg-[--color-card] p-3 text-sm text-[--color-warning]">{importedFileWarning}</p>
+          <p className="rounded border border-[var(--color-warning)] bg-[var(--color-card)] p-3 text-sm text-[var(--color-warning)]">{importedFileWarning}</p>
         )}
 
         {!showMaker && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
             <h2 className="mb-4 text-xl font-semibold">Secciones y Niveles</h2>
             {editingSection && (
-              <form onSubmit={saveSectionEdit} className="mb-5 rounded-lg border border-[--color-border] p-4">
+              <form onSubmit={saveSectionEdit} className="mb-5 rounded-lg border border-[var(--color-border)] p-4">
                 <h3 className="mb-3 font-semibold">Editar sección</h3>
                 <div className="grid gap-3 md:grid-cols-[1fr_140px_auto] md:items-end">
                   <Input
@@ -414,12 +414,12 @@ export function AdminContentPage() {
                         onClick={() => toggleSection(section.id)}
                         aria-expanded={isExpanded}
                       >
-                        <span className="text-[--color-muted] w-5 text-center text-xs" aria-hidden="true">
+                        <span className="text-[var(--color-muted)] w-5 text-center text-xs" aria-hidden="true">
                           {isExpanded ? '▼' : '▶'}
                         </span>
                         <span>
-                          <p className="font-semibold">{section.title} <span className="text-xs font-normal text-[--color-muted] bg-[--color-surface] px-2 py-0.5 rounded-full ml-2 border border-[--color-border]">{sectionLevels.length} niveles</span></p>
-                          <p className="text-sm text-[--color-muted]">{section.description || 'Sin descripción'}</p>
+                          <p className="font-semibold">{section.title} <span className="text-xs font-normal text-[var(--color-muted)] bg-[var(--color-surface)] px-2 py-0.5 rounded-full ml-2 border border-[var(--color-border)]">{sectionLevels.length} niveles</span></p>
+                          <p className="text-sm text-[var(--color-muted)]">{section.description || 'Sin descripción'}</p>
                         </span>
                       </button>
                       <div className="flex gap-2">
@@ -436,13 +436,13 @@ export function AdminContentPage() {
                       </div>
                     </div>
                     {isExpanded && (
-                      <div className="mt-3 pl-6 pr-2 border-l-2 border-[--color-border] ml-4 bg-[--color-surface]/30 rounded-r-lg">
-                        <div className="divide-y divide-dashed border-t border-[--color-border] mt-2">
+                      <div className="mt-3 pl-6 pr-2 border-l-2 border-[var(--color-border)] ml-4 bg-[var(--color-surface)]/30 rounded-r-lg">
+                        <div className="divide-y divide-dashed border-t border-[var(--color-border)] mt-2">
                           {sectionLevels.map((level) => (
                             <div key={level.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                               <div>
                                 <p className="font-medium text-sm">{level.title}</p>
-                                <p className="text-xs text-[--color-muted]">
+                                <p className="text-xs text-[var(--color-muted)]">
                                   {templateTypeLabel(level.template_type)} · dificultad {level.difficulty} · {level.is_published ? 'Publicado' : 'Borrador'}
                                 </p>
                               </div>
@@ -466,28 +466,28 @@ export function AdminContentPage() {
                                 )}
                                 {!level.is_published && <Button size="sm" className="h-8 px-2 text-xs" onClick={() => void publishLevel(level.id)}>Publicar</Button>}
                                 {level.is_published && <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => void unpublishLevel(level.id)}>Ocultar</Button>}
-                                <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white" onClick={() => void archiveLevel(level.id)}>Archivar</Button>
+                                <Button size="sm" variant="outline" className="h-8 px-2 text-xs border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white" onClick={() => void archiveLevel(level.id)}>Archivar</Button>
                               </div>
                             </div>
                           ))}
-                          {sectionLevels.length === 0 && <p className="py-3 text-sm text-[--color-muted]">No hay niveles en esta sección.</p>}
+                          {sectionLevels.length === 0 && <p className="py-3 text-sm text-[var(--color-muted)]">No hay niveles en esta sección.</p>}
                         </div>
                       </div>
                     )}
                   </div>
                 );
               })}
-              {sections.length === 0 && <p className="py-4 text-sm text-[--color-muted]">No hay secciones.</p>}
+              {sections.length === 0 && <p className="py-4 text-sm text-[var(--color-muted)]">No hay secciones.</p>}
             </div>
           </section>
         )}
 
         {!showMaker && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+          <section className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Contenido archivado</h2>
-                <p className="text-sm text-[--color-muted]">
+                <p className="text-sm text-[var(--color-muted)]">
                   Archivar es reversible y no libera espacio. Purgar es irreversible y sí lo libera —
                   la experiencia (XP) de cada jugador se conserva siempre.
                 </p>
@@ -500,8 +500,8 @@ export function AdminContentPage() {
             {showArchived && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold text-[--color-muted]">Secciones archivadas</h3>
-                  {archivedSections.length === 0 && <p className="text-sm text-[--color-muted]">No hay secciones archivadas.</p>}
+                  <h3 className="mb-2 text-sm font-semibold text-[var(--color-muted)]">Secciones archivadas</h3>
+                  {archivedSections.length === 0 && <p className="text-sm text-[var(--color-muted)]">No hay secciones archivadas.</p>}
                   <div className="divide-y">
                     {archivedSections.map((section) => (
                       <ArchivedRow
@@ -517,8 +517,8 @@ export function AdminContentPage() {
                 </div>
 
                 <div>
-                  <h3 className="mb-2 text-sm font-semibold text-[--color-muted]">Niveles archivados</h3>
-                  {archivedLevels.length === 0 && <p className="text-sm text-[--color-muted]">No hay niveles archivados.</p>}
+                  <h3 className="mb-2 text-sm font-semibold text-[var(--color-muted)]">Niveles archivados</h3>
+                  {archivedLevels.length === 0 && <p className="text-sm text-[var(--color-muted)]">No hay niveles archivados.</p>}
                   <div className="divide-y">
                     {archivedLevels.map((level) => (
                       <ArchivedRow
@@ -566,7 +566,7 @@ function ArchivedRow({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-medium text-sm">{title}</p>
-          <p className="text-xs text-[--color-muted]">{subtitle}</p>
+          <p className="text-xs text-[var(--color-muted)]">{subtitle}</p>
         </div>
         <div className="flex gap-2 items-center">
           <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={onRestore}>
@@ -575,7 +575,7 @@ function ArchivedRow({
           <Button
             size="sm"
             variant="outline"
-            className="h-8 px-2 text-xs border-[--color-error] text-[--color-error] hover:bg-[--color-error] hover:text-white"
+            className="h-8 px-2 text-xs border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white"
             onClick={() => setConfirming((v) => !v)}
           >
             Purgar definitivamente
@@ -583,8 +583,8 @@ function ArchivedRow({
         </div>
       </div>
       {confirming && (
-        <div className="mt-2 rounded border border-[--color-error] bg-[--color-surface] p-3 space-y-2">
-          <p className="text-sm text-[--color-error]">
+        <div className="mt-2 rounded border border-[var(--color-error)] bg-[var(--color-surface)] p-3 space-y-2">
+          <p className="text-sm text-[var(--color-error)]">
             Esta acción es <strong>irreversible</strong> y libera el almacenamiento de {entityLabel}. No se
             puede deshacer. Escribe el título exacto para confirmar.
           </p>

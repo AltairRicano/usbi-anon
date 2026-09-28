@@ -61,10 +61,10 @@ export function PuzzleGame({ phrase, pieces = 3, seed = 1234, onFinish }: Puzzle
 
       <div className="flex gap-4 items-center">
         <p className="font-bold text-lg text-gray-700 dark:text-gray-300">Movimientos: {state.moves}</p>
-        <p className="font-bold text-lg text-[--color-primary]">Puntuación: {state.score}</p>
+        <p className="font-bold text-lg text-[var(--color-primary)]">Puntuación: {state.score}</p>
       </div>
 
-      <div className="w-full min-h-[200px] border-4 border-[--color-border] rounded-xl p-4 bg-gray-50 shadow-inner overflow-x-auto">
+      <div className="w-full min-h-[200px] border-4 border-[var(--color-border)] rounded-xl p-4 bg-gray-50 shadow-inner overflow-x-auto">
         <Reorder.Group 
           axis="x" 
           values={items} 

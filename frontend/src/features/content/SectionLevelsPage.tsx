@@ -42,23 +42,23 @@ export function SectionLevelsPage() {
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">{section?.title ?? 'Sección'}</h1>
-            <p className="text-sm text-[--color-muted]">Niveles oficiales publicados.</p>
+            <p className="text-sm text-[var(--color-muted)]">Niveles oficiales publicados.</p>
           </div>
           <HomeButton />
         </header>
 
-        {error && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{error}</p>}
+        {error && <p className="rounded border border-[var(--color-error)] bg-[var(--color-card)] p-3 text-[var(--color-error)]">{error}</p>}
 
         <section className="grid gap-4 md:grid-cols-2">
           {levels.map((level) => (
-            <article key={level.id} className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+            <article key={level.id} className="rounded-lg bg-[var(--color-card)] p-5 shadow-sm">
               <div className="mb-4 h-2 rounded" style={{ backgroundColor: level.color }} />
               <h2 className="text-xl font-semibold">{level.title}</h2>
-              <p className="mb-4 text-sm text-[--color-muted]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
+              <p className="mb-4 text-sm text-[var(--color-muted)]">Dificultad {level.difficulty} · {templateTypeLabel(level.template_type)}</p>
               <LinkButton to={`/levels/${level.id}/play`} variant="primary" size="sm">Jugar</LinkButton>
             </article>
           ))}
-          {levels.length === 0 && <p className="rounded-lg bg-[--color-card] p-5 text-[--color-muted]">No hay niveles publicados en esta sección.</p>}
+          {levels.length === 0 && <p className="rounded-lg bg-[var(--color-card)] p-5 text-[var(--color-muted)]">No hay niveles publicados en esta sección.</p>}
         </section>
       </div>
     </main>

@@ -193,10 +193,10 @@ export default function RegisterPage() {
           {step === 1 && (
             <>
               {loadingQuestions ? (
-                <p className="text-sm text-[--color-muted]" aria-live="polite">Cargando preguntas…</p>
+                <p className="text-sm text-[var(--color-muted)]" aria-live="polite">Cargando preguntas…</p>
               ) : (
                 <form onSubmit={handleAnswersSubmit} className="space-y-4" aria-label="Cuestionario de registro" noValidate>
-                  <p className="text-sm text-[--color-muted]">
+                  <p className="text-sm text-[var(--color-muted)]">
                     No pedimos nombre, correo ni teléfono. Con estas respuestas generamos tu nickname y contraseña —
                     nadie más las verá.
                   </p>
@@ -234,10 +234,10 @@ export default function RegisterPage() {
                   </label>
 
                   {loadingPrivacyNotice && (
-                    <p className="text-sm text-[--color-muted]" aria-live="polite">Cargando aviso de privacidad…</p>
+                    <p className="text-sm text-[var(--color-muted)]" aria-live="polite">Cargando aviso de privacidad…</p>
                   )}
                   {privacyNoticeError && (
-                    <p className="text-sm text-[--color-error]" role="alert">{privacyNoticeError}</p>
+                    <p className="text-sm text-[var(--color-error)]" role="alert">{privacyNoticeError}</p>
                   )}
                   {privacyNotice && <PrivacyNoticeInline notice={privacyNotice} />}
 
@@ -270,7 +270,7 @@ export default function RegisterPage() {
 
           {step === 2 && (
             <form onSubmit={handleConfirmSubmit} className="space-y-4" aria-label="Elegir nickname" noValidate>
-              <p className="text-sm text-[--color-muted]">
+              <p className="text-sm text-[var(--color-muted)]">
                 Elige uno de estos nicknames generados a partir de tus respuestas. Será tu usuario para iniciar
                 sesión.
               </p>
@@ -322,15 +322,15 @@ export default function RegisterPage() {
 
               <dl className="space-y-3 rounded-lg border p-4" style={{ borderColor: 'var(--color-border)' }}>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[--color-muted]">Nickname</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Nickname</dt>
                   <dd className="font-mono text-lg">{issuedNickname}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[--color-muted]">Contraseña</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Contraseña</dt>
                   <dd className="font-mono text-lg">{issuedPassword}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-[--color-muted]">Tu alias en el juego</dt>
+                  <dt className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Tu alias en el juego</dt>
                   <dd className="text-lg">{displayAlias}</dd>
                 </div>
               </dl>
@@ -384,7 +384,7 @@ function StepIndicator({ step }: { step: Step }) {
               {done ? '✓' : n}
             </span>
             <span style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}>{label}</span>
-            {idx < labels.length - 1 && <span aria-hidden="true" className="text-[--color-muted]">—</span>}
+            {idx < labels.length - 1 && <span aria-hidden="true" className="text-[var(--color-muted)]">—</span>}
           </li>
         );
       })}

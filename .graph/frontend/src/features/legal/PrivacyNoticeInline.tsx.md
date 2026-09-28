@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente integrado en el flujo de registro que muestra el contenido completo del aviso de privacidad simplificado. Evita ocultar el texto bajo enlaces para asegurar la lectura previa a su aceptación, y ofrece un enlace en nueva pestaña hacia el aviso integral.

@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Despliega el perfil y progreso oficial del usuario (XP, racha, niveles e insignias ganadas). Permite confirmar mayoría de edad (Ley 251, limitado a 3 veces por el backend) y ofrece la opción de eliminación inmediata e irreversible de la cuenta mediante DELETE /auth/me.
