@@ -88,11 +88,16 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   página contenedora. `PuzzleGame` y `CrosswordGame` muestran un banner
   "completado" inline (no reemplazan toda la pantalla ni tienen botón de
   reintentar) — mismo patrón de raíz pero no la pantalla reportada; se dejan
-  igual por ahora. **Pendiente de reconstrucción de `frontend/dist`**: el
-  contenedor `usbi-anon` sirve un build pre-generado en el host (ver
-  limitación de memoria en `CLAUDE.md`), así que este fix no se ve reflejado
-  en `http://192.168.1.210:8092/` ni en `usbi.heimdall-lab.com` hasta correr
-  `npm run build` en el host y reiniciar/`docker cp` el contenedor.
+  igual por ahora. **Desplegado (2026-09-28)**: corrección de nota anterior
+  — el entorno visible en `192.168.1.210:8092` / `usbi.heimdall-lab.com` ya
+  no es el contenedor único de prueba de esfuerzo descrito en `CLAUDE.md`
+  (ese sigue existiendo en `/home/altair/usbi-anon/`, aparte, sin tocar);
+  es el compose de 3 servicios de M3 (`usbi-anon-db-1`/`api-1`/`web-1`), cuyo
+  `web` se construye con un Dockerfile multi-etapa (`frontend/Dockerfile`)
+  que compila `dist/` con Node dentro de la imagen — no depende de la
+  memoria del contenedor en runtime. Se reconstruyó con
+  `docker compose build web && docker compose up -d web`; el bundle server
+  actualmente ya no contiene la tarjeta "Trivia Completada" retirada.
 
 ## En curso
 
@@ -142,10 +147,6 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
 - **Verificación manual en navegador de las 7 plantillas de nivel** (ganar y
   perder donde aplique) tras M1 — no se hizo por el límite de memoria del
   contenedor de desarrollo para `npm run build`.
-- **Reconstruir `frontend/dist` y reiniciar `usbi-anon`** para que el fix de
-  la pantalla duplicada de trivia (ver Hecho, 2026-09-28) llegue al entorno
-  visible en `192.168.1.210:8092` / `usbi.heimdall-lab.com`. Aprovechar para
-  hacer la verificación manual pendiente del punto anterior.
 - Deuda conocida fuera de M1–M5: paginación en catálogos extensos
   (`DashboardPage`, `SectionLevelsPage`, `AdminContentPage`), pulido de
   `AdminCommunityPage.tsx`, borrado duro de cuenta propia en
