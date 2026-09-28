@@ -34,20 +34,13 @@ export function TriviaGame({ questions, onFinish }: TriviaGameProps) {
 
   if (!state) return <div>Loading...</div>;
 
+  // La pantalla de cierre (stats verificados por servidor, XP, reintentar)
+  // la muestra la página contenedora (OfficialLevelPage/LocalLevelPage) una
+  // vez que onFinish resuelve; renderizar aquí una tarjeta propia duplicaba
+  // esa pantalla y aparecía un instante de por medio mientras se esperaba
+  // la respuesta del servidor.
   if (state.isFinished) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto mt-8">
-        <CardHeader>
-          <CardTitle>Trivia Completada</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center">
-          <p className="text-2xl font-bold mb-4">Puntuación: {state.score}</p>
-          <Button variant="primary" onClick={() => engineRef.current?.reset()}>
-            Volver a jugar
-          </Button>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   const currentQ = state.questions[state.currentQuestionIndex];

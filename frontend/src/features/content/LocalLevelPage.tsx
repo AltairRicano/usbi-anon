@@ -160,9 +160,7 @@ export function LocalLevelPage() {
               Nota: Los niveles locales (Maker) no otorgan puntos de experiencia ni medallas en tu progreso oficial.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              {!result.completed && (
-                <Button variant="primary" onClick={retryLevel}>Reintentar</Button>
-              )}
+              <Button variant="primary" onClick={retryLevel}>Volver a jugar</Button>
               <HomeButton />
             </div>
           </section>

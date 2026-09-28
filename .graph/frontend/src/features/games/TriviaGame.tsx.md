@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente React para juegos de trivia de opción múltiple con tiempo límite. Gestiona la cuenta regresiva por pregunta mediante el `TriviaEngine`, despliega contenido multimedia adjunto y resalta la opción correcta o incorrecta al responder.

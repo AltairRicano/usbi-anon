@@ -35,6 +35,7 @@ export function OfficialLevelPage() {
   const [result, setResult] = useState<CompleteLevelResponse | null>(null);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptKey, setAttemptKey] = useState(0);
   const submittedRef = useRef(false);
 
@@ -99,6 +100,7 @@ export function OfficialLevelPage() {
     submittedRef.current = true;
     setGameResult(gameResult);
     setSaveError(null);
+    setIsSubmitting(true);
     try {
       const { data } = await apiClient.post(`/levels/${levelId}/complete`, {
         score: gameResult.score,
@@ -110,6 +112,8 @@ export function OfficialLevelPage() {
     } catch (err) {
       submittedRef.current = false;
       setSaveError(errorMessage(err, 'No se pudo guardar el resultado en línea.'));
+    } finally {
+      setIsSubmitting(false);
     }
   }, [level?.is_published, levelId]);
 
@@ -147,8 +151,14 @@ export function OfficialLevelPage() {
           <HomeButton />
         </header>
 
+        {isSubmitting && (
+          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border] flex justify-center items-center h-32">
+            <p className="text-[--color-muted] animate-pulse">Guardando resultados...</p>
+          </section>
+        )}
+
         {result && (
-          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm">
+          <section className="rounded-lg bg-[--color-card] p-5 shadow-sm border border-[--color-border]">
             <h2 className="text-xl font-semibold">
               {result.completed ? '¡Nivel superado!' : 'Nivel no superado'}
             </h2>
@@ -174,9 +184,7 @@ export function OfficialLevelPage() {
               </div>
             )}
             <div className="mt-4 flex flex-wrap gap-3">
-              {!result.completed && (
-                <Button variant="primary" onClick={retryLevel}>Reintentar</Button>
-              )}
+              <Button variant="primary" onClick={retryLevel}>Volver a jugar</Button>
               <LinkButton to="/perfil">Ver progreso</LinkButton>
             </div>
           </section>
@@ -189,7 +197,7 @@ export function OfficialLevelPage() {
         )}
         {saveError && <p className="rounded border border-[--color-error] bg-[--color-card] p-3 text-[--color-error]">{saveError}</p>}
 
-        {!result && (
+        {!result && !isSubmitting && (
         <Suspense fallback={<GameFallback />}>
           {level.template_type === 'trivia' && triviaQuestions.length > 0 && (
             <TriviaGame key={attemptKey} questions={triviaQuestions} onFinish={finishLevel} />

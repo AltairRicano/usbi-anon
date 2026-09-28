@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página de prueba y ejecución de niveles locales guardados en `localStorage` desde el maker. Se encarga de normalizar los contenidos de cada tipo de plantilla y garantiza como decisión de negocio que las partidas locales no registren progreso, puntos de experiencia (XP) ni medallas en la cuenta del usuario.

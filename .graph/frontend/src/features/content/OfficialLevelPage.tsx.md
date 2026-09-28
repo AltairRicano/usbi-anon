@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Página para jugar niveles oficiales cargados desde la API remota. Al finalizar la partida envía la puntuación, tiempo y respuestas al servidor para calcular y registrar la experiencia (XP) obtenida, rachas y medallas desbloqueadas; en niveles no publicados opera únicamente como vista previa sin alterar el progreso oficial.

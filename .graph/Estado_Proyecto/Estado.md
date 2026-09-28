@@ -1,7 +1,7 @@
 ---
 tipo: estado_proyecto
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-22
+fecha_actualizacion: 2026-09-28
 ---
 
 # Estado del proyecto — USBI-Anon
@@ -69,22 +69,67 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   ya retiradas, en 63 archivos de `backend/internal/*`. Solo comentarios —
   ningún cambio funcional. Trabajo de rama (`limpieza-comentarios-y-normalizacion`)
   coordinado entre varios usuarios sobre el mismo checkout del repositorio.
+- **Bug de UI corregido (2026-09-28): pantalla duplicada de fin de nivel en
+  trivia.** Reporte de usuarios: al terminar un nivel aparecía por ~1 segundo
+  una pantalla de "reintentar" y luego, encima, la pantalla final con
+  XP/intentos/racha. Causa raíz: `TriviaGame.tsx` renderizaba su propia
+  tarjeta "Trivia Completada" (con botón "Volver a jugar" y solo el score
+  local) apenas `state.isFinished` se ponía en `true`, **antes** de que
+  `OfficialLevelPage`/`LocalLevelPage` terminaran de mostrar su propia
+  pantalla de resultado (que en `OfficialLevelPage` espera la respuesta del
+  servidor vía `POST /levels/:id/complete` — la única fuente de verdad tras
+  M1). Las otras 6 plantillas (`MemoryGame`, `FakeNewsGame`,
+  `SnakeLadderGame`, `WordSearchGame`, `PuzzleGame`, `CrosswordGame`) ya
+  seguían el patrón correcto: solo llaman a `onFinish`, sin pintar su propia
+  pantalla de cierre; `TriviaGame` era la única plantilla que se
+  desviaba — de ahí que el fenómeno solo se reportara en niveles de trivia.
+  Corrección: `TriviaGame` ahora retorna `null` cuando `state.isFinished`,
+  igual que las demás plantillas — una sola pantalla de cierre, la de la
+  página contenedora. `PuzzleGame` y `CrosswordGame` muestran un banner
+  "completado" inline (no reemplazan toda la pantalla ni tienen botón de
+  reintentar) — mismo patrón de raíz pero no la pantalla reportada; se dejan
+  igual por ahora. **Pendiente de reconstrucción de `frontend/dist`**: el
+  contenedor `usbi-anon` sirve un build pre-generado en el host (ver
+  limitación de memoria en `CLAUDE.md`), así que este fix no se ve reflejado
+  en `http://192.168.1.210:8092/` ni en `usbi.heimdall-lab.com` hasta correr
+  `npm run build` en el host y reiniciar/`docker cp` el contenedor.
 
 ## En curso
 
 - Ninguna fase de código abierta ahora mismo. El plan vigente
   ([[Plan#m4_documentacion_tecnica_y_legal|Plan]]) tiene M4 como siguiente
   bloque, sin arrancar.
-- **Contenido de prueba para revisión visual (2026-09-23)**: se sembraron vía
-  API admin, en el entorno `usbi-anon` corriendo (`http://192.168.1.210:8092/`),
-  2 secciones ("Prueba de fotos — Naturaleza", "Prueba de fotos — Cultura
-  general"), 4 niveles publicados de 4 plantillas distintas (trivia, memory,
-  fake_news, puzzle — 2 por sección) y 1 categoría de enlaces de interés
-  ("Prueba de fotos — Redes") con 2 tarjetas externas genéricas (YouTube,
-  Instagram). **Es contenido de prueba, no contenido real del curso** — no
-  confundirlo con material educativo definitivo al planear M4 o rotación de
-  temporadas; no quedó registrado en ninguna migración SQL, solo vive en la
-  base de datos del contenedor `usbi-anon`.
+- **Limpieza de contenido de prueba (2026-09-26)**: el contenido sembrado el
+  2026-09-23 para revisión visual (las 2 secciones "Prueba de fotos", sus 4
+  niveles, la categoría "Prueba de fotos — Redes" con sus 2 tarjetas) **se
+  purgó por completo**, junto con residuos de pruebas `golden` anteriores que
+  habían quedado archivados o en borrador sin publicar (8 secciones/niveles
+  "Golden admin"/"Golden errores admin" + 1 sección/nivel borrador sin
+  archivar que ninguno de los dos listados de admin mostraba, y 2 categorías
+  de enlaces vacías del mismo origen). Motivo: el usuario va a mostrar este
+  entorno como prototipo final y quería la base limpia para sembrar
+  contenido nuevo. Estado resultante: `sections`, `levels`,
+  `sections/archived`, `levels/archived`, `admin/interest-links` y
+  `admin/interest-link-categories` devuelven todos `items: []`.
+- **Contenido de demostración para el prototipo final (2026-09-26)**: sembrado
+  vía API admin sobre la base ya limpia. 2 secciones publicadas —
+  "¿Qué tanto sabes de psicología?" (`#18529D`) y "¿Qué tan bien conoces tu
+  cuerpo?" (`#28AD56`) — con 5 niveles publicados cada una (10 en total),
+  usando las 7 plantillas de `levels.template_type` con solo 3 repetidas
+  (trivia, memory y fake_news aparecen 2 veces; puzzle, word_search,
+  crossword y snakes_ladders 1 vez cada una): "Trivia: emociones y mente
+  humana", "Memorama: conceptos de psicología", "Noticia real o falsa: mitos
+  de la mente", "Sopa de letras: palabras de la mente", "Rompecabezas: frase
+  sobre la salud mental" (sección psicología) y "Trivia: el cuerpo humano en
+  movimiento", "Crucigrama: partes del cuerpo", "Serpientes y escaleras: reto
+  de actividad física", "Memorama: deportes y beneficios", "Noticia real o
+  falsa: mitos del cuerpo" (sección cuerpo). También se creó la categoría de
+  enlaces de interés "Museo AMI" con 3 tarjetas de un proyecto hermano del
+  mismo cliente (`msusbicoatza.com`): Audiocuentos (`#18529D`), Mapa sonoro
+  (`#28AD56`) y Museo AMI (`#000000`). **Sigue siendo contenido de
+  demostración, no material educativo definitivo** — igual que el sembrado
+  del 2026-09-23, no quedó registrado en ninguna migración SQL, solo vive en
+  la base de datos del contenedor `usbi-anon`.
 
 ## Falta
 
@@ -97,6 +142,10 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
 - **Verificación manual en navegador de las 7 plantillas de nivel** (ganar y
   perder donde aplique) tras M1 — no se hizo por el límite de memoria del
   contenedor de desarrollo para `npm run build`.
+- **Reconstruir `frontend/dist` y reiniciar `usbi-anon`** para que el fix de
+  la pantalla duplicada de trivia (ver Hecho, 2026-09-28) llegue al entorno
+  visible en `192.168.1.210:8092` / `usbi.heimdall-lab.com`. Aprovechar para
+  hacer la verificación manual pendiente del punto anterior.
 - Deuda conocida fuera de M1–M5: paginación en catálogos extensos
   (`DashboardPage`, `SectionLevelsPage`, `AdminContentPage`), pulido de
   `AdminCommunityPage.tsx`, borrado duro de cuenta propia en
@@ -104,6 +153,24 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   antes la política de conservación en M4.3), `internal/maintenance` sin
   evaluar para partición de pools.
 - **Auditoría de Arquitectura (QA)**: Se detectaron ciclos de dependencia en el frontend (`registry.ts` con 17 ciclos, el más corto `registry.ts` ➔ `LevelMakerForm.tsx` ➔ `registry.ts`), lo cual representa un riesgo de empaquetado (evaluación `undefined` en runtime). En el backend, existen ciclos intra-paquete (ej. `auth/service.go` ➔ `auth/handler.go` con 41 ciclos, y `audit/audit.go` con 9), los cuales compilan en Go pero evidencian un alto acoplamiento semántico. Pendiente de prueba de integración (E2E) para verificar recuperación del cliente ante fallos.
+- **Bug real, descubierto el 2026-09-26: `DELETE /api/v1/levels/{id}` (purga)
+  falla siempre con 500 en el despliegue de 3 servicios.** Causa:
+  `AccumulateRetiredProgressForLevel` (que preserva el XP/contador de
+  niveles completados antes del `DELETE` físico, ver regla de rotación en
+  `CLAUDE.md`) hace `SELECT` sobre `player_progress` usando el pool
+  `usbi_moderador`, que no tiene ese GRANT — solo `usbi_app` (pool jugador)
+  puede leer esa tabla. Ningún rol de aplicación existente puede correr la
+  secuencia completa (leer `player_progress` + escribir
+  `account_retired_progress` + `DELETE` en `levels`) sin superusuario. El
+  patrón correcto ya existe en el repo
+  (`backend/migrations/0004_procedimientos_purga_moderador.up.sql`): una
+  función `SECURITY DEFINER` propiedad de `usbi_app` con `GRANT EXECUTE` a
+  `usbi_moderador`, nunca ampliar el `GRANT` directo. **No se corrigió**: a
+  petición explícita del usuario, la limpieza de contenido de este día se
+  hizo con una purga manual por SQL como superusuario de Postgres
+  (`docker exec` contra `usbi-anon-db-1`), sin tocar código ni migraciones.
+  Sigue pendiente escribir esa migración — el próximo admin que purgue un
+  nivel desde `/admin/content` en este entorno va a chocar con el mismo 500.
 
 ## Siguientes pasos
 

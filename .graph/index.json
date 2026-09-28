@@ -1398,13 +1398,13 @@
       "id": "frontend/src/features/content/LocalLevelPage.tsx.md",
       "nombre": "LocalLevelPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "799c942d3157925b32ffdaa1bf5ffd353e683647d15f38972124073b0bbc9451"
+      "last_synced_hash": "fca9c58306a317ce1b5002a79c0e0bdca6b1fb1df862df515b387b0555b41253"
     },
     {
       "id": "frontend/src/features/content/OfficialLevelPage.tsx.md",
       "nombre": "OfficialLevelPage.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "5007b6627f64280fc7781415684031a3ab1288b8ff359e0b233c33d11280d35d"
+      "last_synced_hash": "2e370756e06add8963cde2460a6417337839527eb4ebe5fafc36be860d0cfd02"
     },
     {
       "id": "frontend/src/features/content/SectionLevelsPage.tsx.md",
@@ -1620,7 +1620,7 @@
       "id": "frontend/src/features/games/TriviaGame.tsx.md",
       "nombre": "TriviaGame.tsx",
       "tipo": "codigo",
-      "last_synced_hash": "2ba2a18e1e515e57323608892d92c4e6505ea06efedf4a765368718074bedf5d"
+      "last_synced_hash": "2ec39242c5b52d1df8fa3e228056d1124a487e7bccef9d07a7cb8667a7415b56"
     },
     {
       "id": "frontend/src/features/games/WordSearchGame.tsx.md",
