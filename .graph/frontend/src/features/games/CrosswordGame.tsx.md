@@ -1,7 +1,7 @@
 ---
 tipo: codigo
 fecha_elaboracion: 2026-09-19
-fecha_actualizacion: 2026-09-21
+fecha_actualizacion: 2026-09-28
 ---
 
 Componente en React para el juego de crucigrama. Se encarga de instanciar y gestionar la suscripción al `CrosswordEngine`, asignar numeración a las palabras compartiendo identificador entre aquellas que inicien en la misma celda, y presentar la interfaz que combina el tablero interactivo Phaser con la lista de pistas horizontales y verticales.

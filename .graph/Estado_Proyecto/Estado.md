@@ -98,6 +98,52 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   memoria del contenedor en runtime. Se reconstruyó con
   `docker compose build web && docker compose up -d web`; el bundle server
   actualmente ya no contiene la tarjeta "Trivia Completada" retirada.
+- **Verificación manual en navegador de los 10 niveles de demostración
+  (2026-09-28)**, cierra el pendiente que quedaba de M1. Con Puppeteer, sesión
+  `admin01`, contra `192.168.1.210:8092`. Resultado: las 7 plantillas
+  renderizan y completan correctamente (trivia, memory, fake_news,
+  word_search, puzzle, crossword, snakes_ladders — probado ganar en trivia,
+  confirmando de paso que el fix de la pantalla duplicada de arriba ya
+  funciona en el entorno real). Dos hallazgos reales:
+  1. **Corregido**: `CrosswordGame.tsx` — el panel de pistas
+     ("Horizontales"/"Verticales") se aplastaba a ~110 px de ancho
+     (ilegible) porque el contenedor de la página (`max-w-4xl`, 896 px en
+     `OfficialLevelPage`/`LocalLevelPage`) es más angosto que lo que
+     `CrosswordGame` necesita (tablero de 720 px + panel `md:w-96` de
+     384 px + gaps); sin `flex-shrink-0` en el panel, Flexbox le quitaba
+     todo el espacio al panel y ninguno al tablero. Fix: `min-w-0` en el
+     contenedor del tablero + `md:flex-shrink-0` en el panel — el tablero
+     ahora se reduce (Phaser `Scale.FIT` lo escala sin problema) y el panel
+     conserva sus 384 px, totalmente legible. Verificado visualmente tras
+     reconstruir `web`.
+  2. **Sin corregir, requiere decisión del usuario — bug de contraste/tema
+     oscuro, sitewide, no exclusivo de los niveles**: cientos de clases
+     Tailwind con la sintaxis `bg-[--color-card]`, `text-[--color-muted]`,
+     `border-[--color-border]`, etc. (llaves sin `var(...)`) compilan a CSS
+     **inválido** — `background-color:--color-card` en vez de
+     `background-color:var(--color-card)` — que el navegador descarta en
+     silencio. Confirmado leyendo el CSS servido
+     (`.bg-\[--color-card\]{background-color:--color-card}` vs. la forma
+     correcta que sí existe en el mismo archivo,
+     `.bg-\[var\(--color-card\)\]{background-color:var(--color-card)}`).
+     Con Tailwind v4 (`4.3.3`), `bg-[--color-x]` NO es azúcar sintáctico
+     para `var()` — solo `bg-(--color-x)` (paréntesis) o
+     `bg-[var(--color-x)]` lo son. Conteo en `frontend/src`:
+     `grep -rEoh '(bg|text|border|ring|fill|stroke)-\[--color-[a-zA-Z-]+\]' src | wc -l`
+     → **cientos de usos** (132× `text-[--color-muted]`, 78×
+     `border-[--color-border]`, 77× `bg-[--color-card]`, y así para ~16
+     variables de color distintas, en decenas de archivos). Efecto
+     observado: en modo claro suele verse "bien" por accidente (el color de
+     texto heredado por defecto es oscuro); en **modo oscuro** el texto cae
+     en un color casi blanco heredado sobre fondos que no cambiaron a
+     oscuro — confirmado ilegible en la tarjeta de instrucciones de
+     `FakeNewsGame` ("Desliza izquierda para VERDADERO...") y en la caja de
+     "Puntuación" de `CrosswordGame` (que además se queda con fondo blanco
+     fijo en oscuro porque `dark:bg-[--color-card]` también es inválido, así
+     que nunca sobreescribe el `bg-white` base). No se tocó — es una
+     corrección mecánica pero de alcance muy amplio (que también incluye
+     `ring-[--color-primary]`, focos de accesibilidad), mejor con luz verde
+     explícita antes de tocar decenas de archivos de una sola vez.
 
 ## En curso
 
@@ -144,9 +190,15 @@ cronología — para el detalle sesión por sesión, leer `estado_proyecto.md` o
   máquinas de estados, manual de operación, ADR) + 10 documentos legales, en
   dos paquetes impresos (UV / operación en la USBI). Ver
   [[Plan#m4_documentacion_tecnica_y_legal|Plan]].
-- **Verificación manual en navegador de las 7 plantillas de nivel** (ganar y
-  perder donde aplique) tras M1 — no se hizo por el límite de memoria del
-  contenedor de desarrollo para `npm run build`.
+- **Decisión pendiente del usuario: ¿corregir el bug sitewide de clases
+  Tailwind `[--color-x]` sin `var()`?** (ver Hecho, 2026-09-28, hallazgo 2).
+  Corrección mecánica (cambiar `[--color-x]` por `[var(--color-x)]` o
+  `(--color-x)`) pero de alcance muy amplio — cientos de usos en decenas de
+  archivos — por eso no se tocó sin luz verde explícita.
+- **Verificación manual del camino de derrota** ("perder" un nivel, no solo
+  ganar) en las plantillas donde aplica — la ronda del 2026-09-28 confirmó
+  ganar en las 7 plantillas y la pantalla de resultado, pero no forzó
+  explícitamente un resultado no superado en cada una.
 - Deuda conocida fuera de M1–M5: paginación en catálogos extensos
   (`DashboardPage`, `SectionLevelsPage`, `AdminContentPage`), pulido de
   `AdminCommunityPage.tsx`, borrado duro de cuenta propia en

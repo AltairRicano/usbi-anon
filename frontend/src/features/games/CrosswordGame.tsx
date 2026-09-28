@@ -86,7 +86,7 @@ export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {
 
   return (
     <Card className="w-full max-w-5xl mx-auto mt-8 flex flex-col md:flex-row gap-4">
-      <CardContent className="flex-1 p-0 relative">
+      <CardContent className="flex-1 min-w-0 p-0 relative">
         <div
           className="relative mx-auto aspect-square w-full max-w-[720px] overflow-hidden rounded-xl shadow-inner"
           style={{ background: '#f8f9fa' }}
@@ -99,7 +99,7 @@ export function CrosswordGame({ words, onFinish }: CrosswordGameProps) {
            />
         </div>
       </CardContent>
-      <div className="w-full md:w-96 p-6 border-t md:border-t-0 md:border-l border-[--color-border] flex flex-col gap-4 overflow-y-auto md:max-h-[720px]">
+      <div className="w-full md:w-96 md:flex-shrink-0 p-6 border-t md:border-t-0 md:border-l border-[--color-border] flex flex-col gap-4 overflow-y-auto md:max-h-[720px]">
         <CardTitle className="text-xl">Crucigrama</CardTitle>
         {/* aria-live mirrors the same score/completion text rendered below (C5):
             a screen reader user gets it announced without navigating to it. */}
